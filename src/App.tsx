@@ -114,7 +114,7 @@ export function App() {
     const isMaster = storageService.isMaster(user);
 
     if (isMaster) {
-      // 🚀 KHUSUS AKUN MASTER (Durasi 4.5 detik sesuai permintaan 4–5 detik):
+      // 🚀 KHUSUS AKUN MASTER (Durasi 2.5 detik sesuai permintaan 2–3 detik):
       // 1. Matikan animasi sakura
       // 2. Luncurkan animasi roket takeoff dan penuhi halaman login dengan kepulan asap
       // 3. Ucapan: "rocket sudah siap untuk di terbangkan capten"
@@ -123,15 +123,15 @@ export function App() {
       setTriggerRocketTakeoff(true);
       setToastMessage('rocket sudah siap untuk di terbangkan capten');
 
-      // Tahan di halaman login selama take-off berlangsung (4.5 detik)
+      // Tahan di halaman login selama take-off berlangsung (2.5 detik)
       setTimeout(() => {
         setCurrentUser(user);
         setActiveTab('home');
-      }, 4500);
+      }, 2500);
 
       setTimeout(() => {
         setToastMessage(null);
-      }, 5500);
+      }, 3500);
     } else {
       // Akun Murid biasa:
       setCurrentUser(user);

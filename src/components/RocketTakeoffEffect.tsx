@@ -66,7 +66,7 @@ export const RocketTakeoffEffect: React.FC<RocketTakeoffEffectProps> = ({
     window.addEventListener('resize', resize);
 
     const isLanding = mode === 'landing';
-    const totalDuration = isLanding ? 6.0 : 4.5; // 6 detik untuk landing, 4.5 detik untuk takeoff
+    const totalDuration = isLanding ? 6.0 : 2.5; // 6 detik untuk landing, 2.5 detik untuk takeoff (sesuai permintaan 2–3 detik)
 
     let startTime = Date.now();
     let currentY = isLanding ? -canvas.height * 0.95 : 0;
@@ -100,10 +100,10 @@ export const RocketTakeoffEffect: React.FC<RocketTakeoffEffectProps> = ({
           gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 4.5);
           gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 5.5);
         } else {
-          // Takeoff: starts at ignition, roars loud, fades into stratosphere
-          gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.24, audioCtx.currentTime + 1.8);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 4.2);
+          // Takeoff: starts at ignition, roars loud quickly, fades into stratosphere
+          gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.26, audioCtx.currentTime + 0.7);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2.4);
         }
 
         noise.connect(gain);
@@ -123,13 +123,13 @@ export const RocketTakeoffEffect: React.FC<RocketTakeoffEffectProps> = ({
 
       // ================= PHYSICS & TRAJECTORY =================
       if (!isLanding) {
-        // === TAKEOFF TRAJECTORY (Durasi ~4.5s) ===
-        if (elapsed < 1.1) {
+        // === TAKEOFF TRAJECTORY (Durasi ~2.5s) ===
+        if (elapsed < 0.6) {
           setRocketStage('ignition');
           currentY = (Math.random() - 0.5) * 3; // Vibration rumble at launchpad
         } else {
           setRocketStage('liftoff');
-          velocityY += 0.88; // Acceleration
+          velocityY += 1.55; // Faster acceleration
           currentY -= velocityY;
         }
       } else {
@@ -161,8 +161,8 @@ export const RocketTakeoffEffect: React.FC<RocketTakeoffEffectProps> = ({
       let smokeCount = 0;
 
       if (!isLanding) {
-        shouldGenerateSmoke = elapsed < 3.8;
-        smokeCount = elapsed < 2.5 ? 16 : 6;
+        shouldGenerateSmoke = elapsed < 2.3;
+        smokeCount = elapsed < 1.4 ? 18 : 6;
       } else {
         // For landing: heavy smoke bursts during descent & braking (1.5s - 4.8s)
         shouldGenerateSmoke = elapsed > 1.2 && elapsed < 5.2;
@@ -196,7 +196,7 @@ export const RocketTakeoffEffect: React.FC<RocketTakeoffEffectProps> = ({
 
       // ================= 2. ENGINE FLAME JET PARTICLES =================
       const shouldGenerateFlames = !isLanding 
-        ? elapsed < 3.6 
+        ? elapsed < 2.3 
         : elapsed < 4.4; // Extinguishes when touching down
 
       if (shouldGenerateFlames) {

@@ -636,6 +636,18 @@ export const storageService = {
     }
   },
 
+  // Reset papan ranking sesi kuis (hanya mengosongkan rekaman sesi aktif, tanpa menyentuh riwayat nilai permanen / total kuis / rapor)
+  resetActiveQuizRanking: (): boolean => {
+    try {
+      localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify([]));
+      window.dispatchEvent(new CustomEvent('active_quiz_updated'));
+      return true;
+    } catch (e) {
+      console.error('Failed to reset active quiz ranking', e);
+      return false;
+    }
+  },
+
   // Scores
   getAllScores: (): QuizResult[] => {
     return storageService.getScores();

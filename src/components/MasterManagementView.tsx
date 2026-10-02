@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, ActiveQuizRecord, QuizControlState } from '../types';
+import { User, ActiveQuizRecord, QuizControlState, QuizResult } from '../types';
 import { storageService } from '../services/storageService';
-import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, UserX, Clock, Calendar, ChevronRight, Activity } from 'lucide-react';
+import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, UserX, Clock, Calendar, ChevronRight, Activity, RotateCcw, Trophy, Medal, Sparkles } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 
 interface MasterManagementViewProps {
@@ -16,15 +16,17 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const [activeRecords, setActiveRecords] = useState<ActiveQuizRecord[]>([]);
   const [studentsList, setStudentsList] = useState<User[]>([]);
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
+  const [allScores, setAllScores] = useState<QuizResult[]>([]);
   
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'in_progress' | 'completed'>('all');
   
-  // Student Deletion Modal
+  // Student & Record Deletion / Reset Modals
   const [studentToDelete, setStudentToDelete] = useState<User | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<ActiveQuizRecord | null>(null);
+  const [showResetRankingModal, setShowResetRankingModal] = useState(false);
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
 
   // Load all data
@@ -32,6 +34,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setActiveRecords(storageService.getActiveQuizRecords());
     setStudentsList(storageService.getAllStudents());
     setQuizControl(storageService.getQuizControlState());
+    setAllScores(storageService.getAllScores());
   };
 
   useEffect(() => {
@@ -46,10 +49,12 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     const handleActiveQuizUpdate = () => loadData();
     const handleStudentDataUpdate = () => loadData();
     const handleQuizControlChange = () => loadData();
+    const handleScoresUpdate = () => loadData();
 
     window.addEventListener('active_quiz_updated', handleActiveQuizUpdate);
     window.addEventListener('student_data_updated', handleStudentDataUpdate);
     window.addEventListener('quiz_control_changed', handleQuizControlChange);
+    window.addEventListener('scores_updated', handleScoresUpdate);
     window.addEventListener('storage', loadData);
 
     return () => {
@@ -57,6 +62,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       window.removeEventListener('active_quiz_updated', handleActiveQuizUpdate);
       window.removeEventListener('student_data_updated', handleStudentDataUpdate);
       window.removeEventListener('quiz_control_changed', handleQuizControlChange);
+      window.removeEventListener('scores_updated', handleScoresUpdate);
       window.removeEventListener('storage', loadData);
     };
   }, []);
@@ -95,6 +101,15 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setRecordToDelete(null);
     loadData();
     setTimeout(() => setNotificationMsg(null), 3000);
+  };
+
+  // Confirm Reset Ranking Sesi Kuis (Hanya mereset papan sesi aktif, tanpa mengubah nilai murid di daftar murid, total kuis, atau rapor)
+  const handleConfirmResetRanking = () => {
+    storageService.resetActiveQuizRanking();
+    setShowResetRankingModal(false);
+    setNotificationMsg('Papan perankingan sesi kuis berhasil direset! 🏆 Sesi kuis siap dimulai dari awal tanpa merubah nilai di rapor murid.');
+    loadData();
+    setTimeout(() => setNotificationMsg(null), 4500);
   };
 
   // Score color formatting based on user requirement:
@@ -137,6 +152,67 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       </div>
     );
   };
+
+  // Render Badge Ranking / Juara Sesi Ini
+  const renderRankBadge = (rank?: number, status?: string) => {
+    if (status === 'in_progress' || rank === undefined) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold">
+          <Clock className="w-3 h-3 text-amber-600 animate-spin" />
+          <span>Sedang Kuis</span>
+        </span>
+      );
+    }
+
+    if (rank === 1) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 text-amber-950 border border-amber-400 rounded-xl text-xs font-black shadow-2xs">
+          <span className="text-sm">🥇</span>
+          <span>Juara 1</span>
+        </span>
+      );
+    }
+    if (rank === 2) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-slate-100 via-gray-100 to-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-black shadow-2xs">
+          <span className="text-sm">🥈</span>
+          <span>Juara 2</span>
+        </span>
+      );
+    }
+    if (rank === 3) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-100 text-orange-950 border border-orange-300 rounded-xl text-xs font-black shadow-2xs">
+          <span className="text-sm">🥉</span>
+          <span>Juara 3</span>
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 bg-[#fbf3e8] text-[#881337] border border-[#ecdac6] rounded-lg text-xs font-bold font-mono">
+        #{rank}
+      </span>
+    );
+  };
+
+  // Perhitungan Peringkat / Ranking Kuis Sesi Ini
+  // Berdasarkan skor tertinggi, jika skor sama diurutkan berdasarkan waktu selesai
+  const completedRecords = activeRecords.filter(
+    (r) => r.status === 'completed' && r.score !== null && r.score !== undefined
+  );
+
+  const sortedCompletedRecords = [...completedRecords].sort((a, b) => {
+    if ((b.score ?? 0) !== (a.score ?? 0)) {
+      return (b.score ?? 0) - (a.score ?? 0);
+    }
+    return (a.completedAtTimestamp ?? 0) - (b.completedAtTimestamp ?? 0);
+  });
+
+  const rankMap = new Map<string, number>();
+  sortedCompletedRecords.forEach((rec, idx) => {
+    rankMap.set(rec.id, idx + 1);
+  });
 
   // Filtered live records
   const filteredRecords = activeRecords.filter(rec => {
@@ -241,7 +317,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           </div>
         </div>
 
-        {/* Navigation Sub-Tabs: 1. Nilai Murid (Live) | 2. Daftar Murid */}
+        {/* Navigation Sub-Tabs: 1. Nilai Murid (Perankingan Live) | 2. Daftar Murid */}
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-[#eedac5] pt-4">
           <button
             onClick={() => setSubTab('live_scores')}
@@ -252,7 +328,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
             }`}
           >
             <Activity className="w-4 h-4" />
-            <span>1. Nilai Murid (Rekaman & Nilai Kuis Live)</span>
+            <span>1. Nilai Murid (Perankingan & Rekaman Kuis Live)</span>
             <span className="px-1.5 py-0.2 bg-white/20 rounded-md text-[10px]">
               {activeRecords.length}
             </span>
@@ -273,22 +349,94 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
             </span>
           </button>
 
-          <button
-            onClick={loadData}
-            title="Muat ulang data live"
-            className="ml-auto p-2.5 bg-white text-[#735338] hover:text-[#881337] border border-[#ebdccb] rounded-xl hover:bg-[#fff7ee] transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          {/* Quick Action: Reset Ranking Sesi & Reload */}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShowResetRankingModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl text-xs transition-all shadow-xs active:scale-95"
+              title="Reset ranking kuis sesi ini untuk persiapan sesi kuis baru (tanpa menghapus riwayat nilai permanen murid)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Ranking Sesi</span>
+            </button>
+
+            <button
+              onClick={loadData}
+              title="Muat ulang data live"
+              className="p-2.5 bg-white text-[#735338] hover:text-[#881337] border border-[#ebdccb] rounded-xl hover:bg-[#fff7ee] transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* =========================================================================
-          SUB-HALAMAN 1: "NILAI MURID" (LIVE ACTIVITY & SCORE MONITORING)
+          SUB-HALAMAN 1: "NILAI MURID" (LIVE ACTIVITY & SCORE MONITORING + PERANKINGAN)
           ========================================================================= */}
       {subTab === 'live_scores' && (
         <div className="space-y-4">
-          {/* Filter Bar */}
+          {/* Papan Peringkat Sesi Kuis (Top 3 Juara Sesi Ini) */}
+          {sortedCompletedRecords.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-50/80 via-[#fffdfa] to-orange-50/80 border border-amber-200 rounded-3xl p-4 sm:p-5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-extrabold text-[#881337] font-japanese">
+                      Papan Perankingan Sesi Kuis Saat Ini (Top 3)
+                    </h3>
+                    <p className="text-[11px] text-[#735338]">
+                      Urutan juara pada sesi kuis ini berdasarkan perolehan skor tertinggi & waktu pengerjaan.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowResetRankingModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-colors w-fit active:scale-95 shadow-2xs"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Ranking Sesi Kuis</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {sortedCompletedRecords.slice(0, 3).map((rec, idx) => {
+                  const medalIcon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
+                  const medalTitle = idx === 0 ? 'Juara 1 (Emas)' : idx === 1 ? 'Juara 2 (Perak)' : 'Juara 3 (Perunggu)';
+                  const cardBg = idx === 0 
+                    ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300/60' 
+                    : idx === 1 
+                    ? 'border-slate-300 bg-slate-50/70' 
+                    : 'border-orange-300 bg-orange-50/70';
+
+                  return (
+                    <div key={rec.id} className={`p-3.5 rounded-2xl border ${cardBg} flex items-center gap-3 relative shadow-2xs`}>
+                      <div className="text-3xl shrink-0 drop-shadow-xs">{medalIcon}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-amber-900">
+                          {medalTitle}
+                        </div>
+                        <div className="font-extrabold text-[#3d2a1b] text-sm truncate">
+                          {rec.studentName}
+                        </div>
+                        <div className="text-[11px] text-[#735338] flex items-center gap-2 mt-0.5">
+                          <span>JLPT {rec.level}</span>
+                          <span>•</span>
+                          <span>Nilai: <strong className="text-[#881337] font-black">{rec.score}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Filter Bar & Tombol Reset Ranking */}
           <div className="bg-[#fffdfa] border border-[#ebdccb] p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
             {/* Search Input */}
             <div className="relative w-full sm:w-72">
@@ -302,8 +450,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               />
             </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Filters & Reset Ranking Button */}
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
               <div className="flex items-center gap-1 bg-[#f5ede1] p-1 rounded-xl text-xs">
                 {(['all', 'in_progress', 'completed'] as const).map((st) => (
                   <button
@@ -331,15 +479,25 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <option value="N3">Level N3</option>
                 <option value="N2">Level N2</option>
               </select>
+
+              <button
+                onClick={() => setShowResetRankingModal(true)}
+                className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-extrabold shadow-2xs transition-all flex items-center gap-1.5 shrink-0 active:scale-95"
+                title="Reset papan perankingan untuk sesi kuis baru (tidak menghapus total kuis atau rapor murid)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Ranking Sesi</span>
+              </button>
             </div>
           </div>
 
-          {/* Live Activity Table */}
+          {/* Live Activity & Ranking Table */}
           <div className="bg-[#fffdfa] border border-[#ebdccb] rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-[#fbf3e8] text-[#881337] border-b border-[#ebdccb] font-bold">
+                    <th className="py-3 px-3 text-center">Peringkat</th>
                     <th className="py-3 px-4">Nama Murid</th>
                     <th className="py-3 px-3">Level Kuis</th>
                     <th className="py-3 px-3">Tanggal</th>
@@ -352,11 +510,11 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <tbody className="divide-y divide-[#f2e6d6]">
                   {filteredRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-[#8c6b4b]">
+                      <td colSpan={8} className="py-8 text-center text-[#8c6b4b]">
                         <div className="text-2xl mb-1">🌸</div>
-                        <p className="font-semibold">Belum ada rekaman aktivitas kuis murid.</p>
+                        <p className="font-semibold">Papan perankingan sesi ini belum memiliki rekaman kuis.</p>
                         <p className="text-xs text-[#a88a70] mt-0.5">
-                          Saat murid mulai mengerjakan kuis, rekaman akan otomatis muncul secara live di tabel ini.
+                          Saat murid mulai mengerjakan kuis, perankingan dan rekaman live akan otomatis muncul di tabel ini.
                         </p>
                       </td>
                     </tr>
@@ -368,6 +526,11 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           rec.status === 'in_progress' ? 'bg-[#fff9f0] hover:bg-[#fef3e3]' : 'hover:bg-[#fcf8f2]'
                         }`}
                       >
+                        {/* Peringkat / Ranking Sesi Ini */}
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          {renderRankBadge(rankMap.get(rec.id), rec.status)}
+                        </td>
+
                         {/* Nama Murid */}
                         <td className="py-3 px-4">
                           <div className="font-bold text-[#3d2a1b]">
@@ -520,7 +683,12 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     </tr>
                   ) : (
                     filteredStudents.map((student, idx) => {
-                      const studentQuizzes = activeRecords.filter(r => r.userEmail.toLowerCase() === student.email.toLowerCase() && r.status === 'completed');
+                      // Total Kuis & Nilai Murid dihitung dari riwayat permanen allScores (sensei_sari_scores_v1)
+                      // Tidak pernah ter-reset saat tombol reset ranking sesi kuis ditekan!
+                      const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
+                      const totalQuizzes = studentScores.length;
+                      const avgScore = totalQuizzes > 0 ? Math.round(studentScores.reduce((acc, s) => acc + s.score, 0) / totalQuizzes) : null;
+
                       return (
                         <tr key={student.email} className="hover:bg-[#fcf8f2] transition-colors">
                           <td className="py-3 px-4 font-bold text-[#881337]">
@@ -538,8 +706,15 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           <td className="py-3 px-3 text-[#735338] whitespace-nowrap">
                             {student.registeredAt || '2026-09-01'}
                           </td>
-                          <td className="py-3 px-3 text-center font-bold text-[#881337]">
-                            {studentQuizzes.length} kali
+                          <td className="py-3 px-3 text-center">
+                            <span className="px-2.5 py-1 bg-[#fae8eb] text-[#881337] border border-[#fbcfe8] rounded-lg text-xs font-black">
+                              {totalQuizzes} kali
+                            </span>
+                            {avgScore !== null && (
+                              <div className="text-[10px] text-[#735338] font-normal mt-0.5">
+                                Rata-rata: <strong className="text-[#881337] font-bold">{avgScore}</strong>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-center">
                             <button
@@ -626,6 +801,65 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 className="flex-1 py-2 bg-red-600 text-white font-bold text-xs rounded-xl"
               >
                 Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL KONFIRMASI RESET RANKING SESI KUIS
+          ========================================================================= */}
+      {showResetRankingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#fffdfa] border-2 border-amber-400 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-2xl shrink-0 shadow-2xs">
+                🏆
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#881337] font-japanese">
+                  Reset Ranking Sesi Kuis?
+                </h3>
+                <p className="text-xs text-[#735338]">
+                  Menyesuaikan & memulai papan peringkat untuk sesi kuis baru
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs space-y-2.5 mb-5">
+              <p className="font-bold text-amber-950">
+                Papan perankingan sesi ini akan dikosongkan agar siap digunakan untuk sesi pengerjaan kuis yang baru.
+              </p>
+              <div className="pt-2 border-t border-amber-200/70 space-y-1.5 text-[#5e412b]">
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-600 font-black text-sm">✓</span>
+                  <span><strong>Total Kuis Murid</strong> di Daftar Murid tetap aman & tidak berkurang.</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-600 font-black text-sm">✓</span>
+                  <span><strong>Laporan Pribadi (Rapor)</strong> di akun master & akun murid tetap tersimpan 100%.</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-600 font-black text-sm">✓</span>
+                  <span>Hanya rekaman live sesi ini yang diatur ulang ke posisi awal.</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setShowResetRankingModal(false)}
+                className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmResetRanking}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Ya, Reset Ranking Sesi</span>
               </button>
             </div>
           </div>
