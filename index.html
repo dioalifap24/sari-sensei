@@ -17,18 +17,27 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
  <script>
-// Hanya tampilkan tombol menu untuk akun skywalker
-const namaPengguna = document.querySelector('.nama-akun')?.textContent?.trim();
-const tombolMenu = document.getElementById('tombol-menu');
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Cari elemen nama pengguna — sesuaikan dengan yang ada di tampilan
+  const namaPenggunaEl = document.querySelector('.nama-pengguna, [class*="nama"], button:has-text("skywalker")');
+  const tombolMenu = document.querySelector('#tombol-menu, button:has(≡), button[aria-label*="menu"]');
 
-if (tombolMenu) {
+  if (!tombolMenu) return;
+
+  const namaPengguna = namaPenggunaEl?.textContent?.trim() || '';
+
   if (namaPengguna === 'skywalker') {
     tombolMenu.style.display = 'block';
   } else {
     tombolMenu.style.display = 'none';
   }
-}
+});
 </script>
+
  </body>
 </html>
 
+Perbaiki kode sembunyikan
+
+tombol menu
