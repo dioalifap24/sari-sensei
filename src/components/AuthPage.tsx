@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, Smile } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { User } from '../types';
+import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
 
 interface AuthPageProps {
   onSuccess: (user: User, isNewRegistration: boolean) => void;
@@ -70,10 +71,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
         aria-hidden="true"
       >
         <img 
-          src="/src/assets/images/sakura_branch_corner_1790796313743.jpg" 
+          src={sakuraBranchCorner} 
           alt="Sakura Branch"
           className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
-          referrerPolicy="no-referrer"
+          loading="eager"
+          onError={(e) => {
+            const el = e.currentTarget;
+            if (el.src !== '/assets/images/sakura_branch_corner_1790796313743.jpg') {
+              el.src = '/assets/images/sakura_branch_corner_1790796313743.jpg';
+            }
+          }}
         />
       </div>
 
@@ -82,10 +89,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
         aria-hidden="true"
       >
         <img 
-          src="/src/assets/images/japanese_clouds_ornament_1790796324830.jpg" 
+          src={japaneseCloudsOrnament} 
           alt="Japanese Cloud Ornament"
           className="w-full h-full object-cover mix-blend-multiply"
-          referrerPolicy="no-referrer"
+          loading="eager"
+          onError={(e) => {
+            const el = e.currentTarget;
+            if (el.src !== '/assets/images/japanese_clouds_ornament_1790796324830.jpg') {
+              el.src = '/assets/images/japanese_clouds_ornament_1790796324830.jpg';
+            }
+          }}
         />
       </div>
 
@@ -112,10 +125,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
           <div className="relative bg-gradient-to-r from-[#fae8eb] via-[#fdf2f4] to-[#fbf0df] px-6 py-5 border-b border-[#eedac5] text-center">
             <div className="inline-block p-1 bg-gradient-to-tr from-[#d4af37] via-[#fbcfe8] to-[#881337] rounded-full shadow-xs mb-2">
               <img 
-                src="/src/assets/images/sensei_sari_mascot_1790796337196.jpg" 
+                src={senseiSariMascot} 
                 alt="Sari Sensei"
                 className="w-14 h-14 rounded-full object-cover border-2 border-white"
-                referrerPolicy="no-referrer"
+                loading="eager"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (el.src !== '/assets/images/sensei_sari_mascot_1790796337196.jpg') {
+                    el.src = '/assets/images/sensei_sari_mascot_1790796337196.jpg';
+                  }
+                }}
               />
             </div>
             <h2 className="text-xl font-bold text-[#881337] font-japanese">

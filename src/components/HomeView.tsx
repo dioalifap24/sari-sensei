@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { JLPTLevel, User, QuizControlState } from '../types';
 import { storageService } from '../services/storageService';
 import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown } from 'lucide-react';
+import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
 
 interface HomeViewProps {
   activeLevel: JLPTLevel;
@@ -53,10 +54,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         aria-hidden="true"
       >
         <img 
-          src="/src/assets/images/sakura_branch_corner_1790796313743.jpg" 
+          src={sakuraBranchCorner} 
           alt="Sakura Branch"
           className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
-          referrerPolicy="no-referrer"
+          loading="eager"
+          onError={(e) => {
+            const el = e.currentTarget;
+            if (el.src !== '/assets/images/sakura_branch_corner_1790796313743.jpg') {
+              el.src = '/assets/images/sakura_branch_corner_1790796313743.jpg';
+            }
+          }}
         />
       </div>
 
@@ -65,10 +72,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         aria-hidden="true"
       >
         <img 
-          src="/src/assets/images/japanese_clouds_ornament_1790796324830.jpg" 
+          src={japaneseCloudsOrnament} 
           alt="Japanese Cloud Ornament"
           className="w-full h-full object-cover mix-blend-multiply"
-          referrerPolicy="no-referrer"
+          loading="eager"
+          onError={(e) => {
+            const el = e.currentTarget;
+            if (el.src !== '/assets/images/japanese_clouds_ornament_1790796324830.jpg') {
+              el.src = '/assets/images/japanese_clouds_ornament_1790796324830.jpg';
+            }
+          }}
         />
       </div>
 
@@ -79,10 +92,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex justify-center mb-4">
             <div className="relative p-1 bg-gradient-to-tr from-[#d4af37] via-[#fbcfe8] to-[#881337] rounded-full shadow-md">
               <img 
-                src="/src/assets/images/sensei_sari_mascot_1790796337196.jpg" 
+                src={senseiSariMascot} 
                 alt="Sari Sensei Avatar"
                 className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-[#fffdfa]"
-                referrerPolicy="no-referrer"
+                loading="eager"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (el.src !== '/assets/images/sensei_sari_mascot_1790796337196.jpg') {
+                    el.src = '/assets/images/sensei_sari_mascot_1790796337196.jpg';
+                  }
+                }}
               />
               <span className="absolute bottom-0 right-0 bg-[#881337] text-white p-1 rounded-full text-xs shadow-xs" title="Sari Sensei">
                 🌸
