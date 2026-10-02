@@ -1,0 +1,4016 @@
+[
+  {
+    "kana": "あう",
+    "kanji": "会う",
+    "ejaan": "au",
+    "arti": "bertemu, berjumpa"
+  },
+  {
+    "kana": "あお",
+    "kanji": "青",
+    "ejaan": "ao",
+    "arti": "biru"
+  },
+  {
+    "kana": "あおい",
+    "kanji": "青い",
+    "ejaan": "aoi",
+    "arti": "biru"
+  },
+  {
+    "kana": "あか",
+    "kanji": "赤",
+    "ejaan": "aka",
+    "arti": "merah"
+  },
+  {
+    "kana": "あかい",
+    "kanji": "赤い",
+    "ejaan": "akai",
+    "arti": "merah"
+  },
+  {
+    "kana": "あかるい",
+    "kanji": "明い",
+    "ejaan": "akarui",
+    "arti": "cerah"
+  },
+  {
+    "kana": "あき",
+    "kanji": "秋",
+    "ejaan": "aki",
+    "arti": "musim gugur"
+  },
+  {
+    "kana": "あく, ひらく",
+    "kanji": "開く",
+    "ejaan": "aku hiraku",
+    "arti": "membuka"
+  },
+  {
+    "kana": "あける",
+    "kanji": "開ける",
+    "ejaan": "akeru",
+    "arti": "membuka"
+  },
+  {
+    "kana": "あげる",
+    "kanji": "上げる",
+    "ejaan": "ageru",
+    "arti": "menaikkan, memberi"
+  },
+  {
+    "kana": "あさ",
+    "kanji": "朝",
+    "ejaan": "asa",
+    "arti": "pagi"
+  },
+  {
+    "kana": "あさごはん",
+    "kanji": "朝御飯",
+    "ejaan": "asagohan",
+    "arti": "sarapan"
+  },
+  {
+    "kana": "あさって",
+    "kanji": "—",
+    "ejaan": "asatte",
+    "arti": "lusa"
+  },
+  {
+    "kana": "あし",
+    "kanji": "足",
+    "ejaan": "ashi",
+    "arti": "kaki, tungkai"
+  },
+  {
+    "kana": "あした",
+    "kanji": "明日",
+    "ejaan": "ashita",
+    "arti": "besok"
+  },
+  {
+    "kana": "あそこ",
+    "kanji": "—",
+    "ejaan": "asoko",
+    "arti": "di sana"
+  },
+  {
+    "kana": "あそぶ",
+    "kanji": "遊ぶ",
+    "ejaan": "asobu",
+    "arti": "bermain"
+  },
+  {
+    "kana": "あたたかい",
+    "kanji": "暖かい",
+    "ejaan": "atatakai",
+    "arti": "hangat"
+  },
+  {
+    "kana": "あたま",
+    "kanji": "頭",
+    "ejaan": "atama",
+    "arti": "kepala"
+  },
+  {
+    "kana": "あたらしい",
+    "kanji": "新しい",
+    "ejaan": "atarashii",
+    "arti": "baru"
+  },
+  {
+    "kana": "あちら",
+    "kanji": "—",
+    "ejaan": "achira",
+    "arti": "sana"
+  },
+  {
+    "kana": "あつい",
+    "kanji": "暑い",
+    "ejaan": "atsui",
+    "arti": "panas (cuaca)"
+  },
+  {
+    "kana": "あつい",
+    "kanji": "熱い",
+    "ejaan": "atsui",
+    "arti": "panas (benda)"
+  },
+  {
+    "kana": "あつい",
+    "kanji": "厚い",
+    "ejaan": "atsui",
+    "arti": "tebal, dalam, berat"
+  },
+  {
+    "kana": "あっち",
+    "kanji": "—",
+    "ejaan": "atchi",
+    "arti": "di sana"
+  },
+  {
+    "kana": "あと",
+    "kanji": "後",
+    "ejaan": "ato",
+    "arti": "setelah itu"
+  },
+  {
+    "kana": "あなた",
+    "kanji": "—",
+    "ejaan": "anata",
+    "arti": "anda"
+  },
+  {
+    "kana": "あに",
+    "kanji": "兄",
+    "ejaan": "ani",
+    "arti": "kakak (laki-laki)"
+  },
+  {
+    "kana": "あね",
+    "kanji": "姉",
+    "ejaan": "ane",
+    "arti": "kakak (perempuan)"
+  },
+  {
+    "kana": "あの",
+    "kanji": "—",
+    "ejaan": "ano",
+    "arti": "itu"
+  },
+  {
+    "kana": "あのー",
+    "kanji": "—",
+    "ejaan": "ano",
+    "arti": "um ..."
+  },
+  {
+    "kana": "あびる",
+    "kanji": "—",
+    "ejaan": "abiru",
+    "arti": "mandi"
+  },
+  {
+    "kana": "あぶない",
+    "kanji": "危ない",
+    "ejaan": "abunai",
+    "arti": "berbahaya"
+  },
+  {
+    "kana": "あまい",
+    "kanji": "甘い",
+    "ejaan": "amai",
+    "arti": "manis"
+  },
+  {
+    "kana": "あまり",
+    "kanji": "—",
+    "ejaan": "amari",
+    "arti": "tidak terlalu"
+  },
+  {
+    "kana": "あめ",
+    "kanji": "雨",
+    "ejaan": "ame",
+    "arti": "hujan"
+  },
+  {
+    "kana": "あめ",
+    "kanji": "飴",
+    "ejaan": "ame",
+    "arti": "permen"
+  },
+  {
+    "kana": "あらう",
+    "kanji": "洗う",
+    "ejaan": "arau",
+    "arti": "mencuci"
+  },
+  {
+    "kana": "ある",
+    "kanji": "—",
+    "ejaan": "aru",
+    "arti": "ada (dipakai untuk benda mati)"
+  },
+  {
+    "kana": "あるく",
+    "kanji": "歩く",
+    "ejaan": "aruku",
+    "arti": "berjalan"
+  },
+  {
+    "kana": "あれ",
+    "kanji": "—",
+    "ejaan": "are",
+    "arti": "itu"
+  },
+  {
+    "kana": "いい、 よい",
+    "kanji": "—",
+    "ejaan": "ii yoi",
+    "arti": "iya, baik"
+  },
+  {
+    "kana": "いいえ",
+    "kanji": "—",
+    "ejaan": "iie",
+    "arti": "tidak"
+  },
+  {
+    "kana": "いう",
+    "kanji": "言う",
+    "ejaan": "iu",
+    "arti": "mengatakan"
+  },
+  {
+    "kana": "いえ",
+    "kanji": "家",
+    "ejaan": "ie",
+    "arti": "rumah"
+  },
+  {
+    "kana": "いかが",
+    "kanji": "—",
+    "ejaan": "ikaga",
+    "arti": "bagaimana"
+  },
+  {
+    "kana": "いく",
+    "kanji": "行く",
+    "ejaan": "iku",
+    "arti": "pergi"
+  },
+  {
+    "kana": "いくつ",
+    "kanji": "—",
+    "ejaan": "ikutsu",
+    "arti": "berapa banyak? berapa umur?"
+  },
+  {
+    "kana": "いくら",
+    "kanji": "—",
+    "ejaan": "ikura",
+    "arti": "berapa banyak?"
+  },
+  {
+    "kana": "いけ",
+    "kanji": "池",
+    "ejaan": "ike",
+    "arti": "kolam"
+  },
+  {
+    "kana": "いしゃ",
+    "kanji": "医者",
+    "ejaan": "isha",
+    "arti": "dokter medis"
+  },
+  {
+    "kana": "いす",
+    "kanji": "—",
+    "ejaan": "isu",
+    "arti": "kursi"
+  },
+  {
+    "kana": "いそがしい",
+    "kanji": "忙しい",
+    "ejaan": "isogashii",
+    "arti": "sibuk"
+  },
+  {
+    "kana": "いたい",
+    "kanji": "痛い",
+    "ejaan": "itai",
+    "arti": "menyakitkan"
+  },
+  {
+    "kana": "いち",
+    "kanji": "一",
+    "ejaan": "ichi",
+    "arti": "satu"
+  },
+  {
+    "kana": "いちにち",
+    "kanji": "一日",
+    "ejaan": "ichinichi",
+    "arti": "satu hari, tanggal satu"
+  },
+  {
+    "kana": "いちばん",
+    "kanji": "—",
+    "ejaan": "ichiban",
+    "arti": "terbaik, pertama"
+  },
+  {
+    "kana": "いつ",
+    "kanji": "—",
+    "ejaan": "itsu",
+    "arti": "kapan"
+  },
+  {
+    "kana": "いつか",
+    "kanji": "五日",
+    "ejaan": "itsuka",
+    "arti": "lima hari, hari kelima"
+  },
+  {
+    "kana": "いっしょ",
+    "kanji": "一緒",
+    "ejaan": "issho",
+    "arti": "bersama"
+  },
+  {
+    "kana": "いつつ",
+    "kanji": "五つ",
+    "ejaan": "itsutsu",
+    "arti": "lima"
+  },
+  {
+    "kana": "いつも",
+    "kanji": "—",
+    "ejaan": "itsumo",
+    "arti": "selalu"
+  },
+  {
+    "kana": "いぬ",
+    "kanji": "犬",
+    "ejaan": "inu",
+    "arti": "anjing"
+  },
+  {
+    "kana": "いま",
+    "kanji": "今",
+    "ejaan": "ima",
+    "arti": "sekarang"
+  },
+  {
+    "kana": "いみ",
+    "kanji": "意味",
+    "ejaan": "imi",
+    "arti": "arti"
+  },
+  {
+    "kana": "いもうと",
+    "kanji": "妹",
+    "ejaan": "imouto",
+    "arti": "adik (perempuan)"
+  },
+  {
+    "kana": "いや",
+    "kanji": "嫌",
+    "ejaan": "iya",
+    "arti": "tidak"
+  },
+  {
+    "kana": "いりぐち",
+    "kanji": "入口",
+    "ejaan": "iriguchi",
+    "arti": "jalan masuk"
+  },
+  {
+    "kana": "いる",
+    "kanji": "居る",
+    "ejaan": "iru",
+    "arti": "ada (digunakan untuk makhluk hidup)"
+  },
+  {
+    "kana": "いる",
+    "kanji": "要る",
+    "ejaan": "iru",
+    "arti": "membutuhkan"
+  },
+  {
+    "kana": "いれる",
+    "kanji": "入れる",
+    "ejaan": "ireru",
+    "arti": "memasukkan"
+  },
+  {
+    "kana": "いろ",
+    "kanji": "色",
+    "ejaan": "iro",
+    "arti": "warna"
+  },
+  {
+    "kana": "いろいろ",
+    "kanji": "—",
+    "ejaan": "iroiro",
+    "arti": "bermacam-macam"
+  },
+  {
+    "kana": "うえ",
+    "kanji": "上",
+    "ejaan": "ue",
+    "arti": "diatas dari"
+  },
+  {
+    "kana": "うしろ",
+    "kanji": "後ろ",
+    "ejaan": "ushiro",
+    "arti": "dibelakang"
+  },
+  {
+    "kana": "うすい",
+    "kanji": "薄い",
+    "ejaan": "usui",
+    "arti": "kurus, lemah"
+  },
+  {
+    "kana": "うた",
+    "kanji": "歌",
+    "ejaan": "uta",
+    "arti": "lagu"
+  },
+  {
+    "kana": "うたう",
+    "kanji": "歌う",
+    "ejaan": "utau",
+    "arti": "menyanyikan"
+  },
+  {
+    "kana": "うまれる",
+    "kanji": "生まれる",
+    "ejaan": "umareru",
+    "arti": "terlahir"
+  },
+  {
+    "kana": "うみ",
+    "kanji": "海",
+    "ejaan": "umi",
+    "arti": "laut"
+  },
+  {
+    "kana": "うる",
+    "kanji": "売る",
+    "ejaan": "uru",
+    "arti": "untuk menjual"
+  },
+  {
+    "kana": "うるさい",
+    "kanji": "煩い",
+    "ejaan": "urusai",
+    "arti": "berisik, mengganggu"
+  },
+  {
+    "kana": "うわぎ",
+    "kanji": "上着",
+    "ejaan": "uwagi",
+    "arti": "jaket"
+  },
+  {
+    "kana": "え",
+    "kanji": "絵",
+    "ejaan": "e",
+    "arti": "gambar"
+  },
+  {
+    "kana": "えいが",
+    "kanji": "映画",
+    "ejaan": "eiga",
+    "arti": "film"
+  },
+  {
+    "kana": "えいがかん",
+    "kanji": "映画館",
+    "ejaan": "eigakan",
+    "arti": "bioskop"
+  },
+  {
+    "kana": "えいご",
+    "kanji": "英語",
+    "ejaan": "eigo",
+    "arti": "bahasa Inggris"
+  },
+  {
+    "kana": "ええ",
+    "kanji": "—",
+    "ejaan": "ee",
+    "arti": "iya nih"
+  },
+  {
+    "kana": "えき",
+    "kanji": "駅",
+    "ejaan": "eki",
+    "arti": "stasiun"
+  },
+  {
+    "kana": "えんぴつ",
+    "kanji": "鉛筆",
+    "ejaan": "enpitsu",
+    "arti": "pensil"
+  },
+  {
+    "kana": "おいしい",
+    "kanji": "—",
+    "ejaan": "oishii",
+    "arti": "lezat"
+  },
+  {
+    "kana": "おおい",
+    "kanji": "多い",
+    "ejaan": "ooi",
+    "arti": "banyak"
+  },
+  {
+    "kana": "おおきい",
+    "kanji": "大きい",
+    "ejaan": "ookii",
+    "arti": "besar"
+  },
+  {
+    "kana": "おおきな",
+    "kanji": "大きな",
+    "ejaan": "ookina",
+    "arti": "yg besar"
+  },
+  {
+    "kana": "おおぜい",
+    "kanji": "大勢",
+    "ejaan": "oozei",
+    "arti": "sejumlah besar orang"
+  },
+  {
+    "kana": "おかあさん",
+    "kanji": "お母さん",
+    "ejaan": "okaasan",
+    "arti": "ibu"
+  },
+  {
+    "kana": "おかし",
+    "kanji": "お菓子",
+    "ejaan": "okashi",
+    "arti": "permen"
+  },
+  {
+    "kana": "おかね",
+    "kanji": "お金",
+    "ejaan": "okane",
+    "arti": "uang"
+  },
+  {
+    "kana": "おきる",
+    "kanji": "起きる",
+    "ejaan": "okiru",
+    "arti": "bangun"
+  },
+  {
+    "kana": "おく",
+    "kanji": "置く",
+    "ejaan": "oku",
+    "arti": "meletakkan"
+  },
+  {
+    "kana": "おくさん",
+    "kanji": "奥さん",
+    "ejaan": "okusan",
+    "arti": "istri"
+  },
+  {
+    "kana": "おさけ",
+    "kanji": "お酒",
+    "ejaan": "osake",
+    "arti": "sake, minuman keras"
+  },
+  {
+    "kana": "おさら",
+    "kanji": "お皿",
+    "ejaan": "osara",
+    "arti": "piring, hidangan"
+  },
+  {
+    "kana": "おじいさん",
+    "kanji": "お爺さん",
+    "ejaan": "ojiisan",
+    "arti": "kakek"
+  },
+  {
+    "kana": "おしえる",
+    "kanji": "教える",
+    "ejaan": "oshieru",
+    "arti": "mengajar, memberitahu"
+  },
+  {
+    "kana": "おじさん",
+    "kanji": "伯父さん、 叔父さん",
+    "ejaan": "ojisan",
+    "arti": "paman, om"
+  },
+  {
+    "kana": "おす",
+    "kanji": "押す",
+    "ejaan": "osu",
+    "arti": "mendorong, memencet"
+  },
+  {
+    "kana": "おそい",
+    "kanji": "遅い",
+    "ejaan": "osoi",
+    "arti": "terlambat, lambat"
+  },
+  {
+    "kana": "おちゃ",
+    "kanji": "お茶",
+    "ejaan": "ocha",
+    "arti": "teh"
+  },
+  {
+    "kana": "おてあらい",
+    "kanji": "お手洗い",
+    "ejaan": "otearai",
+    "arti": "kamar mandi"
+  },
+  {
+    "kana": "おとうさん",
+    "kanji": "お父さん",
+    "ejaan": "otousan",
+    "arti": "ayah"
+  },
+  {
+    "kana": "おとうと",
+    "kanji": "弟",
+    "ejaan": "otouto",
+    "arti": "adik (laki-laki)"
+  },
+  {
+    "kana": "おとこ",
+    "kanji": "男",
+    "ejaan": "otoko",
+    "arti": "laki-laki, pria"
+  },
+  {
+    "kana": "おとこのこ",
+    "kanji": "男の子",
+    "ejaan": "otokonoko",
+    "arti": "anak laki-laki"
+  },
+  {
+    "kana": "おととい",
+    "kanji": "一昨日",
+    "ejaan": "ototoi",
+    "arti": "hari sebelum kemarin, 2 hari yg lalu"
+  },
+  {
+    "kana": "おととし",
+    "kanji": "一昨年",
+    "ejaan": "ototoshi",
+    "arti": "tahun sebelum tahun-lalu, 2 tahun yg lalu"
+  },
+  {
+    "kana": "おとな",
+    "kanji": "大人",
+    "ejaan": "otona",
+    "arti": "dewasa"
+  },
+  {
+    "kana": "おなか",
+    "kanji": "—",
+    "ejaan": "onaka",
+    "arti": "perut"
+  },
+  {
+    "kana": "おなじ",
+    "kanji": "同じ",
+    "ejaan": "onaji",
+    "arti": "sama"
+  },
+  {
+    "kana": "おにいさん",
+    "kanji": "お兄さん",
+    "ejaan": "oniisan",
+    "arti": "kakak (laki-laki)"
+  },
+  {
+    "kana": "おねえさん",
+    "kanji": "お姉さん",
+    "ejaan": "oneesan",
+    "arti": "kakak (perempuan)"
+  },
+  {
+    "kana": "おばあさん",
+    "kanji": "お婆さん",
+    "ejaan": "obaasan",
+    "arti": "nenek"
+  },
+  {
+    "kana": "おばさん",
+    "kanji": "伯母さん、 叔母さん",
+    "ejaan": "obasan",
+    "arti": "bibi"
+  },
+  {
+    "kana": "おふろ",
+    "kanji": "お風呂",
+    "ejaan": "ofuro",
+    "arti": "mandi"
+  },
+  {
+    "kana": "おべんとう",
+    "kanji": "お弁当",
+    "ejaan": "obentou",
+    "arti": "kotak makan siang"
+  },
+  {
+    "kana": "おぼえる",
+    "kanji": "覚える",
+    "ejaan": "oboeru",
+    "arti": "mengingat"
+  },
+  {
+    "kana": "おまわりさん",
+    "kanji": "—",
+    "ejaan": "omawarisan",
+    "arti": "pak polisi"
+  },
+  {
+    "kana": "おもい",
+    "kanji": "重い",
+    "ejaan": "omoi",
+    "arti": "berat"
+  },
+  {
+    "kana": "おもしろい",
+    "kanji": "—",
+    "ejaan": "omoshiroi",
+    "arti": "menarik"
+  },
+  {
+    "kana": "およぐ",
+    "kanji": "泳ぐ",
+    "ejaan": "oyogu",
+    "arti": "berenang"
+  },
+  {
+    "kana": "おりる",
+    "kanji": "降りる",
+    "ejaan": "oriru",
+    "arti": "turun"
+  },
+  {
+    "kana": "おわる",
+    "kanji": "終る",
+    "ejaan": "owaru",
+    "arti": "menyelesaikan"
+  },
+  {
+    "kana": "おんがく",
+    "kanji": "音楽",
+    "ejaan": "ongaku",
+    "arti": "musik"
+  },
+  {
+    "kana": "おんな",
+    "kanji": "女",
+    "ejaan": "onna",
+    "arti": "wanita, perempuan"
+  },
+  {
+    "kana": "おんなのこ",
+    "kanji": "女の子",
+    "ejaan": "onnanoko",
+    "arti": "gadis"
+  },
+  {
+    "kana": "がいこく",
+    "kanji": "外国",
+    "ejaan": "gaikoku",
+    "arti": "negara asing"
+  },
+  {
+    "kana": "がいこくじん",
+    "kanji": "外国人",
+    "ejaan": "gaikokujin",
+    "arti": "orang asing"
+  },
+  {
+    "kana": "かいしゃ",
+    "kanji": "会社",
+    "ejaan": "kaisha",
+    "arti": "perusahaan"
+  },
+  {
+    "kana": "かいだん",
+    "kanji": "階段",
+    "ejaan": "kaidan",
+    "arti": "tangga"
+  },
+  {
+    "kana": "かいもの",
+    "kanji": "買い物",
+    "ejaan": "kaimono",
+    "arti": "belanjaan"
+  },
+  {
+    "kana": "かう",
+    "kanji": "買う",
+    "ejaan": "kau",
+    "arti": "membeli"
+  },
+  {
+    "kana": "かえす",
+    "kanji": "返す",
+    "ejaan": "kaesu",
+    "arti": "mengembalikan"
+  },
+  {
+    "kana": "かえる",
+    "kanji": "帰る",
+    "ejaan": "kaeru",
+    "arti": "pulang"
+  },
+  {
+    "kana": "かかる",
+    "kanji": "—",
+    "ejaan": "kakaru",
+    "arti": "memerlukan (waktu, uang)"
+  },
+  {
+    "kana": "かぎ",
+    "kanji": "—",
+    "ejaan": "kagi",
+    "arti": "kunci"
+  },
+  {
+    "kana": "かく",
+    "kanji": "書く",
+    "ejaan": "kaku",
+    "arti": "untuk menulis"
+  },
+  {
+    "kana": "がくせい",
+    "kanji": "学生",
+    "ejaan": "gakusei",
+    "arti": "siswa, murid"
+  },
+  {
+    "kana": "かける",
+    "kanji": "—",
+    "ejaan": "kakeru",
+    "arti": "menelepon"
+  },
+  {
+    "kana": "かさ",
+    "kanji": "傘",
+    "ejaan": "kasa",
+    "arti": "payung"
+  },
+  {
+    "kana": "かす",
+    "kanji": "貸す",
+    "ejaan": "kasu",
+    "arti": "untuk meminjamkan"
+  },
+  {
+    "kana": "かぜ",
+    "kanji": "風",
+    "ejaan": "kaze",
+    "arti": "angin"
+  },
+  {
+    "kana": "かぜ",
+    "kanji": "風邪",
+    "ejaan": "kaze",
+    "arti": "flu, pilek"
+  },
+  {
+    "kana": "かぞく",
+    "kanji": "家族",
+    "ejaan": "kazoku",
+    "arti": "keluarga"
+  },
+  {
+    "kana": "かた",
+    "kanji": "方",
+    "ejaan": "kata",
+    "arti": "cara, orang"
+  },
+  {
+    "kana": "がっこう",
+    "kanji": "学校",
+    "ejaan": "gakkou",
+    "arti": "sekolah"
+  },
+  {
+    "kana": "かてい",
+    "kanji": "家庭",
+    "ejaan": "katei",
+    "arti": "rumah tangga"
+  },
+  {
+    "kana": "かど",
+    "kanji": "角",
+    "ejaan": "kado",
+    "arti": "sudut"
+  },
+  {
+    "kana": "かばん",
+    "kanji": "—",
+    "ejaan": "kaban",
+    "arti": "tas, keranjang"
+  },
+  {
+    "kana": "かびん",
+    "kanji": "花瓶",
+    "ejaan": "kabin",
+    "arti": "vas"
+  },
+  {
+    "kana": "かみ",
+    "kanji": "紙",
+    "ejaan": "kami",
+    "arti": "kertas"
+  },
+  {
+    "kana": "かようび",
+    "kanji": "火曜日",
+    "ejaan": "kayoubi",
+    "arti": "Selasa"
+  },
+  {
+    "kana": "からい",
+    "kanji": "辛い",
+    "ejaan": "karai",
+    "arti": "pedas"
+  },
+  {
+    "kana": "からだ",
+    "kanji": "体",
+    "ejaan": "karada",
+    "arti": "tubuh"
+  },
+  {
+    "kana": "かりる",
+    "kanji": "借りる",
+    "ejaan": "kariru",
+    "arti": "meminjam"
+  },
+  {
+    "kana": "かるい",
+    "kanji": "軽い",
+    "ejaan": "karui",
+    "arti": "ringan"
+  },
+  {
+    "kana": "かわ",
+    "kanji": "川、 河",
+    "ejaan": "kawa",
+    "arti": "sungai"
+  },
+  {
+    "kana": "かわいい",
+    "kanji": "—",
+    "ejaan": "kawaii",
+    "arti": "imut, lucu"
+  },
+  {
+    "kana": "かんじ",
+    "kanji": "漢字",
+    "ejaan": "kanji",
+    "arti": "karakter Cina"
+  },
+  {
+    "kana": "き",
+    "kanji": "木",
+    "ejaan": "ki",
+    "arti": "pohon, kayu"
+  },
+  {
+    "kana": "きいろ",
+    "kanji": "黄色",
+    "ejaan": "kiiro",
+    "arti": "kuning"
+  },
+  {
+    "kana": "きいろい",
+    "kanji": "黄色い",
+    "ejaan": "kiiroi",
+    "arti": "kuning"
+  },
+  {
+    "kana": "きえる",
+    "kanji": "消える",
+    "ejaan": "kieru",
+    "arti": "menghilang"
+  },
+  {
+    "kana": "きく",
+    "kanji": "聞く",
+    "ejaan": "kiku",
+    "arti": "mendengar, bertanya"
+  },
+  {
+    "kana": "きた",
+    "kanji": "北",
+    "ejaan": "kita",
+    "arti": "utara"
+  },
+  {
+    "kana": "きたない",
+    "kanji": "汚い",
+    "ejaan": "kitanai",
+    "arti": "kotor"
+  },
+  {
+    "kana": "きっさてん",
+    "kanji": "喫茶店",
+    "ejaan": "kissaten",
+    "arti": "kafe, kedai kopi"
+  },
+  {
+    "kana": "きって",
+    "kanji": "切手",
+    "ejaan": "kitte",
+    "arti": "perangko"
+  },
+  {
+    "kana": "きっぷ",
+    "kanji": "切符",
+    "ejaan": "kippu",
+    "arti": "tiket"
+  },
+  {
+    "kana": "きのう",
+    "kanji": "昨日",
+    "ejaan": "kinou",
+    "arti": "kemarin"
+  },
+  {
+    "kana": "きゅう, く",
+    "kanji": "九",
+    "ejaan": "kyuu ku",
+    "arti": "sembilan"
+  },
+  {
+    "kana": "ぎゅうにく",
+    "kanji": "牛肉",
+    "ejaan": "gyuuniku",
+    "arti": "daging sapi"
+  },
+  {
+    "kana": "ぎゅうにゅう",
+    "kanji": "牛乳",
+    "ejaan": "gyuunyuu",
+    "arti": "susu"
+  },
+  {
+    "kana": "きょう",
+    "kanji": "今日",
+    "ejaan": "kyou",
+    "arti": "hari ini"
+  },
+  {
+    "kana": "きょうしつ",
+    "kanji": "教室",
+    "ejaan": "kyoushitsu",
+    "arti": "kelas"
+  },
+  {
+    "kana": "きょうだい",
+    "kanji": "兄弟",
+    "ejaan": "kyoudai",
+    "arti": "Kakak-beradik"
+  },
+  {
+    "kana": "きょねん",
+    "kanji": "去年",
+    "ejaan": "kyonen",
+    "arti": "tahun lalu"
+  },
+  {
+    "kana": "きらい",
+    "kanji": "嫌い",
+    "ejaan": "kirai",
+    "arti": "membenci"
+  },
+  {
+    "kana": "きる",
+    "kanji": "切る",
+    "ejaan": "kiru",
+    "arti": "memotong"
+  },
+  {
+    "kana": "きる",
+    "kanji": "着る",
+    "ejaan": "kiru",
+    "arti": "mengenakan (pakaian)"
+  },
+  {
+    "kana": "きれい",
+    "kanji": "—",
+    "ejaan": "kirei",
+    "arti": "cantik, bersih"
+  },
+  {
+    "kana": "ぎんこう",
+    "kanji": "銀行",
+    "ejaan": "ginkou",
+    "arti": "bank"
+  },
+  {
+    "kana": "きんようび",
+    "kanji": "金曜日",
+    "ejaan": "kinyoubi",
+    "arti": "Jumat"
+  },
+  {
+    "kana": "くすり",
+    "kanji": "薬",
+    "ejaan": "kusuri",
+    "arti": "obat"
+  },
+  {
+    "kana": "ください",
+    "kanji": "—",
+    "ejaan": "kudasai",
+    "arti": "permohonan"
+  },
+  {
+    "kana": "くだもの",
+    "kanji": "果物",
+    "ejaan": "kudamono",
+    "arti": "buah"
+  },
+  {
+    "kana": "くち",
+    "kanji": "口",
+    "ejaan": "kuchi",
+    "arti": "mulut, pembukaan"
+  },
+  {
+    "kana": "くつ",
+    "kanji": "靴",
+    "ejaan": "kutsu",
+    "arti": "sepatu"
+  },
+  {
+    "kana": "くつした",
+    "kanji": "靴下",
+    "ejaan": "kutsushita",
+    "arti": "kaus kaki"
+  },
+  {
+    "kana": "くに",
+    "kanji": "国",
+    "ejaan": "kuni",
+    "arti": "negara"
+  },
+  {
+    "kana": "くもり",
+    "kanji": "曇り",
+    "ejaan": "kumori",
+    "arti": "berawan (cuaca)"
+  },
+  {
+    "kana": "くもる",
+    "kanji": "曇る",
+    "ejaan": "kumoru",
+    "arti": "mendung, berawan"
+  },
+  {
+    "kana": "くらい",
+    "kanji": "暗い",
+    "ejaan": "kurai",
+    "arti": "suram"
+  },
+  {
+    "kana": "くる",
+    "kanji": "来る",
+    "ejaan": "kuru",
+    "arti": "datang"
+  },
+  {
+    "kana": "くるま",
+    "kanji": "車",
+    "ejaan": "kuruma",
+    "arti": "mobil, kendaraan"
+  },
+  {
+    "kana": "くろ",
+    "kanji": "黒",
+    "ejaan": "kuro",
+    "arti": "hitam"
+  },
+  {
+    "kana": "くろい",
+    "kanji": "黒い",
+    "ejaan": "kuroi",
+    "arti": "hitam"
+  },
+  {
+    "kana": "けいかん",
+    "kanji": "警官",
+    "ejaan": "keikan",
+    "arti": "polisi"
+  },
+  {
+    "kana": "けさ",
+    "kanji": "今朝",
+    "ejaan": "kesa",
+    "arti": "pagi ini"
+  },
+  {
+    "kana": "けす",
+    "kanji": "消す",
+    "ejaan": "kesu",
+    "arti": "menghapus, memadamkan (listrik)"
+  },
+  {
+    "kana": "けっこう",
+    "kanji": "結構",
+    "ejaan": "kekkou",
+    "arti": "cukup"
+  },
+  {
+    "kana": "けっこん",
+    "kanji": "結婚",
+    "ejaan": "kekkon",
+    "arti": "pernikahan"
+  },
+  {
+    "kana": "げつようび",
+    "kanji": "月曜日",
+    "ejaan": "getsuyoubi",
+    "arti": "Senin"
+  },
+  {
+    "kana": "げんかん",
+    "kanji": "玄関",
+    "ejaan": "genkan",
+    "arti": "pintu masuk"
+  },
+  {
+    "kana": "げんき",
+    "kanji": "元気",
+    "ejaan": "genki",
+    "arti": "sehat"
+  },
+  {
+    "kana": "ご",
+    "kanji": "五",
+    "ejaan": "go",
+    "arti": "lima"
+  },
+  {
+    "kana": "こうえん",
+    "kanji": "公園",
+    "ejaan": "kouen",
+    "arti": "taman"
+  },
+  {
+    "kana": "こうさてん",
+    "kanji": "交差点",
+    "ejaan": "kousaten",
+    "arti": "persimpangan"
+  },
+  {
+    "kana": "こうちゃ",
+    "kanji": "紅茶",
+    "ejaan": "koucha",
+    "arti": "teh hitam"
+  },
+  {
+    "kana": "こうばん",
+    "kanji": "交番",
+    "ejaan": "kouban",
+    "arti": "pos polisi"
+  },
+  {
+    "kana": "こえ",
+    "kanji": "声",
+    "ejaan": "koe",
+    "arti": "suara"
+  },
+  {
+    "kana": "ここ",
+    "kanji": "—",
+    "ejaan": "koko",
+    "arti": "sini"
+  },
+  {
+    "kana": "ごご",
+    "kanji": "午後",
+    "ejaan": "gogo",
+    "arti": "sore"
+  },
+  {
+    "kana": "ここのか",
+    "kanji": "九日",
+    "ejaan": "kokonoka",
+    "arti": "sembilan hari, hari kesembilan"
+  },
+  {
+    "kana": "ここのつ",
+    "kanji": "九つ",
+    "ejaan": "kokonotsu",
+    "arti": "sembilan"
+  },
+  {
+    "kana": "ごぜん",
+    "kanji": "午前",
+    "ejaan": "gozen",
+    "arti": "pagi"
+  },
+  {
+    "kana": "こたえる",
+    "kanji": "答える",
+    "ejaan": "kotaeru",
+    "arti": "menjawab"
+  },
+  {
+    "kana": "こちら",
+    "kanji": "—",
+    "ejaan": "kochira",
+    "arti": "disini, orang ini"
+  },
+  {
+    "kana": "こっち",
+    "kanji": "—",
+    "ejaan": "kotchi",
+    "arti": "yang ini"
+  },
+  {
+    "kana": "ことし",
+    "kanji": "今 年",
+    "ejaan": "kotoshi",
+    "arti": "tahun ini"
+  },
+  {
+    "kana": "ことば",
+    "kanji": "言葉",
+    "ejaan": "kotoba",
+    "arti": "kata, bahasa"
+  },
+  {
+    "kana": "こども",
+    "kanji": "子供",
+    "ejaan": "kodomo",
+    "arti": "anak-anak"
+  },
+  {
+    "kana": "この",
+    "kanji": "—",
+    "ejaan": "kono",
+    "arti": "ini"
+  },
+  {
+    "kana": "ごはん",
+    "kanji": "御飯",
+    "ejaan": "gohan",
+    "arti": "nasi, makan"
+  },
+  {
+    "kana": "こまる",
+    "kanji": "困る",
+    "ejaan": "komaru",
+    "arti": "mengalami kesulitan"
+  },
+  {
+    "kana": "これ",
+    "kanji": "—",
+    "ejaan": "kore",
+    "arti": "ini"
+  },
+  {
+    "kana": "こんげつ",
+    "kanji": "今月",
+    "ejaan": "kongetsu",
+    "arti": "bulan ini"
+  },
+  {
+    "kana": "こんしゅう",
+    "kanji": "今週",
+    "ejaan": "konshuu",
+    "arti": "minggu ini"
+  },
+  {
+    "kana": "こんな",
+    "kanji": "—",
+    "ejaan": "konna",
+    "arti": "seperti itu"
+  },
+  {
+    "kana": "こんばん",
+    "kanji": "今晩",
+    "ejaan": "konban",
+    "arti": "malam ini"
+  },
+  {
+    "kana": "ざっし",
+    "kanji": "雑誌",
+    "ejaan": "zasshi",
+    "arti": "majalah"
+  },
+  {
+    "kana": "じかん",
+    "kanji": "時間",
+    "ejaan": "jikan",
+    "arti": "waktu"
+  },
+  {
+    "kana": "じしょ",
+    "kanji": "辞書",
+    "ejaan": "jisho",
+    "arti": "kamus"
+  },
+  {
+    "kana": "じてんしゃ",
+    "kanji": "自転車",
+    "ejaan": "jitensha",
+    "arti": "sepeda"
+  },
+  {
+    "kana": "じどうしゃ",
+    "kanji": "自動車",
+    "ejaan": "jidousha",
+    "arti": "mobil"
+  },
+  {
+    "kana": "じびき",
+    "kanji": "字引",
+    "ejaan": "jibiki",
+    "arti": "kamus"
+  },
+  {
+    "kana": "じぶん",
+    "kanji": "自分",
+    "ejaan": "jibun",
+    "arti": "diri, diri sendiri"
+  },
+  {
+    "kana": "じゃ、 じゃあ",
+    "kanji": "—",
+    "ejaan": "ja jaa",
+    "arti": "Baiklah kalau begitu…"
+  },
+  {
+    "kana": "じゅう",
+    "kanji": "十",
+    "ejaan": "juu",
+    "arti": "sepuluh"
+  },
+  {
+    "kana": "じゅぎょう",
+    "kanji": "授業",
+    "ejaan": "jugyou",
+    "arti": "pelajaran, pekerjaan kelas"
+  },
+  {
+    "kana": "じょうず",
+    "kanji": "上手",
+    "ejaan": "jouzu",
+    "arti": "mahir"
+  },
+  {
+    "kana": "じょうぶ",
+    "kanji": "丈夫",
+    "ejaan": "joubu",
+    "arti": "kuat, tahan lama"
+  },
+  {
+    "kana": "ぜんぶ",
+    "kanji": "全部",
+    "ejaan": "zenbu",
+    "arti": "semua"
+  },
+  {
+    "kana": "さあ",
+    "kanji": "—",
+    "ejaan": "saa",
+    "arti": "baik…"
+  },
+  {
+    "kana": "さいふ",
+    "kanji": "財布",
+    "ejaan": "saifu",
+    "arti": "dompet"
+  },
+  {
+    "kana": "さかな",
+    "kanji": "魚",
+    "ejaan": "sakana",
+    "arti": "ikan"
+  },
+  {
+    "kana": "さき",
+    "kanji": "先",
+    "ejaan": "saki",
+    "arti": "sebelum, sebelumnya, duluan"
+  },
+  {
+    "kana": "さく",
+    "kanji": "咲く",
+    "ejaan": "saku",
+    "arti": "mekar"
+  },
+  {
+    "kana": "さくぶん",
+    "kanji": "作文",
+    "ejaan": "sakubun",
+    "arti": "komposisi, menulis"
+  },
+  {
+    "kana": "さす",
+    "kanji": "差す",
+    "ejaan": "sasu",
+    "arti": "mengulurkan tangan, memberikan"
+  },
+  {
+    "kana": "さとう",
+    "kanji": "砂糖",
+    "ejaan": "satou",
+    "arti": "gula"
+  },
+  {
+    "kana": "さむい",
+    "kanji": "寒い",
+    "ejaan": "samui",
+    "arti": "dingin"
+  },
+  {
+    "kana": "さらいねん",
+    "kanji": "さ来年",
+    "ejaan": "sarainen",
+    "arti": "tahun setelah berikutnya, 2 tahun kedepan"
+  },
+  {
+    "kana": "さん",
+    "kanji": "三",
+    "ejaan": "san",
+    "arti": "tiga"
+  },
+  {
+    "kana": "さんぽする",
+    "kanji": "散歩",
+    "ejaan": "sanposuru",
+    "arti": "berjalan-jalan"
+  },
+  {
+    "kana": "しお",
+    "kanji": "塩",
+    "ejaan": "shio",
+    "arti": "garam"
+  },
+  {
+    "kana": "しかし",
+    "kanji": "—",
+    "ejaan": "shikashi",
+    "arti": "namun"
+  },
+  {
+    "kana": "しごと",
+    "kanji": "仕事",
+    "ejaan": "shigoto",
+    "arti": "pekerjaan"
+  },
+  {
+    "kana": "しずか",
+    "kanji": "静か",
+    "ejaan": "shizuka",
+    "arti": "diam"
+  },
+  {
+    "kana": "した",
+    "kanji": "下",
+    "ejaan": "shita",
+    "arti": "di bawah"
+  },
+  {
+    "kana": "しつもん",
+    "kanji": "質問",
+    "ejaan": "shitsumon",
+    "arti": "pertanyaan"
+  },
+  {
+    "kana": "しぬ",
+    "kanji": "死ぬ",
+    "ejaan": "shinu",
+    "arti": "mati"
+  },
+  {
+    "kana": "しまる",
+    "kanji": "閉まる",
+    "ejaan": "shimaru",
+    "arti": "menutup"
+  },
+  {
+    "kana": "しめる",
+    "kanji": "閉める",
+    "ejaan": "shimeru",
+    "arti": "menutup sesuatu"
+  },
+  {
+    "kana": "しめる",
+    "kanji": "締める",
+    "ejaan": "shimeru",
+    "arti": "mengikat, mengencangkan"
+  },
+  {
+    "kana": "しゃしん",
+    "kanji": "写真",
+    "ejaan": "shashin",
+    "arti": "foto"
+  },
+  {
+    "kana": "しゅくだい",
+    "kanji": "宿題",
+    "ejaan": "shukudai",
+    "arti": "pekerjaan rumah"
+  },
+  {
+    "kana": "しょうゆ",
+    "kanji": "—",
+    "ejaan": "shouyu",
+    "arti": "kecap"
+  },
+  {
+    "kana": "しょくどう",
+    "kanji": "食堂",
+    "ejaan": "shokudou",
+    "arti": "ruang makan"
+  },
+  {
+    "kana": "しる",
+    "kanji": "知る",
+    "ejaan": "shiru",
+    "arti": "mengetahui"
+  },
+  {
+    "kana": "しろ",
+    "kanji": "白",
+    "ejaan": "shiro",
+    "arti": "putih"
+  },
+  {
+    "kana": "しろい",
+    "kanji": "白い",
+    "ejaan": "shiroi",
+    "arti": "putih"
+  },
+  {
+    "kana": "しんぶん",
+    "kanji": "新聞",
+    "ejaan": "shinbun",
+    "arti": "koran"
+  },
+  {
+    "kana": "すいようび",
+    "kanji": "水曜日",
+    "ejaan": "suiyoubi",
+    "arti": "Rabu"
+  },
+  {
+    "kana": "すう",
+    "kanji": "吸う",
+    "ejaan": "suu",
+    "arti": "asap, mengisap"
+  },
+  {
+    "kana": "すき",
+    "kanji": "好き",
+    "ejaan": "suki",
+    "arti": "suka"
+  },
+  {
+    "kana": "すくない",
+    "kanji": "少ない",
+    "ejaan": "sukunai",
+    "arti": "sedikit (jumlahnya)"
+  },
+  {
+    "kana": "すぐに",
+    "kanji": "—",
+    "ejaan": "suguni",
+    "arti": "segera"
+  },
+  {
+    "kana": "すこし",
+    "kanji": "少し",
+    "ejaan": "sukoshi",
+    "arti": "sedikit"
+  },
+  {
+    "kana": "すずしい",
+    "kanji": "涼しい",
+    "ejaan": "suzushii",
+    "arti": "segar"
+  },
+  {
+    "kana": "すむ",
+    "kanji": "住む",
+    "ejaan": "sumu",
+    "arti": "untuk tinggal di"
+  },
+  {
+    "kana": "する",
+    "kanji": "—",
+    "ejaan": "suru",
+    "arti": "melakukan"
+  },
+  {
+    "kana": "すわる",
+    "kanji": "座る",
+    "ejaan": "suwaru",
+    "arti": "duduk"
+  },
+  {
+    "kana": "せ",
+    "kanji": "背",
+    "ejaan": "se",
+    "arti": "tinggi, perawakan"
+  },
+  {
+    "kana": "せいと",
+    "kanji": "生徒",
+    "ejaan": "seito",
+    "arti": "murid, siswa"
+  },
+  {
+    "kana": "せっけん",
+    "kanji": "—",
+    "ejaan": "sekken",
+    "arti": "sabun mandi"
+  },
+  {
+    "kana": "せびろ",
+    "kanji": "背広",
+    "ejaan": "sebiro",
+    "arti": "setelan jas untuk bekerja"
+  },
+  {
+    "kana": "せまい",
+    "kanji": "狭い",
+    "ejaan": "semai",
+    "arti": "sempit"
+  },
+  {
+    "kana": "せん",
+    "kanji": "千",
+    "ejaan": "sen",
+    "arti": "seribu"
+  },
+  {
+    "kana": "せんげつ",
+    "kanji": "先月",
+    "ejaan": "sengetsu",
+    "arti": "bulan lalu"
+  },
+  {
+    "kana": "せんしゅう",
+    "kanji": "先週",
+    "ejaan": "senshuu",
+    "arti": "minggu lalu"
+  },
+  {
+    "kana": "せんせい",
+    "kanji": "先生",
+    "ejaan": "sensei",
+    "arti": "guru, dokter"
+  },
+  {
+    "kana": "せんたく",
+    "kanji": "洗濯",
+    "ejaan": "sentaku",
+    "arti": "cucian"
+  },
+  {
+    "kana": "そうじ",
+    "kanji": "掃除",
+    "ejaan": "souji",
+    "arti": "membersihkan, menyapu"
+  },
+  {
+    "kana": "そうして、 そして",
+    "kanji": "—",
+    "ejaan": "soushite soshite",
+    "arti": "dan"
+  },
+  {
+    "kana": "そこ",
+    "kanji": "—",
+    "ejaan": "soko",
+    "arti": "(tempat) itu"
+  },
+  {
+    "kana": "そちら",
+    "kanji": "—",
+    "ejaan": "sochira",
+    "arti": "di sana"
+  },
+  {
+    "kana": "そっち",
+    "kanji": "—",
+    "ejaan": "sotchi",
+    "arti": "di sana"
+  },
+  {
+    "kana": "そと",
+    "kanji": "外",
+    "ejaan": "soto",
+    "arti": "di luar"
+  },
+  {
+    "kana": "その",
+    "kanji": "—",
+    "ejaan": "sono",
+    "arti": "bahwa"
+  },
+  {
+    "kana": "そば",
+    "kanji": "—",
+    "ejaan": "soba",
+    "arti": "dekat, di samping"
+  },
+  {
+    "kana": "そら",
+    "kanji": "空",
+    "ejaan": "sora",
+    "arti": "langit"
+  },
+  {
+    "kana": "それ",
+    "kanji": "—",
+    "ejaan": "sore",
+    "arti": "itu"
+  },
+  {
+    "kana": "それから",
+    "kanji": "—",
+    "ejaan": "sorekara",
+    "arti": "setelah itu"
+  },
+  {
+    "kana": "それでは",
+    "kanji": "—",
+    "ejaan": "soredeha",
+    "arti": "kalau begitu"
+  },
+  {
+    "kana": "だいがく",
+    "kanji": "大学",
+    "ejaan": "daigaku",
+    "arti": "Universitas"
+  },
+  {
+    "kana": "たいしかん",
+    "kanji": "大使館",
+    "ejaan": "taishikan",
+    "arti": "kedutaan"
+  },
+  {
+    "kana": "だいじょうぶ",
+    "kanji": "大丈夫",
+    "ejaan": "daijoubu",
+    "arti": "Baik-baik saja"
+  },
+  {
+    "kana": "だいすき",
+    "kanji": "大好き",
+    "ejaan": "daisuki",
+    "arti": "Sangat menyukai"
+  },
+  {
+    "kana": "たいせつ",
+    "kanji": "大切",
+    "ejaan": "taisetsu",
+    "arti": "Sangat menghargai"
+  },
+  {
+    "kana": "だいどころ",
+    "kanji": "台所",
+    "ejaan": "daidokoro",
+    "arti": "dapur"
+  },
+  {
+    "kana": "たいへん",
+    "kanji": "—",
+    "ejaan": "taihen",
+    "arti": "sangat"
+  },
+  {
+    "kana": "たいへん",
+    "kanji": "大変",
+    "ejaan": "taihen",
+    "arti": "situasi gawat / repot"
+  },
+  {
+    "kana": "たかい",
+    "kanji": "高い",
+    "ejaan": "takai",
+    "arti": "tinggi, mahal"
+  },
+  {
+    "kana": "たくさん",
+    "kanji": "—",
+    "ejaan": "takusan",
+    "arti": "banyak"
+  },
+  {
+    "kana": "だす",
+    "kanji": "出す",
+    "ejaan": "dasu",
+    "arti": "mengeluarkan, memadamkan"
+  },
+  {
+    "kana": "たつ",
+    "kanji": "立つ",
+    "ejaan": "tatsu",
+    "arti": "berdiri"
+  },
+  {
+    "kana": "たて",
+    "kanji": "—",
+    "ejaan": "tate",
+    "arti": "panjang, tinggi"
+  },
+  {
+    "kana": "たてもの",
+    "kanji": "建物",
+    "ejaan": "tatemono",
+    "arti": "bangunan"
+  },
+  {
+    "kana": "たのしい",
+    "kanji": "楽しい",
+    "ejaan": "tanoshii",
+    "arti": "nikmat"
+  },
+  {
+    "kana": "たのむ",
+    "kanji": "頼む",
+    "ejaan": "tanomu",
+    "arti": "meminta, mengandalkan, mempercayakan"
+  },
+  {
+    "kana": "たばこ",
+    "kanji": "—",
+    "ejaan": "tabako",
+    "arti": "tembakau, rokok"
+  },
+  {
+    "kana": "たぶん",
+    "kanji": "—",
+    "ejaan": "tabun",
+    "arti": "mungkin"
+  },
+  {
+    "kana": "たべもの",
+    "kanji": "食べ物",
+    "ejaan": "tabemono",
+    "arti": "makanan"
+  },
+  {
+    "kana": "たべる",
+    "kanji": "食べる",
+    "ejaan": "taberu",
+    "arti": "Untuk makan"
+  },
+  {
+    "kana": "たまご",
+    "kanji": "卵",
+    "ejaan": "tamago",
+    "arti": "telur"
+  },
+  {
+    "kana": "だれ",
+    "kanji": "誰",
+    "ejaan": "dare",
+    "arti": "siapa"
+  },
+  {
+    "kana": "だれか",
+    "kanji": "誰",
+    "ejaan": "dareka",
+    "arti": "seseorang"
+  },
+  {
+    "kana": "たんじょうび",
+    "kanji": "誕生日",
+    "ejaan": "tanjoubi",
+    "arti": "ulang tahun"
+  },
+  {
+    "kana": "だんだん",
+    "kanji": "—",
+    "ejaan": "dandan",
+    "arti": "secara bertahap"
+  },
+  {
+    "kana": "ちいさい",
+    "kanji": "小さい",
+    "ejaan": "chiisai",
+    "arti": "kecil"
+  },
+  {
+    "kana": "ちいさな",
+    "kanji": "小さな",
+    "ejaan": "chiisana",
+    "arti": "yang kecil"
+  },
+  {
+    "kana": "ちかい",
+    "kanji": "近い",
+    "ejaan": "chikai",
+    "arti": "dekat"
+  },
+  {
+    "kana": "ちがう",
+    "kanji": "違う",
+    "ejaan": "chigau",
+    "arti": "berbeda"
+  },
+  {
+    "kana": "ちかく",
+    "kanji": "近く",
+    "ejaan": "chikaku",
+    "arti": "yang dekat"
+  },
+  {
+    "kana": "ちかてつ",
+    "kanji": "地下鉄",
+    "ejaan": "chikatetsu",
+    "arti": "kereta bawah tanah"
+  },
+  {
+    "kana": "ちず",
+    "kanji": "地図",
+    "ejaan": "chizu",
+    "arti": "peta"
+  },
+  {
+    "kana": "ちゃいろ",
+    "kanji": "茶色",
+    "ejaan": "chairo",
+    "arti": "coklat"
+  },
+  {
+    "kana": "ちゃわん",
+    "kanji": "—",
+    "ejaan": "chawan",
+    "arti": "mangkuk nasi"
+  },
+  {
+    "kana": "ちょうど",
+    "kanji": "—",
+    "ejaan": "choudo",
+    "arti": "persis"
+  },
+  {
+    "kana": "ちょっと",
+    "kanji": "—",
+    "ejaan": "chotto",
+    "arti": "agak"
+  },
+  {
+    "kana": "ついたち",
+    "kanji": "一日",
+    "ejaan": "tsuitachi",
+    "arti": "awal bulan"
+  },
+  {
+    "kana": "つかう",
+    "kanji": "使う",
+    "ejaan": "tsukau",
+    "arti": "menggunakan"
+  },
+  {
+    "kana": "つかれる",
+    "kanji": "疲れる",
+    "ejaan": "tsukareru",
+    "arti": "capek, lelah"
+  },
+  {
+    "kana": "つぎ",
+    "kanji": "次",
+    "ejaan": "tsugi",
+    "arti": "berikutnya"
+  },
+  {
+    "kana": "つく",
+    "kanji": "着く",
+    "ejaan": "tsuku",
+    "arti": "tiba, sampai"
+  },
+  {
+    "kana": "つくえ",
+    "kanji": "机",
+    "ejaan": "tsukue",
+    "arti": "meja tulis"
+  },
+  {
+    "kana": "つくる",
+    "kanji": "作る",
+    "ejaan": "tsukuru",
+    "arti": "membuat"
+  },
+  {
+    "kana": "つける",
+    "kanji": "—",
+    "ejaan": "tsukeru",
+    "arti": "mengaktifkan, menyalakan"
+  },
+  {
+    "kana": "つとめる",
+    "kanji": "勤める",
+    "ejaan": "tsutomeru",
+    "arti": "bekerja"
+  },
+  {
+    "kana": "つまらない",
+    "kanji": "—",
+    "ejaan": "tsumaranai",
+    "arti": "membosankan"
+  },
+  {
+    "kana": "つめたい",
+    "kanji": "冷たい",
+    "ejaan": "tsumetai",
+    "arti": "dingin"
+  },
+  {
+    "kana": "つよい",
+    "kanji": "強い",
+    "ejaan": "tsuyoi",
+    "arti": "kuat"
+  },
+  {
+    "kana": "て",
+    "kanji": "手",
+    "ejaan": "te",
+    "arti": "tangan"
+  },
+  {
+    "kana": "でかける",
+    "kanji": "出かける",
+    "ejaan": "dekakeru",
+    "arti": "untuk pergi keluar"
+  },
+  {
+    "kana": "てがみ",
+    "kanji": "手紙",
+    "ejaan": "tegami",
+    "arti": "surat"
+  },
+  {
+    "kana": "できる",
+    "kanji": "—",
+    "ejaan": "dekiru",
+    "arti": "bisa, mampu"
+  },
+  {
+    "kana": "でぐち",
+    "kanji": "出口",
+    "ejaan": "deguchi",
+    "arti": "pintu keluar"
+  },
+  {
+    "kana": "では",
+    "kanji": "—",
+    "ejaan": "deha",
+    "arti": "dengan itu..."
+  },
+  {
+    "kana": "でも",
+    "kanji": "—",
+    "ejaan": "demo",
+    "arti": "tapi"
+  },
+  {
+    "kana": "でる",
+    "kanji": "出る",
+    "ejaan": "deru",
+    "arti": "muncul, meninggalkan"
+  },
+  {
+    "kana": "てんき",
+    "kanji": "天気",
+    "ejaan": "tenki",
+    "arti": "cuaca"
+  },
+  {
+    "kana": "でんき",
+    "kanji": "電気",
+    "ejaan": "denki",
+    "arti": "listrik"
+  },
+  {
+    "kana": "でんしゃ",
+    "kanji": "電車",
+    "ejaan": "densha",
+    "arti": "kereta listrik"
+  },
+  {
+    "kana": "でんわ",
+    "kanji": "電話",
+    "ejaan": "denwa",
+    "arti": "telepon"
+  },
+  {
+    "kana": "と",
+    "kanji": "戸",
+    "ejaan": "to",
+    "arti": "Pintu gaya Jepang"
+  },
+  {
+    "kana": "どう",
+    "kanji": "—",
+    "ejaan": "dou",
+    "arti": "bagaimana, dengan cara apa"
+  },
+  {
+    "kana": "どうして",
+    "kanji": "—",
+    "ejaan": "doushite",
+    "arti": "mengapa, untuk alasan apa"
+  },
+  {
+    "kana": "どうぞ",
+    "kanji": "—",
+    "ejaan": "douzo",
+    "arti": "silahkan"
+  },
+  {
+    "kana": "どうぶつ",
+    "kanji": "動物",
+    "ejaan": "doubutsu",
+    "arti": "hewan, binatang"
+  },
+  {
+    "kana": "どうも",
+    "kanji": "—",
+    "ejaan": "doumo",
+    "arti": "Terima kasih"
+  },
+  {
+    "kana": "とおい",
+    "kanji": "遠い",
+    "ejaan": "tooi",
+    "arti": "jauh"
+  },
+  {
+    "kana": "とおか",
+    "kanji": "十日",
+    "ejaan": "tooka",
+    "arti": "sepuluh hari, hari kesepuluh"
+  },
+  {
+    "kana": "ときどき",
+    "kanji": "時々",
+    "ejaan": "tokidoki",
+    "arti": "terkadang, kadang-kadang"
+  },
+  {
+    "kana": "とけい",
+    "kanji": "時計",
+    "ejaan": "tokei",
+    "arti": "jam"
+  },
+  {
+    "kana": "どこ",
+    "kanji": "—",
+    "ejaan": "doko",
+    "arti": "dimana"
+  },
+  {
+    "kana": "ところ",
+    "kanji": "所",
+    "ejaan": "tokoro",
+    "arti": "tempat"
+  },
+  {
+    "kana": "とし",
+    "kanji": "年",
+    "ejaan": "toshi",
+    "arti": "tahun"
+  },
+  {
+    "kana": "としょかん",
+    "kanji": "図書館",
+    "ejaan": "toshokan",
+    "arti": "Perpustakaan"
+  },
+  {
+    "kana": "どちら",
+    "kanji": "—",
+    "ejaan": "dochira",
+    "arti": "yang mana"
+  },
+  {
+    "kana": "どっち",
+    "kanji": "—",
+    "ejaan": "dotchi",
+    "arti": "yang mana"
+  },
+  {
+    "kana": "とても",
+    "kanji": "—",
+    "ejaan": "totemo",
+    "arti": "sangat"
+  },
+  {
+    "kana": "どなた",
+    "kanji": "—",
+    "ejaan": "donata",
+    "arti": "siapa"
+  },
+  {
+    "kana": "となり",
+    "kanji": "隣",
+    "ejaan": "tonari",
+    "arti": "sebelah"
+  },
+  {
+    "kana": "どの",
+    "kanji": "—",
+    "ejaan": "dono",
+    "arti": "yang"
+  },
+  {
+    "kana": "とぶ",
+    "kanji": "飛ぶ",
+    "ejaan": "tobu",
+    "arti": "untuk terbang, melompat"
+  },
+  {
+    "kana": "とまる",
+    "kanji": "止まる",
+    "ejaan": "tomaru",
+    "arti": "untuk datang ke berhenti"
+  },
+  {
+    "kana": "ともだち",
+    "kanji": "友達",
+    "ejaan": "tomodachi",
+    "arti": "teman"
+  },
+  {
+    "kana": "どようび",
+    "kanji": "土曜日",
+    "ejaan": "doyoubi",
+    "arti": "sabtu"
+  },
+  {
+    "kana": "とり",
+    "kanji": "鳥",
+    "ejaan": "tori",
+    "arti": "burung"
+  },
+  {
+    "kana": "とりにく",
+    "kanji": "とり肉",
+    "ejaan": "toriniku",
+    "arti": "daging ayam"
+  },
+  {
+    "kana": "とる",
+    "kanji": "取る",
+    "ejaan": "toru",
+    "arti": "mengambil sesuatu"
+  },
+  {
+    "kana": "とる",
+    "kanji": "撮る",
+    "ejaan": "toru",
+    "arti": "mengambil foto atau merekam film"
+  },
+  {
+    "kana": "どれ",
+    "kanji": "—",
+    "ejaan": "dore",
+    "arti": "yg mana (diantara tiga atau lebih pilihan)"
+  },
+  {
+    "kana": "なな, しち",
+    "kanji": "七",
+    "ejaan": "nana shichi",
+    "arti": "tujuh"
+  },
+  {
+    "kana": "なか",
+    "kanji": "中",
+    "ejaan": "naka",
+    "arti": "tengah"
+  },
+  {
+    "kana": "ながい",
+    "kanji": "長い",
+    "ejaan": "nagai",
+    "arti": "panjang"
+  },
+  {
+    "kana": "なく",
+    "kanji": "鳴く",
+    "ejaan": "naku",
+    "arti": "suara hewan, kicauan, suara gemuruh atau parau dll"
+  },
+  {
+    "kana": "なくす",
+    "kanji": "無くす",
+    "ejaan": "nakusu",
+    "arti": "kehilangan sesuatu"
+  },
+  {
+    "kana": "なぜ",
+    "kanji": "—",
+    "ejaan": "naze",
+    "arti": "Mengapa"
+  },
+  {
+    "kana": "なつ",
+    "kanji": "夏",
+    "ejaan": "natsu",
+    "arti": "musim panas"
+  },
+  {
+    "kana": "なつやすみ",
+    "kanji": "夏休み",
+    "ejaan": "natsuyasumi",
+    "arti": "liburan musim panas"
+  },
+  {
+    "kana": "など",
+    "kanji": "—",
+    "ejaan": "nado",
+    "arti": "et cetera, dan lain lain"
+  },
+  {
+    "kana": "ななつ",
+    "kanji": "七つ",
+    "ejaan": "nanatsu",
+    "arti": "tujuh"
+  },
+  {
+    "kana": "なのか",
+    "kanji": "七日",
+    "ejaan": "nanoka",
+    "arti": "tujuh hari, hari ketujuh"
+  },
+  {
+    "kana": "なまえ",
+    "kanji": "名前",
+    "ejaan": "namae",
+    "arti": "nama"
+  },
+  {
+    "kana": "ならう",
+    "kanji": "習う",
+    "ejaan": "narau",
+    "arti": "mempelajari"
+  },
+  {
+    "kana": "ならぶ",
+    "kanji": "並ぶ",
+    "ejaan": "narabu",
+    "arti": "berbaris"
+  },
+  {
+    "kana": "ならべる",
+    "kanji": "並べる",
+    "ejaan": "naraberu",
+    "arti": "untuk berbaris, untuk mengatur"
+  },
+  {
+    "kana": "なる",
+    "kanji": "—",
+    "ejaan": "naru",
+    "arti": "menjadi"
+  },
+  {
+    "kana": "なん, なに",
+    "kanji": "何",
+    "ejaan": "nan nani",
+    "arti": "apa"
+  },
+  {
+    "kana": "に",
+    "kanji": "二",
+    "ejaan": "ni",
+    "arti": "dua"
+  },
+  {
+    "kana": "にぎやか",
+    "kanji": "賑やか",
+    "ejaan": "nigiyaka",
+    "arti": "ramai, sibuk"
+  },
+  {
+    "kana": "にく",
+    "kanji": "肉",
+    "ejaan": "niku",
+    "arti": "daging"
+  },
+  {
+    "kana": "にし",
+    "kanji": "西",
+    "ejaan": "nishi",
+    "arti": "barat"
+  },
+  {
+    "kana": "にちようび",
+    "kanji": "日曜日",
+    "ejaan": "nichiyoubi",
+    "arti": "minggu"
+  },
+  {
+    "kana": "にもつ",
+    "kanji": "荷物",
+    "ejaan": "nimotsu",
+    "arti": "barang bawaan"
+  },
+  {
+    "kana": "にわ",
+    "kanji": "庭",
+    "ejaan": "niwa",
+    "arti": "taman"
+  },
+  {
+    "kana": "ぬぐ",
+    "kanji": "脱ぐ",
+    "ejaan": "nugu",
+    "arti": "menanggalkan pakaian"
+  },
+  {
+    "kana": "ぬるい",
+    "kanji": "温い",
+    "ejaan": "nurui",
+    "arti": "hangat"
+  },
+  {
+    "kana": "ねこ",
+    "kanji": "猫",
+    "ejaan": "neko",
+    "arti": "kucing"
+  },
+  {
+    "kana": "ねる",
+    "kanji": "寝る",
+    "ejaan": "neru",
+    "arti": "tidur"
+  },
+  {
+    "kana": "のぼる",
+    "kanji": "登る",
+    "ejaan": "noboru",
+    "arti": "memanjat"
+  },
+  {
+    "kana": "のみもの",
+    "kanji": "飲み物",
+    "ejaan": "nomimono",
+    "arti": "minuman"
+  },
+  {
+    "kana": "のむ",
+    "kanji": "飲む",
+    "ejaan": "nomu",
+    "arti": "minum"
+  },
+  {
+    "kana": "のる",
+    "kanji": "乗る",
+    "ejaan": "noru",
+    "arti": "naik, menaiki"
+  },
+  {
+    "kana": "は",
+    "kanji": "歯",
+    "ejaan": "ha",
+    "arti": "gigi"
+  },
+  {
+    "kana": "はい",
+    "kanji": "—",
+    "ejaan": "hai",
+    "arti": "iya"
+  },
+  {
+    "kana": "はいざら",
+    "kanji": "灰皿",
+    "ejaan": "haizara",
+    "arti": "asbak"
+  },
+  {
+    "kana": "はいる",
+    "kanji": "入る",
+    "ejaan": "hairu",
+    "arti": "masuk"
+  },
+  {
+    "kana": "はがき",
+    "kanji": "葉書",
+    "ejaan": "hagaki",
+    "arti": "kartu pos"
+  },
+  {
+    "kana": "はく",
+    "kanji": "—",
+    "ejaan": "haku",
+    "arti": "memakai, mengenakan"
+  },
+  {
+    "kana": "はこ",
+    "kanji": "箱",
+    "ejaan": "hako",
+    "arti": "kotak"
+  },
+  {
+    "kana": "はし",
+    "kanji": "橋",
+    "ejaan": "hashi",
+    "arti": "jembatan"
+  },
+  {
+    "kana": "はし",
+    "kanji": "—",
+    "ejaan": "hashi",
+    "arti": "sumpit"
+  },
+  {
+    "kana": "はじまる",
+    "kanji": "始まる",
+    "ejaan": "hajimaru",
+    "arti": "memulai"
+  },
+  {
+    "kana": "はじめ",
+    "kanji": "初め、 始め",
+    "ejaan": "hajime",
+    "arti": "awal"
+  },
+  {
+    "kana": "はじめて",
+    "kanji": "初めて",
+    "ejaan": "hajimete",
+    "arti": "pertama kalinya"
+  },
+  {
+    "kana": "はしる",
+    "kanji": "走る",
+    "ejaan": "hashiru",
+    "arti": "berlari"
+  },
+  {
+    "kana": "はたち",
+    "kanji": "二十歳",
+    "ejaan": "hatachi",
+    "arti": "20 tahun, tahun 20"
+  },
+  {
+    "kana": "はたらく",
+    "kanji": "働く",
+    "ejaan": "hataraku",
+    "arti": "bekerja"
+  },
+  {
+    "kana": "はち",
+    "kanji": "八",
+    "ejaan": "hachi",
+    "arti": "delapan"
+  },
+  {
+    "kana": "はつか",
+    "kanji": "二十日",
+    "ejaan": "hatsuka",
+    "arti": "tanggal dua puluh"
+  },
+  {
+    "kana": "はな",
+    "kanji": "花",
+    "ejaan": "hana",
+    "arti": "bunga"
+  },
+  {
+    "kana": "はな",
+    "kanji": "鼻",
+    "ejaan": "hana",
+    "arti": "hidung"
+  },
+  {
+    "kana": "はなし",
+    "kanji": "話",
+    "ejaan": "hanashi",
+    "arti": "bicara, cerita"
+  },
+  {
+    "kana": "はなす",
+    "kanji": "話す",
+    "ejaan": "hanasu",
+    "arti": "berbicara"
+  },
+  {
+    "kana": "はやい",
+    "kanji": "早い",
+    "ejaan": "hayai",
+    "arti": "awal"
+  },
+  {
+    "kana": "はやい",
+    "kanji": "速い",
+    "ejaan": "hayai",
+    "arti": "cepat"
+  },
+  {
+    "kana": "はる",
+    "kanji": "春",
+    "ejaan": "haru",
+    "arti": "musim semi"
+  },
+  {
+    "kana": "はる",
+    "kanji": "貼る",
+    "ejaan": "haru",
+    "arti": "menempelkan"
+  },
+  {
+    "kana": "はれ",
+    "kanji": "晴れ",
+    "ejaan": "hare",
+    "arti": "cerah (cuaca)"
+  },
+  {
+    "kana": "はれる",
+    "kanji": "晴れる",
+    "ejaan": "hareru",
+    "arti": "menjadi cerah"
+  },
+  {
+    "kana": "はん",
+    "kanji": "半",
+    "ejaan": "han",
+    "arti": "setengah"
+  },
+  {
+    "kana": "ばん",
+    "kanji": "晩",
+    "ejaan": "ban",
+    "arti": "malam"
+  },
+  {
+    "kana": "ばんごう",
+    "kanji": "番号",
+    "ejaan": "bangou",
+    "arti": "nomor"
+  },
+  {
+    "kana": "ばんごはん",
+    "kanji": "晩御飯",
+    "ejaan": "bangohan",
+    "arti": "makan malam"
+  },
+  {
+    "kana": "はんぶん",
+    "kanji": "半分",
+    "ejaan": "hanbun",
+    "arti": "setengah menit"
+  },
+  {
+    "kana": "ひがし",
+    "kanji": "東",
+    "ejaan": "higashi",
+    "arti": "timur"
+  },
+  {
+    "kana": "ひく",
+    "kanji": "引く",
+    "ejaan": "hiku",
+    "arti": "menarik"
+  },
+  {
+    "kana": "ひく",
+    "kanji": "弾く",
+    "ejaan": "hiku",
+    "arti": "memainkan alat musik"
+  },
+  {
+    "kana": "ひくい",
+    "kanji": "低い",
+    "ejaan": "hikui",
+    "arti": "pendek, rendah"
+  },
+  {
+    "kana": "ひこうき",
+    "kanji": "飛行機",
+    "ejaan": "hikouki",
+    "arti": "pesawat terbang"
+  },
+  {
+    "kana": "ひだり",
+    "kanji": "左",
+    "ejaan": "hidari",
+    "arti": "tangan kiri"
+  },
+  {
+    "kana": "ひと",
+    "kanji": "人",
+    "ejaan": "hito",
+    "arti": "orang"
+  },
+  {
+    "kana": "ひとつ",
+    "kanji": "一つ",
+    "ejaan": "hitotsu",
+    "arti": "satu"
+  },
+  {
+    "kana": "ひとつき",
+    "kanji": "一月",
+    "ejaan": "hitotsuki",
+    "arti": "satu bulan"
+  },
+  {
+    "kana": "ひとり",
+    "kanji": "一人",
+    "ejaan": "hitori",
+    "arti": "satu orang"
+  },
+  {
+    "kana": "ひま",
+    "kanji": "暇",
+    "ejaan": "hima",
+    "arti": "waktu luang"
+  },
+  {
+    "kana": "ひゃく",
+    "kanji": "百",
+    "ejaan": "hyaku",
+    "arti": "ratus"
+  },
+  {
+    "kana": "びょういん",
+    "kanji": "病院",
+    "ejaan": "byouin",
+    "arti": "rumah sakit"
+  },
+  {
+    "kana": "びょうき",
+    "kanji": "病気",
+    "ejaan": "byouki",
+    "arti": "penyakit"
+  },
+  {
+    "kana": "ひる",
+    "kanji": "昼",
+    "ejaan": "hiru",
+    "arti": "siang, siang hari"
+  },
+  {
+    "kana": "ひるごはん",
+    "kanji": "昼御飯",
+    "ejaan": "hirugohan",
+    "arti": "makan siang"
+  },
+  {
+    "kana": "ひろい",
+    "kanji": "広い",
+    "ejaan": "hiroi",
+    "arti": "luas, lebar"
+  },
+  {
+    "kana": "ふうとう",
+    "kanji": "封筒",
+    "ejaan": "fuutou",
+    "arti": "amplop"
+  },
+  {
+    "kana": "ふく",
+    "kanji": "吹く",
+    "ejaan": "fuku",
+    "arti": "untuk meniup"
+  },
+  {
+    "kana": "ふく",
+    "kanji": "服",
+    "ejaan": "fuku",
+    "arti": "pakaian"
+  },
+  {
+    "kana": "ふたつ",
+    "kanji": "二つ",
+    "ejaan": "futatsu",
+    "arti": "dua"
+  },
+  {
+    "kana": "ぶたにく",
+    "kanji": "豚肉",
+    "ejaan": "butaniku",
+    "arti": "daging babi"
+  },
+  {
+    "kana": "ふたり",
+    "kanji": "二人",
+    "ejaan": "futari",
+    "arti": "dua orang"
+  },
+  {
+    "kana": "ふつか",
+    "kanji": "二日",
+    "ejaan": "futsuka",
+    "arti": "dua hari, hari kedua dlm bulan"
+  },
+  {
+    "kana": "ふとい",
+    "kanji": "太い",
+    "ejaan": "futoi",
+    "arti": "gemuk"
+  },
+  {
+    "kana": "ふゆ",
+    "kanji": "冬",
+    "ejaan": "fuyu",
+    "arti": "musim dingin"
+  },
+  {
+    "kana": "ふる",
+    "kanji": "降る",
+    "ejaan": "furu",
+    "arti": "turun, misalnya hujan atau salju"
+  },
+  {
+    "kana": "ふるい",
+    "kanji": "古い",
+    "ejaan": "furui",
+    "arti": "lama, tua, kuno"
+  },
+  {
+    "kana": "ふろ",
+    "kanji": "—",
+    "ejaan": "furo",
+    "arti": "mandi"
+  },
+  {
+    "kana": "ぶんしょう",
+    "kanji": "文章",
+    "ejaan": "bunshou",
+    "arti": "kalimat, teks"
+  },
+  {
+    "kana": "へた",
+    "kanji": "下手",
+    "ejaan": "heta",
+    "arti": "tidak terampil, payah"
+  },
+  {
+    "kana": "へや",
+    "kanji": "部屋",
+    "ejaan": "heya",
+    "arti": "kamar"
+  },
+  {
+    "kana": "へん",
+    "kanji": "辺",
+    "ejaan": "hen",
+    "arti": "daerah, sekitaran"
+  },
+  {
+    "kana": "べんきょう",
+    "kanji": "勉強",
+    "ejaan": "benkyou",
+    "arti": "belajar"
+  },
+  {
+    "kana": "べんり",
+    "kanji": "便利",
+    "ejaan": "benri",
+    "arti": "berguna, nyaman"
+  },
+  {
+    "kana": "ぼうし",
+    "kanji": "帽子",
+    "ejaan": "boushi",
+    "arti": "topi"
+  },
+  {
+    "kana": "ほか",
+    "kanji": "—",
+    "ejaan": "hoka",
+    "arti": "lainnya, sisanya"
+  },
+  {
+    "kana": "ほしい",
+    "kanji": "欲しい",
+    "ejaan": "hoshii",
+    "arti": "ingin"
+  },
+  {
+    "kana": "ほそい",
+    "kanji": "細い",
+    "ejaan": "hosoi",
+    "arti": "tipis"
+  },
+  {
+    "kana": "ほん",
+    "kanji": "本",
+    "ejaan": "hon",
+    "arti": "buku"
+  },
+  {
+    "kana": "ほんだな",
+    "kanji": "本棚",
+    "ejaan": "hondana",
+    "arti": "rak buku"
+  },
+  {
+    "kana": "ほんとう",
+    "kanji": "—",
+    "ejaan": "hontou",
+    "arti": "benar, kebenaran"
+  },
+  {
+    "kana": "まいあさ",
+    "kanji": "毎朝",
+    "ejaan": "maiasa",
+    "arti": "setiap pagi"
+  },
+  {
+    "kana": "まいげつ、 まいつき",
+    "kanji": "毎月",
+    "ejaan": "maigetsu maitsuki",
+    "arti": "setiap bulan"
+  },
+  {
+    "kana": "まいしゅう",
+    "kanji": "毎週",
+    "ejaan": "maishuu",
+    "arti": "setiap minggu"
+  },
+  {
+    "kana": "まいにち",
+    "kanji": "毎日",
+    "ejaan": "mainichi",
+    "arti": "setiap hari"
+  },
+  {
+    "kana": "まいねん、 まいとし",
+    "kanji": "毎年",
+    "ejaan": "mainen maitoshi",
+    "arti": "setiap tahun"
+  },
+  {
+    "kana": "まいばん",
+    "kanji": "毎晩",
+    "ejaan": "maiban",
+    "arti": "setiap malam"
+  },
+  {
+    "kana": "まえ",
+    "kanji": "前",
+    "ejaan": "mae",
+    "arti": "sebelum"
+  },
+  {
+    "kana": "まがる",
+    "kanji": "曲る",
+    "ejaan": "magaru",
+    "arti": "membengkokkan, menekuk, mengubah"
+  },
+  {
+    "kana": "まずい",
+    "kanji": "—",
+    "ejaan": "mazui",
+    "arti": "buruk, tidak baik"
+  },
+  {
+    "kana": "また",
+    "kanji": "—",
+    "ejaan": "mata",
+    "arti": "lagi, dan"
+  },
+  {
+    "kana": "まだ",
+    "kanji": "—",
+    "ejaan": "mada",
+    "arti": "namun, masih"
+  },
+  {
+    "kana": "まち",
+    "kanji": "町",
+    "ejaan": "machi",
+    "arti": "kota, kota"
+  },
+  {
+    "kana": "まつ",
+    "kanji": "待つ",
+    "ejaan": "matsu",
+    "arti": "menunggu"
+  },
+  {
+    "kana": "まっすぐ",
+    "kanji": "—",
+    "ejaan": "massugu",
+    "arti": "lurus ke depan, langsung"
+  },
+  {
+    "kana": "まど",
+    "kanji": "窓",
+    "ejaan": "mado",
+    "arti": "jendela"
+  },
+  {
+    "kana": "まるい",
+    "kanji": "丸い、 円い",
+    "ejaan": "marui",
+    "arti": "bulat, melingkar"
+  },
+  {
+    "kana": "まん",
+    "kanji": "万",
+    "ejaan": "man",
+    "arti": "sepuluh ribu"
+  },
+  {
+    "kana": "まんねんひつ",
+    "kanji": "万年筆",
+    "ejaan": "mannenhitsu",
+    "arti": "pulpen"
+  },
+  {
+    "kana": "みがく",
+    "kanji": "磨く",
+    "ejaan": "migaku",
+    "arti": "memoles, menyikat"
+  },
+  {
+    "kana": "みぎ",
+    "kanji": "右",
+    "ejaan": "migi",
+    "arti": "tangan kanan"
+  },
+  {
+    "kana": "みじかい",
+    "kanji": "短い",
+    "ejaan": "mijikai",
+    "arti": "pendek"
+  },
+  {
+    "kana": "みず",
+    "kanji": "水",
+    "ejaan": "mizu",
+    "arti": "air"
+  },
+  {
+    "kana": "みせ",
+    "kanji": "店",
+    "ejaan": "mise",
+    "arti": "toko"
+  },
+  {
+    "kana": "みせる",
+    "kanji": "見せる",
+    "ejaan": "miseru",
+    "arti": "memperlihatkan"
+  },
+  {
+    "kana": "みち",
+    "kanji": "道",
+    "ejaan": "michi",
+    "arti": "jalan"
+  },
+  {
+    "kana": "みっか",
+    "kanji": "三日",
+    "ejaan": "mikka",
+    "arti": "tiga hari, hari ketiga dlm bulan"
+  },
+  {
+    "kana": "みっつ",
+    "kanji": "三つ",
+    "ejaan": "mittsu",
+    "arti": "tiga"
+  },
+  {
+    "kana": "みどり",
+    "kanji": "緑",
+    "ejaan": "midori",
+    "arti": "hijau"
+  },
+  {
+    "kana": "みなさん",
+    "kanji": "皆さん",
+    "ejaan": "minasan",
+    "arti": "semua orang"
+  },
+  {
+    "kana": "みなみ",
+    "kanji": "南",
+    "ejaan": "minami",
+    "arti": "Selatan"
+  },
+  {
+    "kana": "みみ",
+    "kanji": "耳",
+    "ejaan": "mimi",
+    "arti": "telinga"
+  },
+  {
+    "kana": "みる",
+    "kanji": "見る, 観る",
+    "ejaan": "miru",
+    "arti": "melihat, menonton"
+  },
+  {
+    "kana": "みんな",
+    "kanji": "—",
+    "ejaan": "minna",
+    "arti": "semua orang"
+  },
+  {
+    "kana": "むいか",
+    "kanji": "六日",
+    "ejaan": "muika",
+    "arti": "enam hari, hari keenam dlm bulan"
+  },
+  {
+    "kana": "むこう",
+    "kanji": "向こう",
+    "ejaan": "mukou",
+    "arti": "(yg ada) di sana"
+  },
+  {
+    "kana": "むずかしい",
+    "kanji": "難しい",
+    "ejaan": "muzukashii",
+    "arti": "sulit, susah"
+  },
+  {
+    "kana": "むっつ",
+    "kanji": "六つ",
+    "ejaan": "muttsu",
+    "arti": "enam"
+  },
+  {
+    "kana": "むら",
+    "kanji": "村",
+    "ejaan": "mura",
+    "arti": "Desa"
+  },
+  {
+    "kana": "め",
+    "kanji": "目",
+    "ejaan": "me",
+    "arti": "mata"
+  },
+  {
+    "kana": "めがね",
+    "kanji": "眼鏡",
+    "ejaan": "megane",
+    "arti": "kacamata"
+  },
+  {
+    "kana": "もう",
+    "kanji": "—",
+    "ejaan": "mou",
+    "arti": "sudah, lagi"
+  },
+  {
+    "kana": "もういちど",
+    "kanji": "もう一度",
+    "ejaan": "mouichido",
+    "arti": "sekali lagi"
+  },
+  {
+    "kana": "もくようび",
+    "kanji": "木曜日",
+    "ejaan": "mokuyoubi",
+    "arti": "Kamis"
+  },
+  {
+    "kana": "もつ",
+    "kanji": "持つ",
+    "ejaan": "motsu",
+    "arti": "memiliki, mempunyai"
+  },
+  {
+    "kana": "もっと",
+    "kanji": "—",
+    "ejaan": "motto",
+    "arti": "lebih, lagi"
+  },
+  {
+    "kana": "もの",
+    "kanji": "物",
+    "ejaan": "mono",
+    "arti": "benda"
+  },
+  {
+    "kana": "もん",
+    "kanji": "門",
+    "ejaan": "mon",
+    "arti": "gerbang"
+  },
+  {
+    "kana": "もんだい",
+    "kanji": "問題",
+    "ejaan": "mondai",
+    "arti": "soal, persoalan, masalah"
+  },
+  {
+    "kana": "よん, し",
+    "kanji": "四",
+    "ejaan": "yon shi",
+    "arti": "empat"
+  },
+  {
+    "kana": "やおや",
+    "kanji": "八百屋",
+    "ejaan": "yaoya",
+    "arti": "penjual sayur"
+  },
+  {
+    "kana": "やさい",
+    "kanji": "野菜",
+    "ejaan": "yasai",
+    "arti": "sayur-mayur"
+  },
+  {
+    "kana": "やさしい",
+    "kanji": "易しい",
+    "ejaan": "yasashii",
+    "arti": "mudah, sederhana"
+  },
+  {
+    "kana": "やすい",
+    "kanji": "安い",
+    "ejaan": "yasui",
+    "arti": "murah"
+  },
+  {
+    "kana": "やすみ",
+    "kanji": "休み",
+    "ejaan": "yasumi",
+    "arti": "liburan, hari libur"
+  },
+  {
+    "kana": "やすむ",
+    "kanji": "休む",
+    "ejaan": "yasumu",
+    "arti": "beristirahat"
+  },
+  {
+    "kana": "やっつ",
+    "kanji": "八つ",
+    "ejaan": "yattsu",
+    "arti": "delapan"
+  },
+  {
+    "kana": "やま",
+    "kanji": "山",
+    "ejaan": "yama",
+    "arti": "gunung"
+  },
+  {
+    "kana": "やる",
+    "kanji": "—",
+    "ejaan": "yaru",
+    "arti": "melakukan, memberi"
+  },
+  {
+    "kana": "ゆうがた",
+    "kanji": "夕方",
+    "ejaan": "yuugata",
+    "arti": "malam"
+  },
+  {
+    "kana": "ゆうはん",
+    "kanji": "夕飯",
+    "ejaan": "yuuhan",
+    "arti": "makan malam"
+  },
+  {
+    "kana": "ゆうびんきょく",
+    "kanji": "郵便局",
+    "ejaan": "yuubinkyoku",
+    "arti": "kantor Pos"
+  },
+  {
+    "kana": "ゆうべ",
+    "kanji": "昨夜",
+    "ejaan": "yuube",
+    "arti": "Tadi malam"
+  },
+  {
+    "kana": "ゆうめい",
+    "kanji": "有名",
+    "ejaan": "yuumei",
+    "arti": "terkenal"
+  },
+  {
+    "kana": "ゆき",
+    "kanji": "雪",
+    "ejaan": "yuki",
+    "arti": "salju"
+  },
+  {
+    "kana": "ゆく",
+    "kanji": "行く",
+    "ejaan": "yuku",
+    "arti": "pergi"
+  },
+  {
+    "kana": "ゆっくりと",
+    "kanji": "—",
+    "ejaan": "yukkurito",
+    "arti": "pelan-pelan"
+  },
+  {
+    "kana": "ようか",
+    "kanji": "八日",
+    "ejaan": "youka",
+    "arti": "tanggal delapan, 8 hari"
+  },
+  {
+    "kana": "ようふく",
+    "kanji": "洋服",
+    "ejaan": "youfuku",
+    "arti": "pakaian gaya barat"
+  },
+  {
+    "kana": "よく",
+    "kanji": "—",
+    "ejaan": "yoku",
+    "arti": "sering, baik"
+  },
+  {
+    "kana": "よこ",
+    "kanji": "横",
+    "ejaan": "yoko",
+    "arti": "samping, sisi"
+  },
+  {
+    "kana": "よっか",
+    "kanji": "四日",
+    "ejaan": "yokka",
+    "arti": "tanggal empat, 4 hari"
+  },
+  {
+    "kana": "よっつ",
+    "kanji": "四つ",
+    "ejaan": "yottsu",
+    "arti": "empat"
+  },
+  {
+    "kana": "よぶ",
+    "kanji": "呼ぶ",
+    "ejaan": "yobu",
+    "arti": "memanggil, mengundang"
+  },
+  {
+    "kana": "よむ",
+    "kanji": "読む",
+    "ejaan": "yomu",
+    "arti": "membaca"
+  },
+  {
+    "kana": "よる",
+    "kanji": "夜",
+    "ejaan": "yoru",
+    "arti": "malam"
+  },
+  {
+    "kana": "よわい",
+    "kanji": "弱い",
+    "ejaan": "yowai",
+    "arti": "lemah"
+  },
+  {
+    "kana": "らいげつ",
+    "kanji": "来月",
+    "ejaan": "raigetsu",
+    "arti": "bulan depan"
+  },
+  {
+    "kana": "らいしゅう",
+    "kanji": "来週",
+    "ejaan": "raishuu",
+    "arti": "minggu depan"
+  },
+  {
+    "kana": "らいねん",
+    "kanji": "来年",
+    "ejaan": "rainen",
+    "arti": "tahun depan"
+  },
+  {
+    "kana": "りっぱ",
+    "kanji": "—",
+    "ejaan": "rippa",
+    "arti": "megah"
+  },
+  {
+    "kana": "りゅうがくせい",
+    "kanji": "留学生",
+    "ejaan": "ryuugakusei",
+    "arti": "Siswa internasional, siswa dari luar negeri"
+  },
+  {
+    "kana": "りょうしん",
+    "kanji": "両親",
+    "ejaan": "ryoushin",
+    "arti": "kedua orang tua"
+  },
+  {
+    "kana": "りょうり",
+    "kanji": "料理",
+    "ejaan": "ryouri",
+    "arti": "Masakan"
+  },
+  {
+    "kana": "りょこう",
+    "kanji": "旅行",
+    "ejaan": "ryokou",
+    "arti": "perjalanan"
+  },
+  {
+    "kana": "れい",
+    "kanji": "零",
+    "ejaan": "rei",
+    "arti": "nol"
+  },
+  {
+    "kana": "れいぞうこ",
+    "kanji": "冷蔵庫",
+    "ejaan": "reizouko",
+    "arti": "kulkas"
+  },
+  {
+    "kana": "れんしゅう",
+    "kanji": "練習",
+    "ejaan": "renshuu",
+    "arti": "latihan"
+  },
+  {
+    "kana": "ろうか",
+    "kanji": "廊下",
+    "ejaan": "rouka",
+    "arti": "koridor"
+  },
+  {
+    "kana": "ろく",
+    "kanji": "六",
+    "ejaan": "roku",
+    "arti": "enam"
+  },
+  {
+    "kana": "わかい",
+    "kanji": "若い",
+    "ejaan": "wakai",
+    "arti": "muda"
+  },
+  {
+    "kana": "わかる",
+    "kanji": "分かる",
+    "ejaan": "wakaru",
+    "arti": "mengerti, memahami"
+  },
+  {
+    "kana": "わすれる",
+    "kanji": "忘れる",
+    "ejaan": "wasureru",
+    "arti": "melupakan"
+  },
+  {
+    "kana": "わたし",
+    "kanji": "私",
+    "ejaan": "watashi",
+    "arti": "saya"
+  },
+  {
+    "kana": "わたくし",
+    "kanji": "私",
+    "ejaan": "watakushi",
+    "arti": "saya (sopan)"
+  },
+  {
+    "kana": "わたす",
+    "kanji": "渡す",
+    "ejaan": "watasu",
+    "arti": "memberikan, menyerahkan"
+  },
+  {
+    "kana": "わたる",
+    "kanji": "渡る",
+    "ejaan": "wataru",
+    "arti": "menyeberangi"
+  },
+  {
+    "kana": "わるい",
+    "kanji": "悪い",
+    "ejaan": "warui",
+    "arti": "buruk"
+  },
+  {
+    "kana": "アパート",
+    "kanji": "—",
+    "ejaan": "apaato",
+    "arti": "Apartemen"
+  },
+  {
+    "kana": "エレベーター",
+    "kanji": "—",
+    "ejaan": "erebeetaa",
+    "arti": "lift"
+  },
+  {
+    "kana": "カップ",
+    "kanji": "—",
+    "ejaan": "kappu",
+    "arti": "cangkir"
+  },
+  {
+    "kana": "カメラ",
+    "kanji": "—",
+    "ejaan": "kamera",
+    "arti": "kamera"
+  },
+  {
+    "kana": "カレー",
+    "kanji": "—",
+    "ejaan": "karee",
+    "arti": "kari (makanan)"
+  },
+  {
+    "kana": "カレンダー",
+    "kanji": "—",
+    "ejaan": "karendaa",
+    "arti": "kalender"
+  },
+  {
+    "kana": "ギター",
+    "kanji": "—",
+    "ejaan": "gitaa",
+    "arti": "gitar"
+  },
+  {
+    "kana": "キロ、 キログラム",
+    "kanji": "—",
+    "ejaan": "kiro kiroguramu",
+    "arti": "kilogram"
+  },
+  {
+    "kana": "キロ、 キロメートル",
+    "kanji": "—",
+    "ejaan": "kiro kiromeetoru",
+    "arti": "kilometer"
+  },
+  {
+    "kana": "クラス",
+    "kanji": "—",
+    "ejaan": "kurasu",
+    "arti": "kelas"
+  },
+  {
+    "kana": "グラム",
+    "kanji": "—",
+    "ejaan": "guramu",
+    "arti": "gram"
+  },
+  {
+    "kana": "コート",
+    "kanji": "—",
+    "ejaan": "kooto",
+    "arti": "mantel, lapangan tenis"
+  },
+  {
+    "kana": "コーヒー",
+    "kanji": "—",
+    "ejaan": "koohii",
+    "arti": "kopi"
+  },
+  {
+    "kana": "コップ",
+    "kanji": "—",
+    "ejaan": "koppu",
+    "arti": "cangkir"
+  },
+  {
+    "kana": "コピーする",
+    "kanji": "—",
+    "ejaan": "kopiisuru",
+    "arti": "untuk menyalin"
+  },
+  {
+    "kana": "ズボン",
+    "kanji": "—",
+    "ejaan": "zubon",
+    "arti": "celana"
+  },
+  {
+    "kana": "ゼロ",
+    "kanji": "—",
+    "ejaan": "zero",
+    "arti": "nol"
+  },
+  {
+    "kana": "シャツ",
+    "kanji": "—",
+    "ejaan": "shatsu",
+    "arti": "kemeja"
+  },
+  {
+    "kana": "シャワー",
+    "kanji": "—",
+    "ejaan": "shawaa",
+    "arti": "mandi"
+  },
+  {
+    "kana": "スカート",
+    "kanji": "—",
+    "ejaan": "sukaato",
+    "arti": "rok"
+  },
+  {
+    "kana": "ストーブ",
+    "kanji": "—",
+    "ejaan": "sutoobu",
+    "arti": "Stove, kompor"
+  },
+  {
+    "kana": "スプーン",
+    "kanji": "—",
+    "ejaan": "supuun",
+    "arti": "Spoon, sendok"
+  },
+  {
+    "kana": "スポーツ",
+    "kanji": "—",
+    "ejaan": "supootsu",
+    "arti": "Sports, olahraga"
+  },
+  {
+    "kana": "スリッパ",
+    "kanji": "—",
+    "ejaan": "surippa",
+    "arti": "sandal"
+  },
+  {
+    "kana": "セーター",
+    "kanji": "—",
+    "ejaan": "seetaa",
+    "arti": "sweater, jumper"
+  },
+  {
+    "kana": "タクシー",
+    "kanji": "—",
+    "ejaan": "takushii",
+    "arti": "taksi"
+  },
+  {
+    "kana": "テープ",
+    "kanji": "—",
+    "ejaan": "teepu",
+    "arti": "tape"
+  },
+  {
+    "kana": "テーブル",
+    "kanji": "—",
+    "ejaan": "teeburu",
+    "arti": "meja"
+  },
+  {
+    "kana": "テープレコーダー",
+    "kanji": "—",
+    "ejaan": "teepurekoodaa",
+    "arti": "alat perekam"
+  },
+  {
+    "kana": "テスト",
+    "kanji": "—",
+    "ejaan": "tesuto",
+    "arti": "uji"
+  },
+  {
+    "kana": "デパート",
+    "kanji": "—",
+    "ejaan": "depaato",
+    "arti": "toko serba ada, department store"
+  },
+  {
+    "kana": "テレビ",
+    "kanji": "—",
+    "ejaan": "terebi",
+    "arti": "televisi"
+  },
+  {
+    "kana": "ドア",
+    "kanji": "—",
+    "ejaan": "doa",
+    "arti": "Pintu gaya barat"
+  },
+  {
+    "kana": "トイレ",
+    "kanji": "—",
+    "ejaan": "toire",
+    "arti": "toilet"
+  },
+  {
+    "kana": "ナイフ",
+    "kanji": "—",
+    "ejaan": "naifu",
+    "arti": "pisau"
+  },
+  {
+    "kana": "ニュース",
+    "kanji": "—",
+    "ejaan": "nyuusu",
+    "arti": "berita"
+  },
+  {
+    "kana": "ネクタイ",
+    "kanji": "—",
+    "ejaan": "nekutai",
+    "arti": "dasi"
+  },
+  {
+    "kana": "ノート",
+    "kanji": "—",
+    "ejaan": "nooto",
+    "arti": "notebook, buku latihan"
+  },
+  {
+    "kana": "パーティー",
+    "kanji": "—",
+    "ejaan": "paateii",
+    "arti": "pesta"
+  },
+  {
+    "kana": "バス",
+    "kanji": "—",
+    "ejaan": "basu",
+    "arti": "bis"
+  },
+  {
+    "kana": "バター",
+    "kanji": "—",
+    "ejaan": "bataa",
+    "arti": "mentega"
+  },
+  {
+    "kana": "パン",
+    "kanji": "—",
+    "ejaan": "pan",
+    "arti": "roti"
+  },
+  {
+    "kana": "ハンカチ",
+    "kanji": "—",
+    "ejaan": "hankachi",
+    "arti": "saputangan"
+  },
+  {
+    "kana": "フィルム",
+    "kanji": "—",
+    "ejaan": "fyirumu",
+    "arti": "film, rol film"
+  },
+  {
+    "kana": "プール",
+    "kanji": "—",
+    "ejaan": "puuru",
+    "arti": "kolam renang"
+  },
+  {
+    "kana": "フォーク",
+    "kanji": "—",
+    "ejaan": "fuooku",
+    "arti": "garpu"
+  },
+  {
+    "kana": "ページ",
+    "kanji": "—",
+    "ejaan": "peeji",
+    "arti": "halaman"
+  },
+  {
+    "kana": "ベッド",
+    "kanji": "—",
+    "ejaan": "beddo",
+    "arti": "tempat tidur"
+  },
+  {
+    "kana": "ペット",
+    "kanji": "—",
+    "ejaan": "petto",
+    "arti": "Pets, hewan peliharaan"
+  },
+  {
+    "kana": "ペン",
+    "kanji": "—",
+    "ejaan": "pen",
+    "arti": "pena"
+  },
+  {
+    "kana": "ボールペン",
+    "kanji": "—",
+    "ejaan": "boorupen",
+    "arti": "pulpen"
+  },
+  {
+    "kana": "ポケット",
+    "kanji": "—",
+    "ejaan": "poketto",
+    "arti": "saku"
+  },
+  {
+    "kana": "ポスト",
+    "kanji": "—",
+    "ejaan": "posuto",
+    "arti": "pos"
+  },
+  {
+    "kana": "ボタン",
+    "kanji": "—",
+    "ejaan": "botan",
+    "arti": "tombol"
+  },
+  {
+    "kana": "ホテル",
+    "kanji": "—",
+    "ejaan": "hoteru",
+    "arti": "hotel"
+  },
+  {
+    "kana": "マッチ",
+    "kanji": "—",
+    "ejaan": "matchi",
+    "arti": "Match, pertandingan"
+  },
+  {
+    "kana": "メートル",
+    "kanji": "—",
+    "ejaan": "meetoru",
+    "arti": "meter"
+  },
+  {
+    "kana": "ラジオ",
+    "kanji": "—",
+    "ejaan": "rajio",
+    "arti": "radio"
+  },
+  {
+    "kana": "ラジカセ、 ラジオカセット",
+    "kanji": "—",
+    "ejaan": "rajikase rajiokasetto",
+    "arti": "pemutar kaset radio"
+  },
+  {
+    "kana": "レコード",
+    "kanji": "—",
+    "ejaan": "rekoodo",
+    "arti": "catatan, rekor, piringan hitam"
+  },
+  {
+    "kana": "レストラン",
+    "kanji": "—",
+    "ejaan": "resutoran",
+    "arti": "restoran"
+  },
+  {
+    "kana": "ワイシャツ",
+    "kanji": "—",
+    "ejaan": "waishatsu",
+    "arti": "kemeja bisnis"
+  },
+  {
+    "kana": "・・より ・・ほう",
+    "kanji": "—",
+    "ejaan": "yori hou",
+    "arti": "Digunakan untuk perbandingan."
+  }
+]

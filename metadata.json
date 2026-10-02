@@ -1,0 +1,6 @@
+{
+  "name": "Sari Sensei - Belajar JLPT N5–N2",
+  "description": "Aplikasi Belajar JLPT N5–N2 interaktif dengan materi kurikulum resmi, kartu kosakata terurut tematik (angka, uang, sehari-hari, pekerjaan, buah, kendaraan), kartu kanji, kuis 50 soal, dan laporan nilai murid.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
