@@ -16,6 +16,19 @@
   <body class="bg-[#fcf9f2] text-[#2c1d11] antialiased selection:bg-[#fbcfe8] selection:text-[#881337]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-  </body>
+ <script>
+// Hanya tampilkan tombol menu untuk akun skywalker
+const namaPengguna = document.querySelector('.nama-akun')?.textContent?.trim();
+const tombolMenu = document.getElementById('tombol-menu');
+
+if (tombolMenu) {
+  if (namaPengguna === 'skywalker') {
+    tombolMenu.style.display = 'block';
+  } else {
+    tombolMenu.style.display = 'none';
+  }
+}
+</script>
+ </body>
 </html>
 
