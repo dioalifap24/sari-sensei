@@ -25,6 +25,7 @@ export interface QuizResult {
   date?: string;
   startedAtTime?: string;
   completedAtTime?: string;
+  tabViolationsCount?: number;
 }
 
 export interface ActiveQuizRecord {
@@ -42,6 +43,7 @@ export interface ActiveQuizRecord {
   correctCount?: number | null;
   startedAtTimestamp: number;
   completedAtTimestamp?: number | null;
+  tabViolationsCount?: number;
 }
 
 export interface QuizControlState {

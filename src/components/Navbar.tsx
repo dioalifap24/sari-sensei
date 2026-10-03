@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, JLPTLevel, QuizControlState } from '../types';
 import { storageService } from '../services/storageService';
-import { LogOut, User as UserIcon, BookOpen, FileQuestion, Layers, Award, Users, Crown, Play, Square, Shield } from 'lucide-react';
+import { LogOut, User as UserIcon, BookOpen, FileQuestion, Layers, Award, Users, Crown, Play, Square, Shield, ShieldAlert } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 
 interface NavbarProps {
@@ -12,6 +12,8 @@ interface NavbarProps {
   onLogout: () => void;
   activeLevel: JLPTLevel;
   setActiveLevel: (lvl: JLPTLevel) => void;
+  isStudentQuizRunning?: boolean;
+  onBlockedNavigation?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,6 +24,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   activeLevel,
   setActiveLevel,
+  isStudentQuizRunning = false,
+  onBlockedNavigation,
 }) => {
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
 
@@ -44,6 +48,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const isMasterUser = storageService.isMaster(currentUser);
 
+  const handleTabClick = (tab: string) => {
+    if (isStudentQuizRunning && !isMasterUser && tab !== 'kuis') {
+      onBlockedNavigation?.();
+      return;
+    }
+    setActiveTab(tab);
+  };
+
   // Toggle Sesi Kuis for Master
   const handleToggleQuizControl = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
         {/* Brand Zone - Title with Sakura Icons */}
         <div 
-          onClick={() => setActiveTab('home')}
+          onClick={() => handleTabClick('home')}
           className="cursor-pointer flex items-center gap-1.5 sm:gap-2 group select-none shrink-0"
         >
           <span className="text-xl md:text-2xl transition-transform group-hover:scale-110 duration-200" aria-hidden="true">🌸</span>
@@ -72,26 +84,35 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="text-xl md:text-2xl transition-transform group-hover:scale-110 duration-200" aria-hidden="true">🌸</span>
         </div>
 
+        {/* Status Ujian Terkunci (Hanya Murid Biasa saat Kuis Berlangsung) */}
+        {isStudentQuizRunning && !isMasterUser && (
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-900 border border-rose-300 rounded-full text-xs font-black animate-pulse shadow-xs">
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <span className="hidden sm:inline">MODE UJIAN TERKUNCI (ANTI-KECURANGAN)</span>
+            <span className="sm:hidden">TERKUNCI</span>
+          </div>
+        )}
+
         {/* Desktop Quick Navigation */}
         <nav className="hidden lg:flex items-center gap-1 text-sm font-medium text-[#654d38]">
           <button
-            onClick={() => setActiveTab('home')}
+            onClick={() => handleTabClick('home')}
             className={`px-3 py-1.5 rounded-lg transition-colors ${
               activeTab === 'home'
                 ? 'bg-[#f8ede0] text-[#881337] font-semibold'
                 : 'hover:text-[#881337] hover:bg-[#fcf3e8]'
-            }`}
+            } ${isStudentQuizRunning && !isMasterUser && activeTab !== 'home' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             Beranda
           </button>
 
           <button
-            onClick={() => setActiveTab('materi')}
+            onClick={() => handleTabClick('materi')}
             className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               activeTab === 'materi'
                 ? 'bg-[#f8ede0] text-[#881337] font-semibold'
                 : 'hover:text-[#881337] hover:bg-[#fcf3e8]'
-            }`}
+            } ${isStudentQuizRunning && !isMasterUser && activeTab !== 'materi' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <BookOpen className="w-4 h-4 text-[#881337]" />
             <span>Materi</span>
@@ -100,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* KUIS BUTTON WITH REAL-TIME STATUS DOT & MASTER START/END BUTTON */}
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setActiveTab('kuis')}
+              onClick={() => handleTabClick('kuis')}
               className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                 activeTab === 'kuis'
                   ? 'bg-[#f8ede0] text-[#881337] font-semibold'
@@ -115,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   quizControl.isActive 
                     ? 'bg-emerald-500 ring-emerald-300 animate-pulse' 
                     : 'bg-rose-500 ring-rose-300'
-                }`}
+                }`} 
                 title={quizControl.isActive ? 'Sesi Kuis Sedang Dibuka (Hijau)' : 'Sesi Kuis Belum Dibuka (Merah)'}
               />
             </button>
@@ -148,36 +169,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <button
-            onClick={() => setActiveTab('vocab')}
+            onClick={() => handleTabClick('vocab')}
             className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               activeTab === 'vocab'
                 ? 'bg-[#f8ede0] text-[#881337] font-semibold'
                 : 'hover:text-[#881337] hover:bg-[#fcf3e8]'
-            }`}
+            } ${isStudentQuizRunning && !isMasterUser && activeTab !== 'vocab' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Layers className="w-4 h-4 text-[#881337]" />
             <span>Kartu Hafalan</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('kanji')}
+            onClick={() => handleTabClick('kanji')}
             className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               activeTab === 'kanji'
                 ? 'bg-[#f8ede0] text-[#881337] font-semibold'
                 : 'hover:text-[#881337] hover:bg-[#fcf3e8]'
-            }`}
+            } ${isStudentQuizRunning && !isMasterUser && activeTab !== 'kanji' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <span className="font-bold text-xs text-[#881337]">漢字</span>
             <span>Kartu Kanji</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('laporan')}
+            onClick={() => handleTabClick('laporan')}
             className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               activeTab === 'laporan'
                 ? 'bg-[#f8ede0] text-[#881337] font-semibold'
                 : 'hover:text-[#881337] hover:bg-[#fcf3e8]'
-            }`}
+            } ${isStudentQuizRunning && !isMasterUser && activeTab !== 'laporan' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Award className="w-4 h-4 text-[#881337]" />
             <span>Laporan</span>
@@ -186,7 +207,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* TAB NILAI SEMUA MURID: HANYA MUNCUL KETIKA MASUK MENGGUNAKAN AKUN MASTER */}
           {isMasterUser && (
             <button
-              onClick={() => setActiveTab('master_management')}
+              onClick={() => handleTabClick('master_management')}
               className={`px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold shadow-xs ${
                 activeTab === 'master_management'
                   ? 'bg-[#881337] text-white ring-2 ring-[#fbcfe8]'
@@ -221,7 +242,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
 
               <div 
-                onClick={() => setActiveTab(isMasterUser ? 'master_management' : 'laporan')}
+                onClick={() => {
+                  if (isStudentQuizRunning && !isMasterUser) {
+                    onBlockedNavigation?.();
+                    return;
+                  }
+                  setActiveTab(isMasterUser ? 'master_management' : 'laporan');
+                }}
                 className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-[#fbf0e6] border border-[#e4ccb5] rounded-lg text-xs font-medium text-[#463222] hover:bg-[#f6e5d5] transition-colors"
                 title={isMasterUser ? `${currentUser.fullName || 'GLOSTER GLADIATOR'} (${currentUser.nickname || 'skywalker'}) - Akun Master` : `${currentUser.fullName || currentUser.name || ''} (${currentUser.email})`}
               >
@@ -240,7 +267,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
 
               <button
-                onClick={onLogout}
+                onClick={() => {
+                  if (isStudentQuizRunning && !isMasterUser) {
+                    onBlockedNavigation?.();
+                    return;
+                  }
+                  onLogout();
+                }}
                 className="flex items-center gap-1 px-3 py-1.5 bg-[#fff0f3] hover:bg-[#ffe2e7] text-[#9f1239] border border-[#fecdd3] text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
                 title={isMasterUser ? "Keluar dari akun master" : "Keluar dari akun murid"}
               >

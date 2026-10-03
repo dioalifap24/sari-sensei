@@ -1072,7 +1072,29 @@ export const storageService = {
     return sessionId;
   },
 
-  finishActiveQuiz: (sessionId: string, score: number, correctCount: number, totalQuestions: number = 50, durationSeconds: number = 0, selectedMinutes: number = 45) => {
+  recordQuizViolation: (sessionId: string, violationsCount: number) => {
+    try {
+      const records = storageService.getActiveQuizRecords();
+      const idx = records.findIndex(r => r.id === sessionId);
+      if (idx !== -1) {
+        records[idx].tabViolationsCount = violationsCount;
+        localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
+        window.dispatchEvent(new CustomEvent('active_quiz_updated', { detail: records[idx] }));
+      }
+    } catch (e) {
+      console.error('Failed to record quiz violation', e);
+    }
+  },
+
+  finishActiveQuiz: (
+    sessionId: string, 
+    score: number, 
+    correctCount: number, 
+    totalQuestions: number = 50, 
+    durationSeconds: number = 0, 
+    selectedMinutes: number = 45,
+    tabViolationsCount: number = 0
+  ) => {
     try {
       const records = storageService.getActiveQuizRecords();
       const idx = records.findIndex(r => r.id === sessionId);
@@ -1087,6 +1109,7 @@ export const storageService = {
         records[idx].score = score;
         records[idx].correctCount = correctCount;
         records[idx].totalQuestions = totalQuestions;
+        records[idx].tabViolationsCount = tabViolationsCount;
         localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
 
         // Also permanently save to quiz results history
@@ -1105,6 +1128,7 @@ export const storageService = {
           date: records[idx].date,
           startedAtTime: records[idx].startedAtTime,
           completedAtTime: timeStr,
+          tabViolationsCount,
         };
         storageService.saveScore(result);
 

@@ -17,7 +17,13 @@ import {
   Play,
   Square,
   Shield,
-  Sparkles
+  ShieldAlert,
+  AlertTriangle,
+  Crown,
+  Volume2,
+  Sparkles,
+  Maximize,
+  Minimize
 } from 'lucide-react';
 
 interface QuizViewProps {
@@ -27,6 +33,7 @@ interface QuizViewProps {
   onOpenAuth: () => void;
   onScoreCelebration: () => void;
   onNavigateHome: () => void;
+  onQuizRunningChange?: (running: boolean) => void;
 }
 
 interface PreparedQuestion {
@@ -46,6 +53,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
   onOpenAuth,
   onScoreCelebration,
   onNavigateHome,
+  onQuizRunningChange,
 }) => {
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
   const [quizStep, setQuizStep] = useState<'setup' | 'running' | 'result'>('setup');
@@ -65,8 +73,105 @@ export const QuizView: React.FC<QuizViewProps> = ({
   // Result state
   const [finalResult, setFinalResult] = useState<QuizResult | null>(null);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+  const [showConfirmExit, setShowConfirmExit] = useState(false);
 
+  // =========================================================================
+  // KEAMANAN KHUSUS KUIS (ANTI-KECURANGAN)
+  // Aturan ini aktif untuk MURID BIASA. Akun MASTER tidak terpengaruh!
+  // =========================================================================
   const isMasterUser = storageService.isMaster(currentUser);
+  const [tabViolationsCount, setTabViolationsCount] = useState<number>(0);
+  const [securityAlertModal, setSecurityAlertModal] = useState<boolean>(false);
+  const [securityAlertDetails, setSecurityAlertDetails] = useState<{ reason: string; message: string } | null>(null);
+  const [securityToast, setSecurityToast] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => !!document.fullscreenElement);
+  const lastViolationTimeRef = useRef<number>(0);
+
+  const toggleFullscreen = () => {
+    try {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    } catch {
+      // Abaikan jika browser memblokir fullscreen
+    }
+  };
+
+  // Suara alarm peringatan keamanan kuis (menggunakan Web Audio API, tanpa file eksternal)
+  const playSecurityBeep = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {
+      // Audio tidak didukung atau diblokir browser, abaikan tanpa error
+    }
+  };
+
+  // Pemicu Pelanggaran Keamanan Kuis (Cegah Pindah Tab, Buka Tab Baru, Keluar Web)
+  const triggerSecurityViolation = (type: string, customMsg?: string) => {
+    // KETENTUAN UTAMA: Akun Master sama sekali TIDAK terpengaruh aturan ini!
+    if (isMasterUser) return;
+    if (quizStep !== 'running') return;
+
+    const now = Date.now();
+    // Cegah debounce ganda dalam 2 detik
+    if (now - lastViolationTimeRef.current < 2000) {
+      return;
+    }
+    lastViolationTimeRef.current = now;
+
+    playSecurityBeep();
+
+    setTabViolationsCount(prev => {
+      const nextCount = prev + 1;
+      if (activeSessionIdRef.current) {
+        storageService.recordQuizViolation(activeSessionIdRef.current, nextCount);
+      }
+
+      let reason = 'Terdeteksi Berpindah Tab atau Jendela!';
+      let message = 'Anda dilarang membuka tab baru, berpindah tab browser, atau meminimalkan jendela selama ujian berlangsung demi menjaga integritas nilai kuis.';
+
+      if (type === 'shortcut_blocked') {
+        reason = 'Pintasan Keyboard Diblokir!';
+        message = customMsg || 'Pintasan keyboard untuk membuka tab atau jendela baru diblokir selama ujian.';
+      } else if (type === 'back_button') {
+        reason = 'Dilarang Kembali / Berpindah Halaman!';
+        message = 'Tombol kembali browser dinonaktifkan. Anda harus menyelesaikan kuis ini terlebih dahulu.';
+      } else if (type === 'devtools_blocked') {
+        reason = 'Pemeriksaan Kode Diblokir!';
+        message = 'Membuka DevTools / F12 dilarang selama sesi kuis.';
+      } else if (type === 'window_blur') {
+        reason = 'Jendela Kuis Kehilangan Fokus!';
+        message = 'Terdeteksi Anda beralih ke aplikasi lain atau mengklik di luar jendela ujian.';
+      }
+
+      setSecurityAlertDetails({ reason, message });
+      setSecurityAlertModal(true);
+
+      // Jika pelanggaran mencapai batas 3 kali, otomatis kumpulkan kuis secara paksa
+      if (nextCount >= 3) {
+        setTimeout(() => {
+          handleCompleteQuiz(false, true);
+        }, 1500);
+      }
+
+      return nextCount;
+    });
+  };
 
   // Load and listen to live quiz control state
   useEffect(() => {
@@ -110,6 +215,8 @@ export const QuizView: React.FC<QuizViewProps> = ({
     const totalSecs = selectedDurationMinutes * 60;
     setTimeRemainingSeconds(totalSecs);
     setElapsedSeconds(0);
+    setTabViolationsCount(0);
+    setSecurityAlertModal(false);
 
     // Hindari kuis anonim: wajib menggunakan akun murid resmi terdaftar
     if (!currentUser) {
@@ -124,6 +231,16 @@ export const QuizView: React.FC<QuizViewProps> = ({
     activeSessionIdRef.current = sessionId;
 
     setQuizStep('running');
+    if (!isMasterUser) {
+      onQuizRunningChange?.(true);
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch {
+        // Abaikan jika browser memblokir
+      }
+    }
   };
 
   // Timer effect during 'running'
@@ -148,11 +265,143 @@ export const QuizView: React.FC<QuizViewProps> = ({
     }
   }, [quizStep]);
 
+  // =========================================================================
+  // EFFECT PROTOKOL KEAMANAN KUIS (LOCKDOWN):
+  // CEGAH KELUAR HALAMAN, TUTUP WEB, BUKA TAB BARU, DAN SHORTCUT
+  // Catatan: Jika isMasterUser === true, seluruh proteksi di-bypass!
+  // =========================================================================
+  useEffect(() => {
+    if (isMasterUser || quizStep !== 'running') return;
+
+    // 1. History Trapping (Cegah Tombol Back / Navigasi Keluar)
+    window.history.pushState({ inQuizSession: true }, '', window.location.href);
+    const handlePopState = () => {
+      window.history.pushState({ inQuizSession: true }, '', window.location.href);
+      triggerSecurityViolation('back_button', 'Tombol navigasi kembali dinonaktifkan. Anda tidak diizinkan meninggalkan halaman kuis.');
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    // 2. Cegah Menutup Tab Browser / Window / Refresh Halaman
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = 'Sesi kuis sedang berlangsung! Jangan menutup web atau berpindah halaman.';
+      return e.returnValue;
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // 3. Deteksi Berpindah Tab Browser / Membuka Tab Baru / Beralih Aplikasi
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        triggerSecurityViolation('tab_switch', 'Terdeteksi Anda berpindah tab atau membuka tab baru!');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 4. Deteksi Jendela Kehilangan Fokus (Window Blur)
+    const handleWindowBlur = () => {
+      triggerSecurityViolation('window_blur', 'Terdeteksi jendela kuis kehilangan fokus!');
+    };
+    window.addEventListener('blur', handleWindowBlur);
+
+    // 5. Deteksi Kursor Meninggalkan Jendela Browser (Mouse Leave)
+    const handleMouseLeave = () => {
+      setSecurityToast('⚠️ Kursor terdeteksi meninggalkan area ujian! Harap tetap fokus pada lembar soal.');
+      setTimeout(() => setSecurityToast(null), 3000);
+    };
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    // 6. Deteksi Perubahan Mode Layar Penuh (Fullscreen Change)
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      if (!document.fullscreenElement && quizStep === 'running') {
+        setSecurityToast('⚠️ Anda keluar dari mode layar penuh. Disarankan tetap dalam layar penuh demi kelancaran ujian.');
+        setTimeout(() => setSecurityToast(null), 4000);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    // 7. Blokir Tombol Pintasan Keyboard (Ctrl+T, Ctrl+N, Ctrl+W, Ctrl+Tab, F5, F12, DevTools, Copy-Paste)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+      // Blokir Buka Tab Baru (Ctrl+T / Cmd+T), Jendela Baru (Ctrl+N), atau Tutup Tab (Ctrl+W), Quit (Ctrl+Q)
+      if (isCtrlOrMeta && (key === 't' || key === 'n' || key === 'w' || key === 'q')) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSecurityViolation('shortcut_blocked', `Pintasan ${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${key.toUpperCase()} (buka/tutup tab/jendela) dilarang selama kuis!`);
+        return false;
+      }
+
+      // Blokir Pindah Tab Browser (Ctrl+Tab, Ctrl+PageUp, Ctrl+PageDown)
+      if (isCtrlOrMeta && (key === 'tab' || key === 'pageup' || key === 'pagedown')) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSecurityViolation('shortcut_blocked', 'Pintasan berpindah tab browser dilarang selama kuis!');
+        return false;
+      }
+
+      // Blokir Refresh / Muat Ulang Halaman (F5, Ctrl+R, Cmd+R)
+      if (e.key === 'F5' || (isCtrlOrMeta && key === 'r')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSecurityToast('Refresh halaman dinonaktifkan selama kuis berlangsung demi integritas ujian!');
+        setTimeout(() => setSecurityToast(null), 3000);
+        return false;
+      }
+
+      // Blokir F12 atau DevTools (Ctrl+Shift+I / Ctrl+Shift+J / Ctrl+Shift+C)
+      if (e.key === 'F12' || (isCtrlOrMeta && e.shiftKey && (key === 'i' || key === 'j' || key === 'c'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSecurityViolation('devtools_blocked', 'Pemeriksaan kode (F12 / DevTools) dilarang keras selama kuis!');
+        return false;
+      }
+
+      // Blokir Alt+Tab & Alt+F4
+      if (e.altKey && (e.key === 'Tab' || e.key === 'F4')) {
+        e.preventDefault();
+        triggerSecurityViolation('tab_switch', 'Pintasan berpindah aplikasi atau menutup jendela dilarang selama kuis!');
+        return false;
+      }
+
+      // Blokir Copy-Paste, Cut, & Print (Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+U, Ctrl+P, Ctrl+S)
+      if (isCtrlOrMeta && (key === 'c' || key === 'v' || key === 'x' || key === 'u' || key === 'p' || key === 's')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSecurityToast(`Pintasan ${e.ctrlKey ? 'Ctrl' : 'Cmd'}+${key.toUpperCase()} dinonaktifkan demi integritas ujian.`);
+        setTimeout(() => setSecurityToast(null), 3000);
+        return false;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+
+    // 8. Blokir Klik Kanan (Context Menu)
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      setSecurityToast('Klik kanan dinonaktifkan demi integritas keamanan ujian.');
+      setTimeout(() => setSecurityToast(null), 3000);
+    };
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [isMasterUser, quizStep]);
+
   // Complete Quiz & Calculate Score (Records live completion in "Nilai Murid")
-  const handleCompleteQuiz = (isTimeUp = false) => {
+  const handleCompleteQuiz = (isTimeUp = false, isForcedSubmit = false) => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
     }
+    onQuizRunningChange?.(false);
 
     let correctCount = 0;
     questions.forEach((q, idx) => {
@@ -169,7 +418,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
     const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const timeStr = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Finalize live session in active quiz storage
+    // Finalize live session in active quiz storage with tab violations
     if (activeSessionIdRef.current) {
       storageService.finishActiveQuiz(
         activeSessionIdRef.current,
@@ -177,7 +426,8 @@ export const QuizView: React.FC<QuizViewProps> = ({
         correctCount,
         questions.length,
         elapsedSeconds,
-        selectedDurationMinutes
+        selectedDurationMinutes,
+        tabViolationsCount
       );
     } else {
       // Fallback direct score save
@@ -195,6 +445,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
         completedAt: formattedDate,
         date: now.toISOString().split('T')[0],
         completedAtTime: timeStr,
+        tabViolationsCount,
       };
       storageService.saveScore(directResult);
     }
@@ -213,14 +464,17 @@ export const QuizView: React.FC<QuizViewProps> = ({
       completedAt: formattedDate,
       date: now.toISOString().split('T')[0],
       completedAtTime: timeStr,
+      tabViolationsCount,
     };
 
     setFinalResult(res);
     setShowConfirmSubmit(false);
+    setShowConfirmExit(false);
+    setSecurityAlertModal(false);
     setQuizStep('result');
 
-    // If score >= 90, trigger blooming cherry blossom storm
-    if (finalScore >= 90) {
+    // If score >= 90 and not forced submit, trigger blooming cherry blossom storm
+    if (finalScore >= 90 && !isForcedSubmit) {
       onScoreCelebration();
     }
   };
@@ -438,7 +692,42 @@ export const QuizView: React.FC<QuizViewProps> = ({
     const answeredCount = Object.keys(userAnswers).length;
 
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8 select-none">
+        {/* Security Toast Notification */}
+        {securityToast && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-red-600 text-white font-bold text-xs rounded-2xl shadow-2xl border border-red-300 animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            <span>{securityToast}</span>
+          </div>
+        )}
+
+        {/* Top Security Status Banner */}
+        {!isMasterUser ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-red-50/95 border-2 border-red-300 rounded-2xl mb-4 text-xs shadow-2xs">
+            <div className="flex items-center gap-2 text-red-900 font-extrabold">
+              <ShieldAlert className="w-4 h-4 text-red-600 animate-pulse shrink-0" />
+              <span>Mode Ujian Terkunci (Anti-Kecurangan Aktif)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-red-700 hidden sm:inline">Dilarang pindah tab / menutup web</span>
+              {tabViolationsCount > 0 ? (
+                <span className="px-2 py-0.5 bg-red-600 text-white rounded-md text-[10px] font-black animate-bounce shadow-2xs">
+                  ⚠️ {tabViolationsCount}/3 Pelanggaran
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md text-[10px] font-bold border border-emerald-300">
+                  Status: Tertib
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-amber-100 to-amber-200 border-2 border-amber-300 rounded-2xl mb-4 text-xs text-amber-950 font-bold shadow-2xs">
+            <Crown className="w-4 h-4 text-amber-800 shrink-0" />
+            <span>👑 Akun Master (Sensei Sari): Bebas dari aturan keamanan ujian (Bisa berpindah tab / keluar web untuk pengujian).</span>
+          </div>
+        )}
+
         {/* Top Floating Quiz Header */}
         <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between gap-3">
           <div>
@@ -451,21 +740,44 @@ export const QuizView: React.FC<QuizViewProps> = ({
             </div>
           </div>
 
-          {/* Real-Time Countdown Timer */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#fae8eb] border border-[#fbcfe8] rounded-xl text-[#881337] font-mono font-bold text-sm sm:text-base shrink-0 shadow-2xs">
-            <Clock className="w-4 h-4 animate-spin-slow" />
-            <span>{formatTime(timeRemainingSeconds)}</span>
+          <div className="flex items-center gap-2">
+            {/* Tombol Mode Layar Penuh (Fullscreen) */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-[#fbf0e6] hover:bg-[#f4e2d0] text-[#881337] border border-[#e4ccb5] rounded-xl text-xs font-bold transition-colors"
+              title={isFullscreen ? 'Keluar Layar Penuh' : 'Aktifkan Mode Layar Penuh Ujian'}
+            >
+              {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+              <span>{isFullscreen ? 'Normal' : 'Layar Penuh'}</span>
+            </button>
+
+            {/* Real-Time Countdown Timer */}
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-[#fae8eb] border border-[#fbcfe8] rounded-xl text-[#881337] font-mono font-bold text-sm sm:text-base shrink-0 shadow-2xs">
+              <Clock className="w-4 h-4 animate-spin-slow" />
+              <span>{formatTime(timeRemainingSeconds)}</span>
+            </div>
+
+            {/* Tombol Keluar Kuis dengan Konfirmasi */}
+            <button
+              type="button"
+              onClick={() => setShowConfirmExit(true)}
+              className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl text-xs font-semibold transition-colors"
+              title="Batalkan & Keluar dari Kuis"
+            >
+              Keluar
+            </button>
           </div>
         </div>
 
         {/* Question Card */}
         {currentQ && (
-          <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl p-6 sm:p-8 shadow-md mb-6">
+          <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl p-6 sm:p-8 shadow-md mb-6 select-none">
             <div className="text-xs font-bold text-[#a88a70] uppercase mb-2">
               Pertanyaan #{currentQuestionIndex + 1} {currentQ.topic ? `· ${currentQ.topic}` : ''}
             </div>
 
-            <h3 className="text-lg sm:text-xl font-bold text-[#2c1d11] font-japanese leading-relaxed mb-6">
+            <h3 className="text-lg sm:text-xl font-bold text-[#2c1d11] font-japanese leading-relaxed mb-6 select-none">
               {currentQ.question}
             </h3>
 
@@ -538,6 +850,37 @@ export const QuizView: React.FC<QuizViewProps> = ({
           )}
         </div>
 
+        {/* Modal Konfirmasi Keluar dari Kuis */}
+        {showConfirmExit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+            <div className="w-full max-w-md bg-[#fffdfa] border-2 border-red-300 rounded-3xl p-6 shadow-2xl text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h4 className="text-lg font-bold text-red-700 font-japanese mb-1">
+                Batalkan dan Keluar dari Kuis?
+              </h4>
+              <p className="text-xs text-[#735338] mb-4 leading-relaxed">
+                Jika Anda keluar sekarang, sesi ujian Anda akan dihentikan dan jawaban yang telah Anda pilih ({answeredCount} soal) akan otomatis dikumpulkan dan dinilai apa adanya.
+              </p>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => setShowConfirmExit(false)}
+                  className="flex-1 py-2.5 bg-stone-100 text-[#553b26] font-bold text-xs rounded-xl"
+                >
+                  Lanjut Kuis
+                </button>
+                <button
+                  onClick={() => handleCompleteQuiz(false)}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs"
+                >
+                  Kumpulkan & Keluar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Confirmation Modal to Submit */}
         {showConfirmSubmit && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
@@ -565,6 +908,69 @@ export const QuizView: React.FC<QuizViewProps> = ({
                   Ya, Kumpulkan Sekarang
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================================
+            MODAL LOCKDOWN KEAMANAN KUIS (TERDETEKSI PINDAH TAB / BUKA TAB BARU)
+            ========================================================================= */}
+        {securityAlertModal && securityAlertDetails && !isMasterUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white border-4 border-red-500 rounded-3xl p-6 sm:p-7 shadow-2xl text-center">
+              <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 animate-bounce shadow-inner">
+                <ShieldAlert className="w-9 h-9" />
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-black mb-2 uppercase tracking-wider">
+                <span>Pelanggaran Keamanan Terdeteksi</span>
+              </div>
+
+              <h3 className="text-lg sm:text-xl font-black text-red-700 font-japanese">
+                {securityAlertDetails.reason}
+              </h3>
+
+              <p className="text-xs text-stone-600 mt-2 leading-relaxed">
+                {securityAlertDetails.message}
+              </p>
+
+              <div className="my-4 p-3.5 bg-red-50 border border-red-200 rounded-2xl text-left space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-extrabold text-red-900">
+                  <span>Status Peringatan:</span>
+                  <span className="font-mono text-sm">{tabViolationsCount} / 3</span>
+                </div>
+                
+                <div className="w-full bg-red-200 h-2.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-red-600 h-full transition-all duration-300"
+                    style={{ width: `${Math.min((tabViolationsCount / 3) * 100, 100)}%` }}
+                  />
+                </div>
+
+                <p className="text-[11px] text-red-700 pt-1 font-semibold leading-tight">
+                  {tabViolationsCount >= 3 
+                    ? '⚠️ Batas maksimal pelanggaran (3x) telah tercapai! Kuis Anda akan otomatis dikumpulkan dan dicatat oleh sistem.' 
+                    : `⚠️ Anda memiliki sisa toleransi ${3 - tabViolationsCount} kali lagi sebelum kuis dikumpulkan secara paksa.`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (tabViolationsCount >= 3) {
+                    handleCompleteQuiz(false, true);
+                  } else {
+                    setSecurityAlertModal(false);
+                  }
+                }}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {tabViolationsCount >= 3 ? (
+                  <span>Kumpulkan Kuis Sekarang</span>
+                ) : (
+                  <span>Saya Mengerti & Kembali ke Kuis</span>
+                )}
+              </button>
             </div>
           </div>
         )}
@@ -669,6 +1075,28 @@ export const QuizView: React.FC<QuizViewProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Informasi Protokol Keamanan Ujian Khusus Murid */}
+        {!isMasterUser && (
+          <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-2xl mb-6 text-xs text-[#553b26] space-y-1.5 shadow-2xs">
+            <div className="font-extrabold text-[#881337] flex items-center gap-1.5 text-xs sm:text-sm">
+              <ShieldAlert className="w-4 h-4 text-[#881337] shrink-0" />
+              <span>Protokol Keamanan & Anti-Kecurangan Ujian Aktif:</span>
+            </div>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#6e533d] leading-relaxed">
+              <li><strong>Dilarang Berpindah Tab atau Membuka Tab Baru:</strong> Sistem mendeteksi otomatis jika Anda beralih tab, meminimalkan browser, atau membuka aplikasi lain. Toleransi maksimal 3 kali sebelum kuis dikumpulkan paksa.</li>
+              <li><strong>Dilarang Keluar atau Menutup Halaman:</strong> Tombol navigasi dan penutupan browser dikunci selama ujian berlangsung demi integritas nilai Anda.</li>
+              <li><strong>Pintasan Keyboard Dinonaktifkan:</strong> Tombol pintas (Ctrl+T, Ctrl+N, Ctrl+W, F12) dan klik kanan dinonaktifkan demi ketertiban ujian resmi.</li>
+            </ul>
+          </div>
+        )}
+
+        {isMasterUser && (
+          <div className="p-3.5 bg-gradient-to-r from-amber-100 to-amber-200 border border-amber-300 rounded-2xl mb-6 text-xs text-amber-950 flex items-center gap-2 font-bold shadow-2xs">
+            <Crown className="w-4 h-4 text-amber-800 shrink-0" />
+            <span>Akun Master (Sensei Sari): Anda bebas dari seluruh aturan keamanan ujian untuk keperluan pengujian dan pengawasan.</span>
+          </div>
+        )}
 
         {/* Start Quiz Action */}
         <div className="text-center pt-2">

@@ -23,6 +23,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [activeLevel, setActiveLevelState] = useState<JLPTLevel>(() => storageService.getActiveLevel());
   const [quizControl, setQuizControl] = useState<QuizControlState>(() => storageService.getQuizControlState());
+  const [isStudentQuizRunning, setIsStudentQuizRunning] = useState<boolean>(false);
 
   // Sakura Interactive Particle Triggers
   const [triggerSakuraRain, setTriggerSakuraRain] = useState(false);
@@ -279,6 +280,11 @@ export function App() {
         onLogout={handleLogout}
         activeLevel={activeLevel}
         setActiveLevel={handleSetActiveLevel}
+        isStudentQuizRunning={isStudentQuizRunning}
+        onBlockedNavigation={() => {
+          setToastMessage('⚠️ Mode Ujian Terkunci! Anda sedang mengerjakan kuis. Selesaikan atau kumpulkan kuis terlebih dahulu sebelum berpindah menu.');
+          setTimeout(() => setToastMessage(null), 4000);
+        }}
       />
 
       {/* Main Content Area */}
@@ -322,6 +328,7 @@ export function App() {
             onOpenAuth={() => setCurrentUser(null)}
             onScoreCelebration={handleScoreCelebration}
             onNavigateHome={() => setActiveTab('home')}
+            onQuizRunningChange={setIsStudentQuizRunning}
           />
         )}
 
@@ -345,7 +352,14 @@ export function App() {
       {/* Mobile Bottom Navigation Bar */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#fffdfa]/95 backdrop-blur-md border-t border-[#ebdccb] py-1.5 px-2 flex justify-around items-center">
         <button
-          onClick={() => setActiveTab('home')}
+          onClick={() => {
+            if (isStudentQuizRunning && !isMasterUser) {
+              setToastMessage('⚠️ Mode Ujian Terkunci! Selesaikan kuis terlebih dahulu sebelum berpindah menu.');
+              setTimeout(() => setToastMessage(null), 4000);
+              return;
+            }
+            setActiveTab('home');
+          }}
           className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
             activeTab === 'home' ? 'text-[#881337]' : 'text-[#735338]'
           }`}
@@ -355,7 +369,14 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('materi')}
+          onClick={() => {
+            if (isStudentQuizRunning && !isMasterUser) {
+              setToastMessage('⚠️ Mode Ujian Terkunci! Selesaikan kuis terlebih dahulu sebelum berpindah menu.');
+              setTimeout(() => setToastMessage(null), 4000);
+              return;
+            }
+            setActiveTab('materi');
+          }}
           className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
             activeTab === 'materi' ? 'text-[#881337]' : 'text-[#735338]'
           }`}
@@ -384,7 +405,14 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('vocab')}
+          onClick={() => {
+            if (isStudentQuizRunning && !isMasterUser) {
+              setToastMessage('⚠️ Mode Ujian Terkunci! Selesaikan kuis terlebih dahulu sebelum berpindah menu.');
+              setTimeout(() => setToastMessage(null), 4000);
+              return;
+            }
+            setActiveTab('vocab');
+          }}
           className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
             activeTab === 'vocab' ? 'text-[#881337]' : 'text-[#735338]'
           }`}
@@ -394,7 +422,14 @@ export function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('kanji')}
+          onClick={() => {
+            if (isStudentQuizRunning && !isMasterUser) {
+              setToastMessage('⚠️ Mode Ujian Terkunci! Selesaikan kuis terlebih dahulu sebelum berpindah menu.');
+              setTimeout(() => setToastMessage(null), 4000);
+              return;
+            }
+            setActiveTab('kanji');
+          }}
           className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
             activeTab === 'kanji' ? 'text-[#881337]' : 'text-[#735338]'
           }`}
@@ -415,7 +450,14 @@ export function App() {
           </button>
         ) : (
           <button
-            onClick={() => setActiveTab('laporan')}
+            onClick={() => {
+              if (isStudentQuizRunning && !isMasterUser) {
+                setToastMessage('⚠️ Mode Ujian Terkunci! Selesaikan kuis terlebih dahulu sebelum berpindah menu.');
+                setTimeout(() => setToastMessage(null), 4000);
+                return;
+              }
+              setActiveTab('laporan');
+            }}
             className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
               activeTab === 'laporan' ? 'text-[#881337]' : 'text-[#735338]'
             }`}

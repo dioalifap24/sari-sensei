@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, ActiveQuizRecord, QuizControlState, QuizResult } from '../types';
 import { storageService, MASTER_CONFIG } from '../services/storageService';
-import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, UserX, Clock, Calendar, ChevronRight, Activity, RotateCcw, Trophy, Medal, Sparkles, KeyRound, Eye, EyeOff, Mail } from 'lucide-react';
+import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, ShieldAlert, UserX, Clock, Calendar, ChevronRight, Activity, RotateCcw, Trophy, Medal, Sparkles, KeyRound, Eye, EyeOff, Mail } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 
 interface MasterManagementViewProps {
@@ -626,8 +626,19 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
                         {/* Nama Murid */}
                         <td className="py-3 px-4">
-                          <div className="font-bold text-[#3d2a1b]">
-                            {rec.studentName}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-bold text-[#3d2a1b]">
+                              {rec.studentName}
+                            </span>
+                            {rec.tabViolationsCount && rec.tabViolationsCount > 0 ? (
+                              <span 
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded-md text-[10px] font-black shrink-0"
+                                title={`Peringatan: Murid terdeteksi berpindah tab / keluar jendela sebanyak ${rec.tabViolationsCount} kali`}
+                              >
+                                <ShieldAlert className="w-3 h-3 text-rose-600 shrink-0" />
+                                <span>{rec.tabViolationsCount}x Pindah Tab</span>
+                              </span>
+                            ) : null}
                           </div>
                           <div className="text-[11px] text-[#8c6b4b] flex items-center gap-1 mt-0.5">
                             <span className="font-medium text-[#881337]">Panggilan: {rec.studentNickname}</span>
