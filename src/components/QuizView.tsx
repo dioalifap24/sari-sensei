@@ -111,14 +111,14 @@ export const QuizView: React.FC<QuizViewProps> = ({
     setTimeRemainingSeconds(totalSecs);
     setElapsedSeconds(0);
 
+    // Hindari kuis anonim: wajib menggunakan akun murid resmi terdaftar
+    if (!currentUser) {
+      onOpenAuth();
+      return;
+    }
+
     // Register active quiz session live in storage
-    const userToRecord: User = currentUser || {
-      email: 'murid.tamu@gmail.com',
-      fullName: 'Murid Tamu',
-      nickname: 'Tamu',
-      registeredAt: new Date().toISOString(),
-      isMaster: false,
-    };
+    const userToRecord: User = currentUser;
     
     const sessionId = storageService.startActiveQuiz(userToRecord, activeLevel, prepared.length);
     activeSessionIdRef.current = sessionId;
@@ -672,13 +672,28 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
         {/* Start Quiz Action */}
         <div className="text-center pt-2">
-          <button
-            onClick={handleStartQuiz}
-            className="w-full sm:w-auto px-8 py-4 bg-[#881337] hover:bg-[#70102d] text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 mx-auto"
-          >
-            <span>Mulai Mengerjakan Kuis Sekarang</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
+          {!currentUser ? (
+            <div className="p-4 bg-amber-50/90 border border-amber-200 rounded-2xl max-w-md mx-auto mb-3 text-center">
+              <p className="text-xs text-amber-950 font-bold mb-2">
+                🔒 Pengerjaan kuis anonim tidak diizinkan. Silakan masuk atau daftar akun resmi Anda terlebih dahulu.
+              </p>
+              <button
+                onClick={onOpenAuth}
+                className="w-full py-3 px-6 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2"
+              >
+                <span>Masuk / Daftar Akun Murid Resmi</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleStartQuiz}
+              className="w-full sm:w-auto px-8 py-4 bg-[#881337] hover:bg-[#70102d] text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 mx-auto"
+            >
+              <span>Mulai Mengerjakan Kuis Sekarang</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          )}
           <p className="text-[11px] text-[#a88a70] mt-3">
             🌸 50 soal pilihan ganda standar kurikulum resmi dengan pembahasan lengkap.
           </p>

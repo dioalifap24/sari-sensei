@@ -51,14 +51,29 @@ export function App() {
     let lastRecorded = 0;
     const recordActivity = () => {
       const now = Date.now();
-      if (now - lastRecorded > 15000) {
+      if (now - lastRecorded > 10000) {
         lastRecorded = now;
         storageService.updateLastActive();
+        if (currentUser && !storageService.isMaster(currentUser)) {
+          storageService.heartbeatPresence(currentUser);
+        }
       }
     };
 
+    // Initial heartbeat if logged in
+    if (currentUser && !storageService.isMaster(currentUser)) {
+      storageService.heartbeatPresence(currentUser);
+    }
+
     const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
     activityEvents.forEach((ev) => window.addEventListener(ev, recordActivity, { passive: true }));
+
+    const handleBeforeUnload = () => {
+      if (currentUser && !storageService.isMaster(currentUser)) {
+        storageService.setPresenceOffline(currentUser.email);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
@@ -73,6 +88,7 @@ export function App() {
             setTimeout(() => setToastMessage(null), 5000);
           } else {
             storageService.updateLastActive();
+            storageService.heartbeatPresence(currentUser);
           }
         }
       }
@@ -80,6 +96,9 @@ export function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const intervalId = window.setInterval(() => {
+      if (currentUser && !storageService.isMaster(currentUser)) {
+        storageService.heartbeatPresence(currentUser);
+      }
       if (!storageService.isMaster(currentUser)) {
         const session = storageService.checkSessionExpired(currentUser);
         if (session.expired) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, ActiveQuizRecord, QuizControlState, QuizResult } from '../types';
-import { storageService } from '../services/storageService';
+import { storageService, MASTER_CONFIG } from '../services/storageService';
 import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, UserX, Clock, Calendar, ChevronRight, Activity, RotateCcw, Trophy, Medal, Sparkles, KeyRound, Eye, EyeOff, Mail } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 
@@ -23,6 +23,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'in_progress' | 'completed'>('all');
+  const [filterPresence, setFilterPresence] = useState<'all' | 'online' | 'offline'>('all');
   
   // Student & Record Deletion / Reset Modals / Password Management
   const [studentToDelete, setStudentToDelete] = useState<User | null>(null);
@@ -31,6 +32,11 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const [visiblePasswords, setVisiblePasswords] = useState<{ [email: string]: boolean }>({});
   const [studentToResetPassword, setStudentToResetPassword] = useState<{ user: User; currentPassword: string } | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
+  
+  // Master Password Management State (Bebas 2 sampai 10 karakter)
+  const [showMasterPasswordModal, setShowMasterPasswordModal] = useState(false);
+  const [masterCurrentPassword, setMasterCurrentPassword] = useState('');
+  const [masterNewPasswordInput, setMasterNewPasswordInput] = useState('');
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
 
   // Load all data
@@ -53,8 +59,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const handleSaveNewStudentPassword = () => {
     if (!studentToResetPassword) return;
     const cleanPass = newPasswordInput.trim();
-    if (!cleanPass || cleanPass.length < 4) {
-      setNotificationMsg('Kata sandi baru minimal 4 karakter!');
+    if (!cleanPass || cleanPass.length < 8) {
+      setNotificationMsg('Kata sandi baru murid wajib minimal 8 karakter!');
       setTimeout(() => setNotificationMsg(null), 3000);
       return;
     }
@@ -63,6 +69,25 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       setNotificationMsg(`Kata sandi untuk ${studentToResetPassword.user.nickname || studentToResetPassword.user.fullName} berhasil diperbarui menjadi "${cleanPass}"! 🔑`);
       setStudentToResetPassword(null);
       setNewPasswordInput('');
+      loadData();
+    } else {
+      setNotificationMsg(res.message);
+    }
+    setTimeout(() => setNotificationMsg(null), 4000);
+  };
+
+  const handleSaveMasterPassword = () => {
+    const cleanPass = masterNewPasswordInput.trim();
+    if (cleanPass.length < 2 || cleanPass.length > 10) {
+      setNotificationMsg('Kata sandi akun master bebas antara minimal 2 sampai maksimal 10 karakter!');
+      setTimeout(() => setNotificationMsg(null), 3000);
+      return;
+    }
+    const res = storageService.updateStudentPassword(MASTER_CONFIG.email, cleanPass);
+    if (res.success) {
+      setNotificationMsg(`Kata sandi akun Master berhasil diubah menjadi "${cleanPass}"! 🔑`);
+      setShowMasterPasswordModal(false);
+      setMasterNewPasswordInput('');
       loadData();
     } else {
       setNotificationMsg(res.message);
@@ -88,6 +113,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     window.addEventListener('student_data_updated', handleStudentDataUpdate);
     window.addEventListener('quiz_control_changed', handleQuizControlChange);
     window.addEventListener('scores_updated', handleScoresUpdate);
+    window.addEventListener('presence_updated', loadData);
     window.addEventListener('storage', loadData);
 
     return () => {
@@ -96,6 +122,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       window.removeEventListener('student_data_updated', handleStudentDataUpdate);
       window.removeEventListener('quiz_control_changed', handleQuizControlChange);
       window.removeEventListener('scores_updated', handleScoresUpdate);
+      window.removeEventListener('presence_updated', loadData);
       window.removeEventListener('storage', loadData);
     };
   }, []);
@@ -262,13 +289,25 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     return matchQuery && matchLevel && matchStatus;
   });
 
+  // Hitung jumlah murid yang sedang online mengakses web
+  const onlineStudentsCount = studentsList.filter(stu => storageService.isStudentOnline(stu.email)).length;
+  const offlineStudentsCount = Math.max(0, studentsList.length - onlineStudentsCount);
+
   // Filtered students
   const filteredStudents = studentsList.filter(stu => {
     const q = searchQuery.toLowerCase().trim();
-    return !q || 
+    const matchQuery = !q || 
       (stu.fullName && stu.fullName.toLowerCase().includes(q)) || 
       (stu.nickname && stu.nickname.toLowerCase().includes(q)) || 
       stu.email.toLowerCase().includes(q);
+
+    const isOnline = storageService.isStudentOnline(stu.email);
+    const matchPresence = 
+      filterPresence === 'all' || 
+      (filterPresence === 'online' && isOnline) || 
+      (filterPresence === 'offline' && !isOnline);
+
+    return matchQuery && matchPresence;
   });
 
   return (
@@ -296,6 +335,21 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <UchihaClanLogo className="w-4 h-4" />
                 <span>Akun Master: <span className="font-extrabold text-[#881337]">{currentUser?.nickname || 'skywalker'}</span></span>
               </div>
+
+              {/* Tombol Ganti Kata Sandi Master (Bebas 2 sampai 10 Karakter) */}
+              <button
+                onClick={() => {
+                  const masterCred = storageService.getUsers().find(u => storageService.isMaster(u.user));
+                  setMasterCurrentPassword(masterCred?.password || MASTER_CONFIG.password);
+                  setMasterNewPasswordInput('');
+                  setShowMasterPasswordModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-amber-50 border border-amber-300 hover:border-amber-400 rounded-full text-amber-900 font-extrabold text-xs shadow-2xs transition-all active:scale-95"
+                title="Ganti Kata Sandi Akun Master (Bebas 2 sampai 10 Karakter)"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-700" />
+                <span>Ganti Sandi Master (2–10 Karakter)</span>
+              </button>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#881337] font-japanese tracking-tight">
@@ -380,6 +434,12 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
             <span className="px-1.5 py-0.2 bg-white/20 rounded-md text-[10px]">
               {studentsList.length} Murid
             </span>
+            {onlineStudentsCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500 text-white rounded-md text-[10px] font-black animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                <span>{onlineStudentsCount} Online</span>
+              </span>
+            )}
           </button>
 
           {/* Quick Action: Reset Ranking Sesi & Reload */}
@@ -667,15 +727,135 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           ========================================================================= */}
       {subTab === 'student_list' && (
         <div className="space-y-4">
-          {/* Header Info & Search */}
-          <div className="bg-[#fffdfa] border border-[#ebdccb] p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
-            <div>
-              <div className="text-base font-bold text-[#881337]">
-                Daftar Akun Semua Murid Terdaftar ({studentsList.length} Murid)
+          {/* Informasi Jumlah Murid Online & Kehadiran Realtime */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Card Murid Online */}
+            <div 
+              onClick={() => setFilterPresence(filterPresence === 'online' ? 'all' : 'online')}
+              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+                filterPresence === 'online'
+                  ? 'bg-emerald-100/80 border-emerald-500 ring-2 ring-emerald-300'
+                  : 'bg-gradient-to-br from-emerald-50 via-[#f0fdf4] to-teal-50 border-emerald-300 hover:border-emerald-400'
+              }`}
+              title="Klik untuk memfilter murid yang sedang online"
+            >
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                    Sedang Mengakses Web
+                  </span>
+                </div>
+                <div className="text-2xl font-black text-emerald-950 font-japanese">
+                  {onlineStudentsCount} Murid Online
+                </div>
+                <p className="text-[11px] text-emerald-700 mt-0.5">
+                  Aktif membuka materi atau kuis sekarang
+                </p>
               </div>
-              <p className="text-xs text-[#735338]">
-                Kelola akun murid atau hapus akun murid yang telah menyelesaikan program kelas Sensei Sari.
-              </p>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 text-2xl shrink-0 shadow-2xs">
+                🟢
+              </div>
+            </div>
+
+            {/* Card Murid Offline */}
+            <div 
+              onClick={() => setFilterPresence(filterPresence === 'offline' ? 'all' : 'offline')}
+              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs flex items-center justify-between ${
+                filterPresence === 'offline'
+                  ? 'bg-stone-100 border-stone-500 ring-2 ring-stone-300'
+                  : 'bg-white border-[#ebdccb] hover:border-[#dec7b0]'
+              }`}
+              title="Klik untuk memfilter murid yang sedang offline"
+            >
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-stone-400"></span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#735338]">
+                    Sedang Tidak Aktif
+                  </span>
+                </div>
+                <div className="text-2xl font-black text-[#3d2a1b] font-japanese">
+                  {offlineStudentsCount} Murid Offline
+                </div>
+                <p className="text-[11px] text-[#8c6b4b] mt-0.5">
+                  Belum membuka web saat ini
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500 text-2xl shrink-0">
+                ⚪
+              </div>
+            </div>
+
+            {/* Card Total Akun Murid */}
+            <div 
+              onClick={() => setFilterPresence('all')}
+              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer shadow-2xs flex items-center justify-between ${
+                filterPresence === 'all'
+                  ? 'bg-rose-50/70 border-[#881337]/50'
+                  : 'bg-[#fffdfa] border-[#ebdccb] hover:border-[#dec7b0]'
+              }`}
+              title="Klik untuk melihat semua murid"
+            >
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[#881337] mb-1 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Total Murid Terdaftar</span>
+                </div>
+                <div className="text-2xl font-black text-[#881337] font-japanese">
+                  {studentsList.length} Murid
+                </div>
+                <p className="text-[11px] text-[#735338] mt-0.5">
+                  Seluruh murid terdaftar kelas Sensei Sari
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-[#fae8eb] border border-[#fbcfe8] flex items-center justify-center text-[#881337] text-2xl shrink-0">
+                👥
+              </div>
+            </div>
+          </div>
+
+          {/* Header Info & Search & Quick Filters */}
+          <div className="bg-[#fffdfa] border border-[#ebdccb] p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-[#881337]">Filter Status:</span>
+              <div className="flex items-center gap-1 bg-[#f5ede1] p-1 rounded-xl text-xs">
+                <button
+                  onClick={() => setFilterPresence('all')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    filterPresence === 'all'
+                      ? 'bg-[#881337] text-white shadow-2xs'
+                      : 'text-[#735338] hover:text-[#881337]'
+                  }`}
+                >
+                  Semua ({studentsList.length})
+                </button>
+                <button
+                  onClick={() => setFilterPresence('online')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    filterPresence === 'online'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-emerald-800 hover:text-emerald-950'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>Online ({onlineStudentsCount})</span>
+                </button>
+                <button
+                  onClick={() => setFilterPresence('offline')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    filterPresence === 'offline'
+                      ? 'bg-stone-600 text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-stone-400" />
+                  <span>Offline ({offlineStudentsCount})</span>
+                </button>
+              </div>
             </div>
 
             {/* Search Input */}
@@ -700,6 +880,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     <th className="py-3 px-4">No.</th>
                     <th className="py-3 px-4">Nama Lengkap Murid</th>
                     <th className="py-3 px-3">Nama Panggilan</th>
+                    <th className="py-3 px-3 text-center">Status Kehadiran</th>
                     <th className="py-3 px-4">Email & Kata Sandi Murid</th>
                     <th className="py-3 px-3">Tanggal Mendaftar</th>
                     <th className="py-3 px-3 text-center">Total Kuis</th>
@@ -709,7 +890,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <tbody className="divide-y divide-[#f2e6d6]">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-[#8c6b4b]">
+                      <td colSpan={8} className="py-8 text-center text-[#8c6b4b]">
                         <div className="text-2xl mb-1">🌸</div>
                         <p className="font-semibold">Tidak ada data murid yang cocok.</p>
                       </td>
@@ -726,16 +907,50 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                       const cred = studentsCredentials.find(c => c.user.email.toLowerCase() === student.email.toLowerCase());
                       const studentPassword = cred ? cred.password : '••••••••';
 
+                      // Status Kehadiran Murid (Online / Offline)
+                      const isOnline = storageService.isStudentOnline(student.email);
+
                       return (
                         <tr key={student.email} className="hover:bg-[#fcf8f2] transition-colors">
                           <td className="py-3 px-4 font-bold text-[#881337]">
                             {idx + 1}
                           </td>
-                          <td className="py-3 px-4 font-bold text-[#3d2a1b]">
-                            {student.fullName || student.name || 'Murid'}
+
+                          {/* Nama Lengkap Murid dengan Simbol Online */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {isOnline ? (
+                                <span className="relative flex h-2.5 w-2.5 shrink-0" title="Murid sedang online mengakses web">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                                </span>
+                              ) : (
+                                <span className="w-2.5 h-2.5 rounded-full bg-stone-300 shrink-0" title="Offline"></span>
+                              )}
+                              <span className="font-bold text-[#3d2a1b]">{student.fullName || student.name || 'Murid'}</span>
+                            </div>
                           </td>
+
                           <td className="py-3 px-3 font-semibold text-[#881337]">
                             {student.nickname || '-'}
+                          </td>
+
+                          {/* Kolom Simbol & Badge Status Kehadiran (Online / Offline) */}
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            {isOnline ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-full text-xs font-black shadow-2xs">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                                <span>Online</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 text-stone-500 border border-stone-200 rounded-full text-xs font-semibold">
+                                <span className="w-2 h-2 rounded-full bg-stone-400"></span>
+                                <span>Offline</span>
+                              </span>
+                            )}
                           </td>
 
                           {/* Alamat Email & Kata Sandi Murid */}
@@ -942,7 +1157,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       {studentToResetPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-[#fffdfa] border-2 border-amber-400 rounded-3xl p-6 sm:p-7 shadow-2xl">
-            <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex items-center gap-3.5 mb-3">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-xl shrink-0 shadow-2xs">
                 <KeyRound className="w-6 h-6" />
               </div>
@@ -951,9 +1166,14 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   Perbaiki Kata Sandi Murid
                 </h3>
                 <p className="text-xs text-[#735338]">
-                  Atur ulang kata sandi murid yang lupa kata sandi
+                  Khusus Akun Master: Langsung ubah kata sandi tanpa verifikasi email
                 </p>
               </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-300 rounded-full text-[11px] font-bold text-emerald-900 w-fit mb-3 shadow-2xs">
+              <Shield className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Hak Akses Master: Perubahan kata sandi langsung tanpa verifikasi email</span>
             </div>
 
             <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs space-y-1.5 mb-4">
@@ -974,7 +1194,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Contoh: murid123"
+                  placeholder="Minimal 8 karakter (contoh: murid2026)"
                   value={newPasswordInput}
                   onChange={(e) => setNewPasswordInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm font-mono text-[#2b1d19] outline-hidden"
@@ -982,7 +1202,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 />
               </div>
               <span className="text-[10px] text-[#735338] mt-1 block">
-                Minimal 4 karakter. Murid dapat langsung login dengan kata sandi baru ini.
+                Wajib minimal 8 karakter untuk akun murid. Murid dapat langsung masuk dengan kata sandi baru ini.
               </span>
             </div>
 
@@ -999,6 +1219,75 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               >
                 <CheckCircle className="w-3.5 h-3.5" />
                 <span>Simpan & Perbaiki Sandi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL GANTI KATA SANDI AKUN MASTER (BEBAS 2 SAMPAI 10 KARAKTER)
+          ========================================================================= */}
+      {showMasterPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#fffdfa] border-2 border-amber-400 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-xl shrink-0 shadow-2xs">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#881337] font-japanese">
+                  Ganti Kata Sandi Akun Master
+                </h3>
+                <p className="text-xs text-[#735338]">
+                  Khusus Akun Master: Bebas menggunakan 2 hingga 10 karakter
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs space-y-1.5 mb-4">
+              <div><strong>Akun Master:</strong> {currentUser?.fullName || 'GLOSTER GLADIATOR'} ({currentUser?.nickname || 'skywalker'})</div>
+              <div><strong>Email Master:</strong> <span className="font-mono text-[#553b26]">{MASTER_CONFIG.email}</span></div>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <strong>Kata Sandi Saat Ini:</strong> 
+                <span className="font-mono font-bold text-[#881337] bg-white px-2 py-0.5 rounded-md border border-amber-300">
+                  {masterCurrentPassword || MASTER_CONFIG.password}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-xs font-bold text-[#5a4230] mb-1.5">
+                Masukkan Kata Sandi Baru Master (2 – 10 Karakter) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="2 sampai 10 karakter (bebas)"
+                  value={masterNewPasswordInput}
+                  onChange={(e) => setMasterNewPasswordInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm font-mono text-[#2b1d19] outline-hidden"
+                  autoFocus
+                />
+              </div>
+              <span className="text-[10px] text-[#735338] mt-1 block">
+                Bebas menggunakan berapapun karakter antara minimal 2 sampai maksimal 10 karakter.
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setShowMasterPasswordModal(false)}
+                className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveMasterPassword}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>Simpan Sandi Master</span>
               </button>
             </div>
           </div>

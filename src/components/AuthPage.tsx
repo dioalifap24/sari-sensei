@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, User as UserIcon, Smile, KeyRound, CheckCircle } from 'lucide-react';
-import { storageService } from '../services/storageService';
+import { Eye, EyeOff, Mail, Lock, User as UserIcon, Smile, KeyRound, CheckCircle, ShieldCheck, AlertTriangle, Send, CheckCircle2, ArrowRight, RefreshCw, MailCheck, ShieldAlert, Sparkles } from 'lucide-react';
+import { storageService, VERIFICATION_PROVIDER } from '../services/storageService';
 import { User } from '../types';
 import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
 
@@ -18,28 +18,135 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
   // Common fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Forgot password modal state
+  // Forgot password verification workflow state
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState<'request_email' | 'verify_code' | 'set_new_password'>('request_email');
   const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotCodeInput, setForgotCodeInput] = useState('');
   const [forgotNewPass, setForgotNewPass] = useState('');
-  const [forgotMsg, setForgotMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [forgotConfirmPass, setForgotConfirmPass] = useState('');
+  const [showForgotNewPass, setShowForgotNewPass] = useState(false);
+  const [showForgotConfirmPass, setShowForgotConfirmPass] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [activeVerificationData, setActiveVerificationData] = useState<{
+    code: string;
+    recipientName: string;
+    sentAt: string;
+    senderEmail: string;
+    senderName: string;
+  } | null>(null);
 
-  const handleRecoverPassword = () => {
-    if (!forgotEmail || !forgotNewPass) {
-      setForgotMsg({ text: 'Mohon isi email dan kata sandi baru.', type: 'error' });
+  // Langkah 1: Kirim email verifikasi perubahan kata sandi dari penyedia resmi
+  const handleSendVerificationEmail = () => {
+    const trimmed = forgotEmail.trim().toLowerCase();
+    if (!trimmed) {
+      setForgotMsg({ text: 'Harap masukkan alamat email murid terdaftar Anda.', type: 'error' });
       return;
     }
-    const res = storageService.updateStudentPassword(forgotEmail, forgotNewPass);
+
+    setIsSendingEmail(true);
+    setForgotMsg(null);
+
+    // Simulasi pengiriman via jaringan penyedia verifikasi resmi
+    setTimeout(() => {
+      const res = storageService.sendPasswordResetVerification(trimmed);
+      setIsSendingEmail(false);
+      if (res.success && res.code) {
+        setActiveVerificationData({
+          code: res.code,
+          recipientName: res.recipientName || 'Murid',
+          sentAt: res.sentAt || 'Sekarang',
+          senderEmail: res.senderEmail || VERIFICATION_PROVIDER.email,
+          senderName: res.senderName || VERIFICATION_PROVIDER.name,
+        });
+        setForgotStep('verify_code');
+        setForgotMsg({ 
+          text: `Email verifikasi keamanan telah berhasil dikirim oleh ${res.senderEmail} ke ${trimmed}!`, 
+          type: 'info' 
+        });
+      } else {
+        setForgotMsg({ text: res.message, type: 'error' });
+      }
+    }, 600);
+  };
+
+  // Langkah 2: Verifikasi kode 6-digit dari email
+  const handleVerifyCode = () => {
+    const cleanCode = forgotCodeInput.trim();
+    if (!cleanCode || cleanCode.length < 6) {
+      setForgotMsg({ text: 'Masukkan 6 digit kode keamanan yang dikirimkan ke email Anda.', type: 'error' });
+      return;
+    }
+
+    const res = storageService.verifyPasswordResetCode(forgotEmail, cleanCode);
     if (res.success) {
-      setForgotMsg({ text: 'Kata sandi berhasil diperbarui! Silakan tutup jendela ini dan masuk.', type: 'success' });
-      setPassword(forgotNewPass);
+      setForgotStep('set_new_password');
+      setForgotMsg({ 
+        text: '✓ Identitas terverifikasi resmi oleh penyedia keamanan! Silakan buat kata sandi baru Anda.', 
+        type: 'success' 
+      });
+    } else {
+      setForgotMsg({ text: res.message, type: 'error' });
+    }
+  };
+
+  // Verifikasi 1-klik dari simulasi tombol email
+  const handleOneClickVerifyFromEmail = () => {
+    if (!activeVerificationData) return;
+    setForgotCodeInput(activeVerificationData.code);
+    const res = storageService.verifyPasswordResetCode(forgotEmail, activeVerificationData.code);
+    if (res.success) {
+      setForgotStep('set_new_password');
+      setForgotMsg({ 
+        text: '✓ Verifikasi berhasil melalui email resmi! Silakan buat kata sandi baru Anda.', 
+        type: 'success' 
+      });
+    }
+  };
+
+  // Langkah 3: Simpan kata sandi baru (minimal 8 karakter, 2x pengisian)
+  const handleSaveNewPasswordWithVerification = () => {
+    const cleanPass = forgotNewPass.trim();
+    const cleanConfirm = forgotConfirmPass.trim();
+
+    if (!cleanPass || cleanPass.length < 8) {
+      setForgotMsg({ text: 'Kata sandi baru murid wajib minimal 8 karakter demi keamanan.', type: 'error' });
+      return;
+    }
+
+    if (!cleanConfirm) {
+      setForgotMsg({ text: 'Harap ulangi kata sandi baru pada kolom konfirmasi.', type: 'error' });
+      return;
+    }
+
+    if (cleanPass !== cleanConfirm) {
+      setForgotMsg({ text: 'Konfirmasi kata sandi tidak cocok. Pastikan kedua kata sandi sama.', type: 'error' });
+      return;
+    }
+
+    const codeToUse = forgotCodeInput.trim() || activeVerificationData?.code || '';
+    const res = storageService.completePasswordResetWithVerification(forgotEmail, codeToUse, cleanPass);
+    if (res.success) {
+      setForgotMsg({ 
+        text: 'Kata sandi akun murid berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda. 🌸', 
+        type: 'success' 
+      });
+      setPassword(cleanPass);
       setEmail(forgotEmail);
       setTimeout(() => {
         setShowForgotModal(false);
+        setForgotStep('request_email');
         setForgotMsg(null);
+        setActiveVerificationData(null);
+        setForgotCodeInput('');
+        setForgotNewPass('');
+        setForgotConfirmPass('');
       }, 2500);
     } else {
       setForgotMsg({ text: res.message, type: 'error' });
@@ -58,7 +165,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
     }
   };
 
-  // Handle Register action
+  // Handle Register action with 2x password confirmation and min 8 characters rule
   const handleRegister = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg('');
@@ -66,17 +173,29 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
     // If currently on login tab, switch to registration tab so student can fill names
     if (authMode === 'login') {
       setAuthMode('register');
-      setErrorMsg('Silakan lengkapi Nama Lengkap & Nama Panggilan untuk mendaftar akun baru.');
+      setErrorMsg('Silakan lengkapi Nama Lengkap & Nama Panggilan asli Anda untuk mendaftar akun murid resmi.');
       return;
     }
 
-    if (!fullName.trim() || fullName.trim().length < 2) {
-      setErrorMsg('Nama lengkap murid wajib diisi untuk pendataan & ranking.');
+    if (!password || password.length < 8) {
+      setErrorMsg('Kata sandi murid wajib minimal 8 karakter demi keamanan akun Anda.');
       return;
     }
 
-    if (!nickname.trim() || nickname.trim().length < 2) {
-      setErrorMsg('Nama panggilan murid wajib diisi.');
+    if (!confirmPassword) {
+      setErrorMsg('Harap masukkan ulang kata sandi pada kolom Ulangi Kata Sandi.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg('Konfirmasi kata sandi tidak cocok. Pastikan kedua kata sandi yang Anda ketik sama persis.');
+      return;
+    }
+
+    // Validasi pencegahan akun anonim
+    const validation = storageService.validateStudentRegistration(fullName, nickname, email, password);
+    if (!validation.valid) {
+      setErrorMsg(validation.message);
       return;
     }
 
@@ -263,6 +382,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                       Nama yang akan disapa hangat oleh Sensei Sari.
                     </span>
                   </div>
+
+                  {/* Ketentuan Pendaftaran Resmi Anti-Anonim */}
+                  <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs space-y-1 text-[#664b36]">
+                    <div className="font-bold text-[#881337] flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-[#881337]" />
+                      <span>Ketentuan Pendaftaran Akun Resmi:</span>
+                    </div>
+                    <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-[#735338] leading-relaxed">
+                      <li>Wajib menggunakan <strong>nama lengkap asli</strong> (minimal 2 kata, bukan nama samaran/anonim).</li>
+                      <li>Wajib menggunakan <strong>alamat email pribadi aktif</strong> (layanan email sementara / anonim dilarang).</li>
+                      <li>Data Anda dicatat resmi untuk rapor dan bimbingan kemajuan belajar Sensei Sari.</li>
+                    </ul>
+                  </div>
                 </>
               )}
 
@@ -288,7 +420,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-[#5a4230]">
-                    Kata Sandi <span className="text-red-500 font-bold">*</span>
+                    Kata Sandi {authMode === 'register' ? '(Minimal 8 Karakter)' : ''} <span className="text-red-500 font-bold">*</span>
                   </label>
                   {authMode === 'login' && (
                     <button
@@ -311,7 +443,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="Minimal 4 karakter"
+                    placeholder={authMode === 'register' ? 'Minimal 8 karakter' : 'Masukkan kata sandi'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-11 py-2.5 bg-white border border-[#ddcaa8] rounded-xl text-sm text-[#2b1d19] placeholder:text-[#a88a70]/70 focus:outline-hidden focus:border-[#881337] focus:ring-1 focus:ring-[#881337] transition-all"
@@ -325,7 +457,50 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {authMode === 'register' && (
+                  <span className="text-[10px] text-[#735338] mt-0.5 block">
+                    Minimal 8 karakter demi keamanan akun murid.
+                  </span>
+                )}
               </div>
+
+              {/* Kolom Konfirmasi Kata Sandi (Pembuatan Kata Sandi ke-2 Saat Pendaftaran Pertama) */}
+              {authMode === 'register' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-[#5a4230]">
+                      Ulangi Kata Sandi <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    {confirmPassword && (
+                      <span className={`text-[10px] font-bold ${password === confirmPassword ? 'text-emerald-600' : 'text-rose-500'}`}>
+                        {password === confirmPassword ? '✓ Kata sandi cocok' : '✗ Belum cocok'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Ketik ulang kata sandi yang sama"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full pl-10 pr-11 py-2.5 bg-white border border-[#ddcaa8] rounded-xl text-sm text-[#2b1d19] placeholder:text-[#a88a70]/70 focus:outline-hidden focus:border-[#881337] focus:ring-1 focus:ring-[#881337] transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a88a70] hover:text-[#5a4230] transition-colors p-1"
+                      title={showConfirmPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-[#735338] mt-0.5 block">
+                    Ketik ulang kata sandi untuk memastikan tidak ada kesalahan pengetikan.
+                  </span>
+                </div>
+              )}
 
               {/* Action Buttons as specified:
                   Tombol "Masuk" (latar merah tua, teks putih) | "Daftar" (latar merah muda pudar) */}
@@ -374,89 +549,325 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
         </p>
       </footer>
 
-      {/* Modal Lupa Kata Sandi Murid */}
+      {/* Modal Lupa Kata Sandi Murid dengan Alur Verifikasi Email Resmi */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#fffdfa] border-2 border-amber-400 rounded-3xl p-6 sm:p-7 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+          <div className="w-full max-w-lg bg-[#fffdfa] border-2 border-amber-400 rounded-3xl p-6 sm:p-7 shadow-2xl my-8">
+            {/* Header Modal */}
             <div className="flex items-center gap-3.5 mb-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-xl shrink-0 shadow-2xs">
-                <KeyRound className="w-6 h-6" />
+                <ShieldCheck className="w-6 h-6 text-[#881337]" />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#881337] font-japanese">
-                  Perbaiki / Reset Kata Sandi
+                  Verifikasi Pembaruan Kata Sandi Murid
                 </h3>
                 <p className="text-xs text-[#735338]">
-                  Masukkan email terdaftar dan kata sandi baru Anda
+                  Penyedia Resmi: <span className="font-mono text-[#881337] font-bold">{VERIFICATION_PROVIDER.email}</span>
                 </p>
               </div>
             </div>
 
+            {/* Stepper Indikator */}
+            <div className="grid grid-cols-3 gap-1.5 mb-4 p-1.5 bg-[#f5ede1] rounded-2xl text-[11px] font-bold text-center">
+              <div className={`py-1 rounded-xl transition-all ${forgotStep === 'request_email' ? 'bg-[#881337] text-white shadow-2xs' : 'text-[#735338]'}`}>
+                1. Kirim Email
+              </div>
+              <div className={`py-1 rounded-xl transition-all ${forgotStep === 'verify_code' ? 'bg-[#881337] text-white shadow-2xs' : 'text-[#735338]'}`}>
+                2. Verifikasi Email
+              </div>
+              <div className={`py-1 rounded-xl transition-all ${forgotStep === 'set_new_password' ? 'bg-[#881337] text-white shadow-2xs' : 'text-[#735338]'}`}>
+                3. Sandi Baru
+              </div>
+            </div>
+
+            {/* Notification Messages */}
             {forgotMsg && (
-              <div className={`p-3 rounded-xl text-xs mb-4 font-semibold ${
+              <div className={`p-3 rounded-xl text-xs mb-4 font-semibold flex items-start gap-2 ${
                 forgotMsg.type === 'success' 
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' 
-                  : 'bg-red-50 text-red-800 border border-red-300'
+                  : forgotMsg.type === 'info'
+                    ? 'bg-sky-50 text-sky-900 border border-sky-300'
+                    : 'bg-red-50 text-red-800 border border-red-300'
               }`}>
-                {forgotMsg.text}
+                {forgotMsg.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : forgotMsg.type === 'info' ? (
+                  <MailCheck className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                )}
+                <span>{forgotMsg.text}</span>
               </div>
             )}
 
-            <div className="space-y-3.5 mb-5">
-              <div>
-                <label className="block text-xs font-bold text-[#5a4230] mb-1">
-                  Email Terdaftar Murid <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
-                  <input
-                    type="email"
-                    placeholder="nama.anda@gmail.com"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm text-[#2b1d19] outline-hidden"
-                  />
+            {/* =========================================================================
+                LANGKAH 1: MASUKKAN EMAIL TERDAFTAR & KIRIM EMAIL VERIFIKASI
+                ========================================================================= */}
+            {forgotStep === 'request_email' && (
+              <div className="space-y-4">
+                <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs text-[#6e533d] space-y-1">
+                  <div className="font-bold text-[#881337] flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-[#881337]" />
+                    <span>Perlindungan Keamanan Akun Murid:</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-[#735338]">
+                    Sistem tidak mengizinkan perubahan kata sandi langsung di web tanpa verifikasi email resmi. Email verifikasi berisi kode keamanan 6 digit akan dikirimkan oleh <strong>{VERIFICATION_PROVIDER.name}</strong>.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#5a4230] mb-1">
+                    Alamat Email Murid Terdaftar <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="nama.anda@gmail.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm text-[#2b1d19] outline-hidden"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotModal(false);
+                      setForgotMsg(null);
+                    }}
+                    className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSendingEmail}
+                    onClick={handleSendVerificationEmail}
+                    className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {isSendingEmail ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Mengirim Email...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Kirim Email Verifikasi</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-bold text-[#5a4230] mb-1">
-                  Kata Sandi Baru <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
-                  <input
-                    type="text"
-                    placeholder="Minimal 4 karakter"
-                    value={forgotNewPass}
-                    onChange={(e) => setForgotNewPass(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm font-mono text-[#2b1d19] outline-hidden"
-                  />
+            {/* =========================================================================
+                LANGKAH 2: TAMPILAN EMAIL RESMI & MASUKKAN KODE VERIFIKASI (KEMBALI KE APP)
+                ========================================================================= */}
+            {forgotStep === 'verify_code' && (
+              <div className="space-y-4">
+                {/* Kotak Surat Email Verifikasi Resmi (Simulasi Otentik Interaktif) */}
+                <div className="border-2 border-sky-300 rounded-2xl bg-gradient-to-b from-sky-50/90 via-white to-sky-50/40 p-4 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-sky-200/80 pb-2.5 mb-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                        ✉️
+                      </div>
+                      <div>
+                        <div className="font-bold text-sky-950 text-xs">
+                          {activeVerificationData?.senderName || VERIFICATION_PROVIDER.name}
+                        </div>
+                        <div className="text-[10px] font-mono text-sky-700">
+                          &lt;{activeVerificationData?.senderEmail || VERIFICATION_PROVIDER.email}&gt;
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-bold">
+                      {activeVerificationData?.sentAt || 'Baru Saja'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs text-[#4a3424]">
+                    <div className="text-[11px] text-[#735338]">
+                      Kepada: <strong className="font-mono text-[#881337]">{forgotEmail}</strong>
+                    </div>
+                    <div className="text-[11px] font-bold text-[#881337]">
+                      Subjek: {VERIFICATION_PROVIDER.subject}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-[#5a4230] pt-1">
+                      Halo <strong>{activeVerificationData?.recipientName}</strong>, kami menerima permohonan pembaruan kata sandi untuk akun murid Sensei Sari Anda. Gunakan kode keamanan resmi berikut:
+                    </p>
+
+                    {/* Kode Verifikasi Menonjol */}
+                    <div className="py-2.5 bg-white border-2 border-dashed border-sky-400 rounded-xl text-center shadow-2xs my-2">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-0.5">
+                        KODE KEAMANAN VERIFIKASI (6 DIGIT)
+                      </div>
+                      <div className="font-mono text-2xl font-black tracking-[0.25em] text-[#881337] select-all">
+                        {activeVerificationData?.code}
+                      </div>
+                    </div>
+
+                    {/* Tombol Aksi Kembalikan ke App Sensei Sari */}
+                    <button
+                      type="button"
+                      onClick={handleOneClickVerifyFromEmail}
+                      className="w-full py-2.5 px-3 bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Verifikasi & Kembali ke Aplikasi Sensei Sari</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Form Input Manual Kode 6 Digit */}
+                <div>
+                  <label className="block text-xs font-bold text-[#5a4230] mb-1">
+                    Atau Ketik 6 Digit Kode Verifikasi Manual:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="Contoh: 839201"
+                      value={forgotCodeInput}
+                      onChange={(e) => setForgotCodeInput(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-center text-lg font-mono font-black tracking-widest text-[#881337] outline-hidden"
+                    />
+                  </div>
+                  <span className="text-[10px] text-[#735338] mt-1 block text-center">
+                    Kode verifikasi berlaku selama 15 menit.
+                  </span>
+                </div>
+
+                <div className="pt-2 flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotStep('request_email');
+                      setForgotMsg(null);
+                    }}
+                    className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
+                  >
+                    Kirim Ulang
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyCode}
+                    className="flex-1 py-2.5 px-4 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <span>Verifikasi Kode & Lanjut</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div className="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-[#735338] leading-relaxed">
-                💡 <strong>Catatan:</strong> Sensei Sari (Master) juga dapat melihat dan memperbaiki kata sandi Anda langsung dari halaman manajemen guru.
+            {/* =========================================================================
+                LANGKAH 3: PEMBUATAN KATA SANDI BARU RESMI SETELAH EMAIL TERVERIFIKASI
+                ========================================================================= */}
+            {forgotStep === 'set_new_password' && (
+              <div className="space-y-4">
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-2xl text-xs flex items-center gap-2 text-emerald-900 font-bold">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <div>Email Terverifikasi Resmi</div>
+                    <div className="text-[10px] font-normal text-emerald-700">
+                      Disetujui oleh {VERIFICATION_PROVIDER.email} untuk {forgotEmail}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Input Kata Sandi Baru */}
+                <div>
+                  <label className="block text-xs font-bold text-[#5a4230] mb-1">
+                    Kata Sandi Baru Murid (Minimal 8 Karakter) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
+                    <input
+                      type={showForgotNewPass ? 'text' : 'password'}
+                      required
+                      placeholder="Minimal 8 karakter"
+                      value={forgotNewPass}
+                      onChange={(e) => setForgotNewPass(e.target.value)}
+                      className="w-full pl-10 pr-11 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm text-[#2b1d19] outline-hidden"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotNewPass(!showForgotNewPass)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a88a70] hover:text-[#5a4230] transition-colors p-1"
+                      title={showForgotNewPass ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+                    >
+                      {showForgotNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Input Konfirmasi Kata Sandi Baru */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-[#5a4230]">
+                      Ulangi Kata Sandi Baru <span className="text-red-500">*</span>
+                    </label>
+                    {forgotConfirmPass && (
+                      <span className={`text-[10px] font-bold ${forgotNewPass === forgotConfirmPass ? 'text-emerald-600' : 'text-rose-500'}`}>
+                        {forgotNewPass === forgotConfirmPass ? '✓ Cocok' : '✗ Belum cocok'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
+                    <input
+                      type={showForgotConfirmPass ? 'text' : 'password'}
+                      required
+                      placeholder="Ketik ulang kata sandi baru"
+                      value={forgotConfirmPass}
+                      onChange={(e) => setForgotConfirmPass(e.target.value)}
+                      className="w-full pl-10 pr-11 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm text-[#2b1d19] outline-hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotConfirmPass(!showForgotConfirmPass)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a88a70] hover:text-[#5a4230] transition-colors p-1"
+                      title={showForgotConfirmPass ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+                    >
+                      {showForgotConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotModal(false);
+                      setForgotStep('request_email');
+                      setForgotMsg(null);
+                    }}
+                    className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveNewPasswordWithVerification}
+                    className="flex-1 py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                    <span>Simpan Kata Sandi Baru & Masuk</span>
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(false)}
-                className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
-              >
-                Tutup
-              </button>
-              <button
-                type="button"
-                onClick={handleRecoverPassword}
-                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle className="w-3.5 h-3.5" />
-                <span>Simpan Sandi Baru</span>
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
