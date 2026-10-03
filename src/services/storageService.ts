@@ -302,6 +302,33 @@ export const storageService = {
       .map(u => u.user);
   },
 
+  // Get list of students along with their registered passwords (Khusus Akun Master)
+  getAllStudentsWithCredentials: (): { user: User; password: string }[] => {
+    const users = storageService.getUsers();
+    return users.filter(u => !storageService.isMaster(u.user));
+  },
+
+  // Perbaiki atau perbarui kata sandi murid jika lupa (bisa dilakukan Master maupun murid)
+  updateStudentPassword: (email: string, newPassword: string): { success: boolean; message: string } => {
+    const trimmedEmail = email.trim().toLowerCase();
+    const cleanPass = newPassword.trim();
+    if (!cleanPass || cleanPass.length < 4) {
+      return { success: false, message: 'Kata sandi baru minimal 4 karakter.' };
+    }
+    const users = storageService.getUsers();
+    const idx = users.findIndex(u => u.user.email.toLowerCase() === trimmedEmail);
+    if (idx === -1) {
+      return { success: false, message: 'Alamat email murid tidak ditemukan dalam sistem.' };
+    }
+    users[idx].password = cleanPass;
+    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    window.dispatchEvent(new CustomEvent('student_data_updated'));
+    return { 
+      success: true, 
+      message: `Kata sandi untuk ${users[idx].user.nickname || users[idx].user.fullName} berhasil diperbarui!` 
+    };
+  },
+
   // Delete student account and all related data (Master only)
   deleteStudent: (studentEmail: string): boolean => {
     try {

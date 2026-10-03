@@ -18,29 +18,31 @@
     <script type="module" src="/src/main.tsx"></script>
  <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Cek berkala sampai elemen muncul
-  const cekDanSembunyikan = setInterval(function() {
-    // Ambil nama pengguna yang sedang login
-    const elemenNama = document.querySelector('button:has-text("kingugik"), button:has-text("skywalker"), [class*="user"], [class*="nama"]');
-    
-    // Cari tombol menu ≡
-    const tombolMenu = document.querySelector('button[aria-label="menu"], button:has(≡), button.bg-black\\/80, .rounded-full button');
+  try {
+    const cekDanSembunyikan = setInterval(function() {
+      try {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const elemenNama = buttons.find(b => b.textContent && (b.textContent.includes('kingugik') || b.textContent.includes('skywalker')));
+        const tombolMenu = document.querySelector('button[aria-label="menu"], button.bg-black\\/80, .rounded-full button');
 
-    if (elemenNama && tombolMenu) {
-      clearInterval(cekDanSembunyikan); // Berhenti cek kalau sudah ketemu
-      
-      const namaSaatIni = elemenNama.textContent.trim();
-      
-      // Hanya muncul untuk skywalker — sembunyikan untuk yang lain
-      if (namaSaatIni === 'skywalker') {
-        tombolMenu.style.display = 'block';
-      } else {
-        tombolMenu.style.display = 'none !important';
-        tombolMenu.style.visibility = 'hidden';
-        tombolMenu.style.opacity = '0';
+        if (elemenNama && tombolMenu) {
+          clearInterval(cekDanSembunyikan);
+          const namaSaatIni = (elemenNama.textContent || '').trim();
+          if (namaSaatIni.includes('skywalker')) {
+            tombolMenu.style.display = 'block';
+          } else {
+            tombolMenu.style.display = 'none';
+            tombolMenu.style.visibility = 'hidden';
+            tombolMenu.style.opacity = '0';
+          }
+        }
+      } catch (err) {
+        // silent
       }
-    }
-  }, 100); // Cek tiap 0,1 detik
+    }, 200);
+  } catch (e) {
+    // silent
+  }
 });
 </script>
  </body>

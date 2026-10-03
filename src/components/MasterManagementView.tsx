@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, ActiveQuizRecord, QuizControlState, QuizResult } from '../types';
 import { storageService } from '../services/storageService';
-import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, UserX, Clock, Calendar, ChevronRight, Activity, RotateCcw, Trophy, Medal, Sparkles } from 'lucide-react';
+import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, UserX, Clock, Calendar, ChevronRight, Activity, RotateCcw, Trophy, Medal, Sparkles, KeyRound, Eye, EyeOff, Mail } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 
 interface MasterManagementViewProps {
@@ -15,6 +15,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   // Live records and students data
   const [activeRecords, setActiveRecords] = useState<ActiveQuizRecord[]>([]);
   const [studentsList, setStudentsList] = useState<User[]>([]);
+  const [studentsCredentials, setStudentsCredentials] = useState<{ user: User; password: string }[]>([]);
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
   const [allScores, setAllScores] = useState<QuizResult[]>([]);
   
@@ -23,18 +24,50 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'in_progress' | 'completed'>('all');
   
-  // Student & Record Deletion / Reset Modals
+  // Student & Record Deletion / Reset Modals / Password Management
   const [studentToDelete, setStudentToDelete] = useState<User | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<ActiveQuizRecord | null>(null);
   const [showResetRankingModal, setShowResetRankingModal] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState<{ [email: string]: boolean }>({});
+  const [studentToResetPassword, setStudentToResetPassword] = useState<{ user: User; currentPassword: string } | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
 
   // Load all data
   const loadData = () => {
     setActiveRecords(storageService.getActiveQuizRecords());
-    setStudentsList(storageService.getAllStudents());
+    const creds = storageService.getAllStudentsWithCredentials();
+    setStudentsCredentials(creds);
+    setStudentsList(creds.map(c => c.user));
     setQuizControl(storageService.getQuizControlState());
     setAllScores(storageService.getAllScores());
+  };
+
+  const togglePasswordVisibility = (email: string) => {
+    setVisiblePasswords(prev => ({
+      ...prev,
+      [email]: !prev[email],
+    }));
+  };
+
+  const handleSaveNewStudentPassword = () => {
+    if (!studentToResetPassword) return;
+    const cleanPass = newPasswordInput.trim();
+    if (!cleanPass || cleanPass.length < 4) {
+      setNotificationMsg('Kata sandi baru minimal 4 karakter!');
+      setTimeout(() => setNotificationMsg(null), 3000);
+      return;
+    }
+    const res = storageService.updateStudentPassword(studentToResetPassword.user.email, cleanPass);
+    if (res.success) {
+      setNotificationMsg(`Kata sandi untuk ${studentToResetPassword.user.nickname || studentToResetPassword.user.fullName} berhasil diperbarui menjadi "${cleanPass}"! 🔑`);
+      setStudentToResetPassword(null);
+      setNewPasswordInput('');
+      loadData();
+    } else {
+      setNotificationMsg(res.message);
+    }
+    setTimeout(() => setNotificationMsg(null), 4000);
   };
 
   useEffect(() => {
@@ -667,7 +700,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     <th className="py-3 px-4">No.</th>
                     <th className="py-3 px-4">Nama Lengkap Murid</th>
                     <th className="py-3 px-3">Nama Panggilan</th>
-                    <th className="py-3 px-4">Alamat Email</th>
+                    <th className="py-3 px-4">Email & Kata Sandi Murid</th>
                     <th className="py-3 px-3">Tanggal Mendaftar</th>
                     <th className="py-3 px-3 text-center">Total Kuis</th>
                     <th className="py-3 px-4 text-center">Tindakan / Hapus Akun</th>
@@ -688,6 +721,10 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                       const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
                       const totalQuizzes = studentScores.length;
                       const avgScore = totalQuizzes > 0 ? Math.round(studentScores.reduce((acc, s) => acc + s.score, 0) / totalQuizzes) : null;
+                      
+                      // Cari kredensial / kata sandi murid
+                      const cred = studentsCredentials.find(c => c.user.email.toLowerCase() === student.email.toLowerCase());
+                      const studentPassword = cred ? cred.password : '••••••••';
 
                       return (
                         <tr key={student.email} className="hover:bg-[#fcf8f2] transition-colors">
@@ -700,9 +737,42 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           <td className="py-3 px-3 font-semibold text-[#881337]">
                             {student.nickname || '-'}
                           </td>
-                          <td className="py-3 px-4 text-[#6e533d] font-mono text-xs">
-                            {student.email}
+
+                          {/* Alamat Email & Kata Sandi Murid */}
+                          <td className="py-3 px-4 text-xs">
+                            <div className="text-[#3d2a1b] font-mono font-semibold flex items-center gap-1.5">
+                              <Mail className="w-3.5 h-3.5 text-[#a88a70] shrink-0" />
+                              <span className="truncate max-w-[200px]" title={student.email}>{student.email}</span>
+                            </div>
+
+                            {/* Tampilan Kata Sandi Murid & Tombol Lupa Kata Sandi */}
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 bg-[#fbf3e8] border border-[#ecdac6] px-2.5 py-1.5 rounded-xl w-fit">
+                              <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                              <span className="text-[11px] font-bold text-[#735338]">Sandi:</span>
+                              <span className="font-mono font-black text-[#881337] tracking-wider text-xs">
+                                {visiblePasswords[student.email] ? studentPassword : '••••••••'}
+                              </span>
+                              <button
+                                onClick={() => togglePasswordVisibility(student.email)}
+                                className="p-1 text-[#a88a70] hover:text-[#881337] transition-colors rounded-md hover:bg-white/60"
+                                title={visiblePasswords[student.email] ? 'Sembunyikan kata sandi' : 'Lihat kata sandi murid'}
+                              >
+                                {visiblePasswords[student.email] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setStudentToResetPassword({ user: student, currentPassword: studentPassword });
+                                  setNewPasswordInput('');
+                                }}
+                                className="ml-1 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-[10px] rounded-lg transition-all shadow-2xs active:scale-95 flex items-center gap-1"
+                                title="Klik jika murid lupa kata sandi untuk memperbaiki sandinya"
+                              >
+                                <KeyRound className="w-2.5 h-2.5" />
+                                <span>Lupa Kata Sandi</span>
+                              </button>
+                            </div>
                           </td>
+
                           <td className="py-3 px-3 text-[#735338] whitespace-nowrap">
                             {student.registeredAt || '2026-09-01'}
                           </td>
@@ -860,6 +930,75 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Ya, Reset Ranking Sesi</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL PERBAIKI KATA SANDI MURID (LUPA KATA SANDI)
+          ========================================================================= */}
+      {studentToResetPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#fffdfa] border-2 border-amber-400 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-xl shrink-0 shadow-2xs">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#881337] font-japanese">
+                  Perbaiki Kata Sandi Murid
+                </h3>
+                <p className="text-xs text-[#735338]">
+                  Atur ulang kata sandi murid yang lupa kata sandi
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs space-y-1.5 mb-4">
+              <div><strong>Nama Murid:</strong> {studentToResetPassword.user.fullName || studentToResetPassword.user.nickname}</div>
+              <div><strong>Alamat Email:</strong> <span className="font-mono text-[#553b26]">{studentToResetPassword.user.email}</span></div>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <strong>Kata Sandi Saat Ini:</strong> 
+                <span className="font-mono font-bold text-[#881337] bg-white px-2 py-0.5 rounded-md border border-amber-300">
+                  {studentToResetPassword.currentPassword}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-xs font-bold text-[#5a4230] mb-1.5">
+                Masukkan Kata Sandi Baru Murid <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Contoh: murid123"
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm font-mono text-[#2b1d19] outline-hidden"
+                  autoFocus
+                />
+              </div>
+              <span className="text-[10px] text-[#735338] mt-1 block">
+                Minimal 4 karakter. Murid dapat langsung login dengan kata sandi baru ini.
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setStudentToResetPassword(null)}
+                className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveNewStudentPassword}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>Simpan & Perbaiki Sandi</span>
               </button>
             </div>
           </div>

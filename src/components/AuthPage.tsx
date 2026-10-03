@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, User as UserIcon, Smile } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User as UserIcon, Smile, KeyRound, CheckCircle } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { User } from '../types';
 import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
@@ -20,6 +20,31 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Forgot password modal state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotMsg, setForgotMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const handleRecoverPassword = () => {
+    if (!forgotEmail || !forgotNewPass) {
+      setForgotMsg({ text: 'Mohon isi email dan kata sandi baru.', type: 'error' });
+      return;
+    }
+    const res = storageService.updateStudentPassword(forgotEmail, forgotNewPass);
+    if (res.success) {
+      setForgotMsg({ text: 'Kata sandi berhasil diperbarui! Silakan tutup jendela ini dan masuk.', type: 'success' });
+      setPassword(forgotNewPass);
+      setEmail(forgotEmail);
+      setTimeout(() => {
+        setShowForgotModal(false);
+        setForgotMsg(null);
+      }, 2500);
+    } else {
+      setForgotMsg({ text: res.message, type: 'error' });
+    }
+  };
 
   // Handle Login action
   const handleLogin = (e?: React.FormEvent) => {
@@ -261,9 +286,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
 
               {/* Kolom Kata Sandi dengan Ikon Mata */}
               <div>
-                <label className="block text-xs font-semibold text-[#5a4230] mb-1">
-                  Kata Sandi <span className="text-red-500 font-bold">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-[#5a4230]">
+                    Kata Sandi <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  {authMode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(email);
+                        setForgotNewPass('');
+                        setForgotMsg(null);
+                        setShowForgotModal(true);
+                      }}
+                      className="text-[11px] font-bold text-[#881337] hover:text-[#70102d] hover:underline transition-colors flex items-center gap-1"
+                    >
+                      <KeyRound className="w-3 h-3 text-[#881337]" />
+                      <span>Lupa kata sandi?</span>
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
                   <input
@@ -331,6 +373,93 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
           Aplikasi Belajar Mandiri JLPT N5, N4, N3, N2
         </p>
       </footer>
+
+      {/* Modal Lupa Kata Sandi Murid */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#fffdfa] border-2 border-amber-400 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 text-xl shrink-0 shadow-2xs">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#881337] font-japanese">
+                  Perbaiki / Reset Kata Sandi
+                </h3>
+                <p className="text-xs text-[#735338]">
+                  Masukkan email terdaftar dan kata sandi baru Anda
+                </p>
+              </div>
+            </div>
+
+            {forgotMsg && (
+              <div className={`p-3 rounded-xl text-xs mb-4 font-semibold ${
+                forgotMsg.type === 'success' 
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' 
+                  : 'bg-red-50 text-red-800 border border-red-300'
+              }`}>
+                {forgotMsg.text}
+              </div>
+            )}
+
+            <div className="space-y-3.5 mb-5">
+              <div>
+                <label className="block text-xs font-bold text-[#5a4230] mb-1">
+                  Email Terdaftar Murid <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
+                  <input
+                    type="email"
+                    placeholder="nama.anda@gmail.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm text-[#2b1d19] outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#5a4230] mb-1">
+                  Kata Sandi Baru <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
+                  <input
+                    type="text"
+                    placeholder="Minimal 4 karakter"
+                    value={forgotNewPass}
+                    onChange={(e) => setForgotNewPass(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm font-mono text-[#2b1d19] outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-[#735338] leading-relaxed">
+                💡 <strong>Catatan:</strong> Sensei Sari (Master) juga dapat melihat dan memperbaiki kata sandi Anda langsung dari halaman manajemen guru.
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="flex-1 py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-[#553b26] font-bold text-xs rounded-xl transition-colors"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={handleRecoverPassword}
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>Simpan Sandi Baru</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
