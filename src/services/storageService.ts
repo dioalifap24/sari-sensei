@@ -11,6 +11,147 @@ const STORAGE_QUIZ_CONTROL_KEY = 'sensei_sari_quiz_control_v1';
 const STORAGE_ONLINE_PRESENCE_KEY = 'sensei_sari_online_presence_v1';
 const STORAGE_PASSWORD_RESET_VERIFICATION_KEY = 'sensei_sari_pwd_reset_verify_v1';
 
+// BroadcastChannel untuk sinkronisasi instan antar tab di browser yang sama
+const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
+  ? new BroadcastChannel('sensei_sari_live_sync_v1') 
+  : null;
+
+if (syncChannel) {
+  syncChannel.onmessage = (event) => {
+    const { type } = event.data || {};
+    if (type === 'sync_trigger') {
+      window.dispatchEvent(new CustomEvent('student_data_updated'));
+      window.dispatchEvent(new CustomEvent('active_quiz_updated'));
+      window.dispatchEvent(new CustomEvent('quiz_control_changed'));
+      window.dispatchEvent(new CustomEvent('scores_updated'));
+      window.dispatchEvent(new CustomEvent('presence_updated'));
+    }
+  };
+}
+
+let syncIntervalStarted = false;
+let isSyncingWithServer = false;
+let lastLocalUserMutationAt = 0;
+
+const STORAGE_DELETED_EMAILS_KEY = 'sensei_sari_deleted_emails_v1';
+const SAMPLE_STUDENT_EMAIL_SET = new Set([
+  'budi.santoso@gmail.com',
+  'anisa.dewi@gmail.com',
+  'rizky.pratama@gmail.com',
+  'putri.ayu@gmail.com',
+]);
+
+function getDeletedEmailsSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_DELETED_EMAILS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map((e: string) => String(e).toLowerCase().trim()) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDeletedEmailsSet(set: Set<string>) {
+  try {
+    localStorage.setItem(STORAGE_DELETED_EMAILS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+function normalizeAndSortUsersList(
+  entries: { user: User; password: string }[],
+  deletedSet: Set<string>
+): { user: User; password: string }[] {
+  const byEmail = new Map<string, { user: User; password: string }>();
+
+  for (const item of entries) {
+    if (!item) continue;
+    const rawUser: any = item.user || item;
+    if (!rawUser || !rawUser.email) continue;
+    const emailLower = String(rawUser.email).trim().toLowerCase();
+    if (!emailLower) continue;
+
+    const isMasterAcc =
+      emailLower === MASTER_CONFIG.email.toLowerCase() ||
+      emailLower === 'master@senseisari.com' ||
+      rawUser.isMaster === true ||
+      rawUser.role === 'master';
+
+    if (!isMasterAcc && deletedSet.has(emailLower)) continue;
+
+    const cleanFullName = isMasterAcc
+      ? MASTER_CONFIG.fullName
+      : (rawUser.fullName || rawUser.name || rawUser.nickname || emailLower.split('@')[0] || 'Murid Terdaftar').trim();
+    const cleanNickname = isMasterAcc
+      ? MASTER_CONFIG.nickname
+      : (rawUser.nickname || cleanFullName.split(/\s+/)[0] || cleanFullName).trim();
+
+    const normalizedUser: User = {
+      email: isMasterAcc ? MASTER_CONFIG.email : emailLower,
+      fullName: cleanFullName,
+      nickname: cleanNickname,
+      name: cleanFullName,
+      registeredAt: rawUser.registeredAt || '2026-10-01 08:00',
+      isMaster: isMasterAcc,
+      role: isMasterAcc ? 'master' : 'student',
+    };
+
+    const existing = byEmail.get(normalizedUser.email.toLowerCase());
+    if (!existing) {
+      byEmail.set(normalizedUser.email.toLowerCase(), {
+        user: normalizedUser,
+        password: item.password || (isMasterAcc ? MASTER_CONFIG.password : 'password123'),
+      });
+    } else {
+      // Preserve better password or fuller name if available
+      if (item.password && item.password !== 'password123' && existing.password === 'password123') {
+        existing.password = item.password;
+      }
+      if (rawUser.fullName && (!existing.user.fullName || existing.user.fullName === 'Murid Terdaftar')) {
+        existing.user.fullName = cleanFullName;
+        existing.user.name = cleanFullName;
+      }
+      if (rawUser.nickname && (!existing.user.nickname || existing.user.nickname === 'Murid')) {
+        existing.user.nickname = cleanNickname;
+      }
+    }
+  }
+
+  // Ensure Master account always exists
+  const masterKey = MASTER_CONFIG.email.toLowerCase();
+  if (!byEmail.has(masterKey)) {
+    byEmail.set(masterKey, {
+      user: {
+        email: MASTER_CONFIG.email,
+        fullName: MASTER_CONFIG.fullName,
+        nickname: MASTER_CONFIG.nickname,
+        name: MASTER_CONFIG.fullName,
+        registeredAt: '2026-09-01 08:00',
+        isMaster: true,
+        role: 'master',
+      },
+      password: MASTER_CONFIG.password,
+    });
+  }
+
+  const allValues = Array.from(byEmail.values());
+  const masters = allValues.filter(u => u.user.isMaster || u.user.email.toLowerCase() === masterKey);
+  const realRegisteredStudents = allValues.filter(
+    u =>
+      !u.user.isMaster &&
+      u.user.email.toLowerCase() !== masterKey &&
+      !SAMPLE_STUDENT_EMAIL_SET.has(u.user.email.toLowerCase())
+  );
+  const sampleStudents = allValues.filter(
+    u =>
+      !u.user.isMaster &&
+      u.user.email.toLowerCase() !== masterKey &&
+      SAMPLE_STUDENT_EMAIL_SET.has(u.user.email.toLowerCase())
+  );
+
+  return [...masters, ...realRegisteredStudents, ...sampleStudents];
+}
+
 // Penyedia Verifikasi Perubahan Kata Sandi Resmi
 export const VERIFICATION_PROVIDER = {
   name: 'Sensei Sari Auth Security Center',
@@ -66,6 +207,18 @@ const INITIAL_STUDENTS: { user: User; password: string }[] = [
       role: 'master',
     },
     password: '96',
+  },
+  {
+    user: { 
+      email: 'kingugik@gmail.com', 
+      fullName: 'king ugik', 
+      nickname: 'king ugik', 
+      name: 'king ugik', 
+      registeredAt: '2026-10-01 06:52',
+      isMaster: false,
+      role: 'student',
+    },
+    password: '1234',
   },
   {
     user: { 
@@ -254,46 +407,8 @@ export const storageService = {
   // Initialize default data if needed
   init: () => {
     try {
-      if (!localStorage.getItem(STORAGE_USERS_KEY)) {
-        localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(INITIAL_STUDENTS));
-      } else {
-        // Ensure master account in storage always has the updated full name and nickname
-        const users: { user: User; password: string }[] = JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]');
-        let updated = false;
-        const masterIdx = users.findIndex(u => u.user.email.toLowerCase() === MASTER_CONFIG.email.toLowerCase());
-        if (masterIdx !== -1) {
-          // Jika kata sandi masih menggunakan default lama '1234567890', perbarui otomatis ke '96'
-          if (users[masterIdx].password === '1234567890') {
-            users[masterIdx].password = MASTER_CONFIG.password;
-            updated = true;
-          }
-          if (users[masterIdx].user.fullName !== MASTER_CONFIG.fullName || users[masterIdx].user.nickname !== MASTER_CONFIG.nickname) {
-            users[masterIdx].user.fullName = MASTER_CONFIG.fullName;
-            users[masterIdx].user.nickname = MASTER_CONFIG.nickname;
-            users[masterIdx].user.name = MASTER_CONFIG.fullName;
-            users[masterIdx].user.isMaster = true;
-            users[masterIdx].user.role = 'master';
-            updated = true;
-          }
-        } else {
-          users.unshift({
-            user: {
-              email: MASTER_CONFIG.email,
-              fullName: MASTER_CONFIG.fullName,
-              nickname: MASTER_CONFIG.nickname,
-              name: MASTER_CONFIG.fullName,
-              registeredAt: '2026-09-01 08:00',
-              isMaster: true,
-              role: 'master',
-            },
-            password: MASTER_CONFIG.password,
-          });
-          updated = true;
-        }
-        if (updated) {
-          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
-        }
-      }
+      const mergedInitial = storageService.getUsers();
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(mergedInitial));
 
       if (!localStorage.getItem(STORAGE_SCORES_KEY)) {
         localStorage.setItem(STORAGE_SCORES_KEY, JSON.stringify(INITIAL_SCORES));
@@ -306,8 +421,123 @@ export const storageService = {
       if (!localStorage.getItem(STORAGE_QUIZ_CONTROL_KEY)) {
         localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, JSON.stringify({ isActive: false }));
       }
+
+      // Jalankan sinkronisasi ke server backend agar akun murid baru langsung muncul di akun Master lintas tab/perangkat
+      storageService.syncWithServer();
+      if (!syncIntervalStarted && typeof window !== 'undefined') {
+        syncIntervalStarted = true;
+        window.setInterval(() => {
+          storageService.syncWithServer();
+        }, 2000);
+      }
     } catch (e) {
       console.error('Storage initialization failed', e);
+    }
+  },
+
+  // Sinkronisasi dua arah antara LocalStorage & Server Pusat (Agar Murid Baru Langsung Muncul di Akun Master)
+  syncWithServer: async (): Promise<void> => {
+    if (isSyncingWithServer) return;
+    isSyncingWithServer = true;
+    const syncStartedAt = Date.now();
+    try {
+      const localUsers = storageService.getUsers();
+      const currentUser = storageService.getCurrentUser();
+      const localScores = storageService.getScores();
+      const localQuizzes = storageService.getActiveQuizRecords();
+      const localPresence = storageService.getOnlinePresenceMap();
+
+      const res = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          users: localUsers,
+          currentUser,
+          scores: localScores,
+          activeQuizzes: localQuizzes,
+          onlinePresence: localPresence,
+        }),
+      });
+
+      if (!res.ok) return;
+      const serverData = await res.json();
+
+      if (Array.isArray(serverData.deletedEmails)) {
+        const deletedSet = getDeletedEmailsSet();
+        for (const de of serverData.deletedEmails) {
+          if (de) deletedSet.add(String(de).toLowerCase().trim());
+        }
+        saveDeletedEmailsSet(deletedSet);
+      }
+
+      let hasUserChanges = false;
+      if (Array.isArray(serverData.users) && serverData.users.length > 0) {
+        const deletedSet = getDeletedEmailsSet();
+        // Re-read current local users in case a registration happened while fetch was in flight
+        const latestLocalRaw = localStorage.getItem(STORAGE_USERS_KEY);
+        const latestLocalUsers = latestLocalRaw ? JSON.parse(latestLocalRaw) : localUsers;
+        const mergedUsers = normalizeAndSortUsersList(
+          [...latestLocalUsers, ...serverData.users],
+          deletedSet
+        );
+        const nextUsersStr = JSON.stringify(mergedUsers);
+        if (latestLocalRaw !== nextUsersStr && lastLocalUserMutationAt <= syncStartedAt) {
+          localStorage.setItem(STORAGE_USERS_KEY, nextUsersStr);
+          hasUserChanges = true;
+        } else if (lastLocalUserMutationAt > syncStartedAt) {
+          // Merge without losing the newly mutated local user
+          const safeMerged = normalizeAndSortUsersList(
+            [...latestLocalUsers, ...serverData.users],
+            deletedSet
+          );
+          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(safeMerged));
+          hasUserChanges = true;
+        }
+      }
+
+      if (Array.isArray(serverData.scores)) {
+        const currentScoresStr = localStorage.getItem(STORAGE_SCORES_KEY);
+        const nextScoresStr = JSON.stringify(serverData.scores);
+        if (currentScoresStr !== nextScoresStr) {
+          localStorage.setItem(STORAGE_SCORES_KEY, nextScoresStr);
+          window.dispatchEvent(new CustomEvent('scores_updated'));
+        }
+      }
+
+      if (Array.isArray(serverData.activeQuizzes)) {
+        const currentQuizzesStr = localStorage.getItem(STORAGE_ACTIVE_QUIZZES_KEY);
+        const nextQuizzesStr = JSON.stringify(serverData.activeQuizzes);
+        if (currentQuizzesStr !== nextQuizzesStr) {
+          localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, nextQuizzesStr);
+          window.dispatchEvent(new CustomEvent('active_quiz_updated'));
+        }
+      }
+
+      if (serverData.quizControl) {
+        const currentCtrlStr = localStorage.getItem(STORAGE_QUIZ_CONTROL_KEY);
+        const nextCtrlStr = JSON.stringify(serverData.quizControl);
+        if (currentCtrlStr !== nextCtrlStr) {
+          localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, nextCtrlStr);
+          window.dispatchEvent(new CustomEvent('quiz_control_changed', { detail: serverData.quizControl }));
+        }
+      }
+
+      if (serverData.onlinePresence) {
+        const currentPresStr = localStorage.getItem(STORAGE_ONLINE_PRESENCE_KEY);
+        const nextPresStr = JSON.stringify(serverData.onlinePresence);
+        if (currentPresStr !== nextPresStr) {
+          localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, nextPresStr);
+          window.dispatchEvent(new CustomEvent('presence_updated'));
+        }
+      }
+
+      if (hasUserChanges) {
+        window.dispatchEvent(new CustomEvent('student_data_updated'));
+      }
+    } catch {
+      // Abaikan jika sedang offline sementara
+    } finally {
+      isSyncingWithServer = false;
     }
   },
 
@@ -321,11 +551,151 @@ export const storageService = {
            user.role === 'master';
   },
 
-  // Auth & Users
+  // Auth & Users (Dilengkapi pemulihan otomatis seluruh akun murid yang sudah mendaftar dari semua kunci LocalStorage)
   getUsers: (): { user: User; password: string }[] => {
     try {
-      const data = localStorage.getItem(STORAGE_USERS_KEY);
-      return data ? JSON.parse(data) : INITIAL_STUDENTS;
+      const deletedSet = getDeletedEmailsSet();
+      const collected: { user: User; password: string }[] = [];
+
+      // 1. Baca dari kunci utama & kunci versi sebelumnya jika ada
+      const userKeys = [
+        STORAGE_USERS_KEY,
+        'sensei_sari_users_v2',
+        'sensei_sari_users',
+        'sensei_sari_students',
+        'users',
+      ];
+      for (const k of userKeys) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              for (const item of parsed) {
+                if (item?.user?.email) {
+                  collected.push(item);
+                } else if (item?.email) {
+                  collected.push({ user: item, password: item.password || 'password123' });
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // 2. Pulihkan dari sesi pengguna yang sedang login (currentUser)
+      const currentUserKeys = [
+        STORAGE_CURRENT_USER_KEY,
+        'sensei_sari_current_user_v2',
+        'sensei_sari_current_user',
+      ];
+      for (const ck of currentUserKeys) {
+        const rawCurr = localStorage.getItem(ck);
+        if (rawCurr) {
+          try {
+            const parsedCurr = JSON.parse(rawCurr);
+            if (parsedCurr?.email) {
+              collected.push({ user: parsedCurr, password: 'password123' });
+            }
+          } catch {}
+        }
+      }
+
+      // 3. Pulihkan akun murid yang pernah tercatat di riwayat nilai kuis (scores)
+      const scoreKeys = [STORAGE_SCORES_KEY, 'sensei_sari_scores_v2', 'sensei_sari_scores'];
+      for (const sk of scoreKeys) {
+        const rawScores = localStorage.getItem(sk);
+        if (rawScores) {
+          try {
+            const parsedScores = JSON.parse(rawScores);
+            if (Array.isArray(parsedScores)) {
+              for (const sc of parsedScores) {
+                if (sc?.userEmail) {
+                  collected.push({
+                    user: {
+                      email: sc.userEmail,
+                      fullName: sc.studentName || sc.studentNickname || sc.userEmail.split('@')[0],
+                      nickname: sc.studentNickname || (sc.studentName ? sc.studentName.split(/\s+/)[0] : sc.userEmail.split('@')[0]),
+                      name: sc.studentName || sc.studentNickname || sc.userEmail.split('@')[0],
+                      registeredAt: sc.completedAt || '2026-10-01 08:00',
+                      isMaster: false,
+                      role: 'student',
+                    },
+                    password: 'password123',
+                  });
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // 4. Pulihkan akun murid yang pernah tercatat di kuis aktif (activeQuizzes)
+      const activeKeys = [STORAGE_ACTIVE_QUIZZES_KEY, 'sensei_sari_active_quizzes_v2', 'sensei_sari_active_quizzes'];
+      for (const ak of activeKeys) {
+        const rawAct = localStorage.getItem(ak);
+        if (rawAct) {
+          try {
+            const parsedAct = JSON.parse(rawAct);
+            if (Array.isArray(parsedAct)) {
+              for (const aq of parsedAct) {
+                if (aq?.userEmail) {
+                  collected.push({
+                    user: {
+                      email: aq.userEmail,
+                      fullName: aq.studentName || aq.studentNickname || aq.userEmail.split('@')[0],
+                      nickname: aq.studentNickname || (aq.studentName ? aq.studentName.split(/\s+/)[0] : aq.userEmail.split('@')[0]),
+                      name: aq.studentName || aq.studentNickname || aq.userEmail.split('@')[0],
+                      registeredAt: aq.date ? `${aq.date} 08:00` : '2026-10-01 08:00',
+                      isMaster: false,
+                      role: 'student',
+                    },
+                    password: 'password123',
+                  });
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // 5. Pulihkan akun murid yang pernah tercatat di onlinePresence
+      const rawPres = localStorage.getItem(STORAGE_ONLINE_PRESENCE_KEY);
+      if (rawPres) {
+        try {
+          const parsedPres = JSON.parse(rawPres);
+          if (parsedPres && typeof parsedPres === 'object') {
+            for (const [emailKey, pVal] of Object.entries(parsedPres as Record<string, any>)) {
+              if (emailKey) {
+                const pName = pVal?.name || emailKey.split('@')[0];
+                collected.push({
+                  user: {
+                    email: emailKey,
+                    fullName: pName,
+                    nickname: pName.split(/\s+/)[0] || pName,
+                    name: pName,
+                    registeredAt: '2026-10-01 08:00',
+                    isMaster: false,
+                    role: 'student',
+                  },
+                  password: 'password123',
+                });
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // 6. Tambahkan INITIAL_STUDENTS sebagai fallback terakhir
+      collected.push(...INITIAL_STUDENTS);
+
+      const normalized = normalizeAndSortUsersList(collected, deletedSet);
+      const currentRaw = localStorage.getItem(STORAGE_USERS_KEY);
+      const normalizedStr = JSON.stringify(normalized);
+      if (currentRaw !== normalizedStr) {
+        localStorage.setItem(STORAGE_USERS_KEY, normalizedStr);
+      }
+      return normalized;
     } catch {
       return INITIAL_STUDENTS;
     }
@@ -359,8 +729,8 @@ export const storageService = {
         return { success: false, message: 'Kata sandi akun master bebas antara minimal 2 sampai maksimal 10 karakter.' };
       }
     } else {
-      if (cleanPass.length < 8) {
-        return { success: false, message: 'Kata sandi murid wajib minimal 8 karakter.' };
+      if (cleanPass.length < 2) {
+        return { success: false, message: 'Kata sandi murid wajib minimal 2 karakter.' };
       }
     }
 
@@ -370,7 +740,14 @@ export const storageService = {
       return { success: false, message: 'Alamat email tidak ditemukan dalam sistem.' };
     }
     users[idx].password = cleanPass;
+    lastLocalUserMutationAt = Date.now();
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    fetch('/api/users/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: trimmedEmail, newPassword: cleanPass }),
+    }).catch(() => {});
+    syncChannel?.postMessage({ type: 'sync_trigger' });
     window.dispatchEvent(new CustomEvent('student_data_updated'));
     return { 
       success: true, 
@@ -491,6 +868,12 @@ export const storageService = {
         return false; // Prevent deleting master
       }
 
+      // 0. Record in deletedEmails so auto-recovery does not resurrect deleted student
+      const deletedSet = getDeletedEmailsSet();
+      deletedSet.add(targetEmail);
+      saveDeletedEmailsSet(deletedSet);
+      lastLocalUserMutationAt = Date.now();
+
       // 1. Remove from users list
       let users = storageService.getUsers();
       users = users.filter(u => u.user.email.toLowerCase() !== targetEmail);
@@ -506,7 +889,22 @@ export const storageService = {
       activeQuizzes = activeQuizzes.filter(q => q.userEmail.toLowerCase() !== targetEmail);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(activeQuizzes));
 
-      // 4. Trigger live event
+      // 3b. Remove from online presence
+      const presMap = storageService.getOnlinePresenceMap();
+      if (presMap[targetEmail]) {
+        delete presMap[targetEmail];
+        localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presMap));
+      }
+
+      // 4. Sync deletion to server & BroadcastChannel
+      fetch('/api/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail }),
+      }).catch(() => {});
+      syncChannel?.postMessage({ type: 'sync_trigger' });
+
+      // 5. Trigger live event
       window.dispatchEvent(new CustomEvent('student_data_updated', { detail: { deletedEmail: targetEmail } }));
       return true;
     } catch (e) {
@@ -523,19 +921,19 @@ export const storageService = {
     password: string
   ): { valid: boolean; message: string } => {
     const trimmedFullName = fullName.trim();
-    const trimmedNickname = nickname.trim();
+    const trimmedNickname = (nickname.trim() || trimmedFullName.split(/\s+/)[0] || trimmedFullName).trim();
     const trimmedEmail = email.trim().toLowerCase();
 
     // 1. Validasi Nama Lengkap
-    if (!trimmedFullName || trimmedFullName.length < 3) {
-      return { valid: false, message: 'Nama lengkap wajib diisi (minimal 3 karakter).' };
+    if (!trimmedFullName || trimmedFullName.length < 2) {
+      return { valid: false, message: 'Nama lengkap wajib diisi (minimal 2 karakter).' };
     }
 
     if (!/[a-zA-Z]/.test(trimmedFullName)) {
       return { valid: false, message: 'Nama lengkap harus menggunakan huruf alfabet yang sah.' };
     }
 
-    // Blacklist kata kunci nama anonim
+    // Blacklist kata kunci nama anonim murni
     const ANONYMOUS_NAME_KEYWORDS = [
       'anon',
       'anonim',
@@ -548,57 +946,16 @@ export const storageService = {
       'no name',
       'noname',
       'nobody',
-      'unknown',
-      'guest',
-      'tamu',
-      'pengguna',
-      'user',
-      'test',
-      'tester',
-      'testing',
-      'dummy',
-      'admin',
-      'administrator',
-      'asdf',
-      'qwerty',
-      'sample',
-      'contoh',
-      'fake',
-      'palsu',
-      'siapa saja',
-      'tidak ada',
-      'null',
-      'undefined',
-      'xxx',
-      'abc',
-      '123',
     ];
 
     const lowerFullName = trimmedFullName.toLowerCase();
-    const lowerWords = lowerFullName.split(/[\s,.-]+/);
     for (const kw of ANONYMOUS_NAME_KEYWORDS) {
-      if (lowerFullName === kw || lowerWords.includes(kw)) {
+      if (lowerFullName === kw) {
         return { 
           valid: false, 
           message: `Pendaftaran ditolak: Dilarang menggunakan nama anonim/samaran ("${trimmedFullName}"). Wajib menggunakan nama lengkap asli.` 
         };
       }
-    }
-
-    // Memastikan nama lengkap memiliki setidaknya 2 kata (contoh: "Budi Santoso", "Siti Rahmawati")
-    const nameParts = trimmedFullName.split(/\s+/).filter(w => w.length > 0);
-    if (nameParts.length < 2) {
-      return { 
-        valid: false, 
-        message: 'Harap masukkan nama lengkap Anda (minimal 2 kata, contoh: Budi Santoso) demi ketertiban rapor murid Sensei Sari.' 
-      };
-    }
-
-    if (nameParts.some(p => p.length < 2)) {
-      return { 
-        valid: false, 
-        message: 'Setiap bagian nama harus minimal 2 karakter (bukan inisial satu huruf).' 
-      };
     }
 
     // 2. Validasi Nama Panggilan
@@ -631,39 +988,7 @@ export const storageService = {
       return { valid: false, message: 'Format alamat email tidak lengkap.' };
     }
 
-    // Blacklist username email anonim
-    const ANONYMOUS_EMAIL_PREFIXES = [
-      'anon',
-      'anonim',
-      'anonymous',
-      'tanpanama',
-      'hambaallah',
-      'nobody',
-      'dummy',
-      'fake',
-      'junk',
-      'temp',
-      'throwaway',
-      'disposable',
-      'tester',
-      'test',
-      'noname',
-      'no.name',
-      'asdf',
-      'qwerty',
-      'user123',
-    ];
-
-    for (const prefix of ANONYMOUS_EMAIL_PREFIXES) {
-      if (username === prefix || username.startsWith(prefix + '.') || username.startsWith(prefix + '_') || username.startsWith(prefix + '1')) {
-        return { 
-          valid: false, 
-          message: `Pendaftaran ditolak: Dilarang menggunakan alamat email anonim/dummy ("${trimmedEmail}"). Harap gunakan email pribadi asli Anda.` 
-        };
-      }
-    }
-
-    // Blacklist domain disposable / temp mail
+    // Blacklist domain disposable / temp mail murni
     const DISPOSABLE_EMAIL_DOMAINS = [
       'tempmail.com',
       'temp-mail.org',
@@ -682,48 +1007,6 @@ export const storageService = {
       'sharklasers.com',
       'fakeinbox.com',
       'dispostable.com',
-      'getairmail.com',
-      'mytemp.email',
-      'generator.email',
-      'burnermail.io',
-      'crazymailing.com',
-      'mohmal.com',
-      'inboxkitten.com',
-      'anonymouse.org',
-      'anonaddy.me',
-      'anonaddy.com',
-      'simplelogin.co',
-      'simplelogin.io',
-      'relay.firefox.com',
-      'duck.com',
-      'zillamail.com',
-      'fakemailgenerator.com',
-      'emailondeck.com',
-      'dropmail.me',
-      'mytempmail.com',
-      'luxusmail.com',
-      'maildrop.cc',
-      'harakirimail.com',
-      'getnada.com',
-      'nada.ltd',
-      'abhy.com',
-      'boun.cr',
-      'armyspy.com',
-      'cuvox.de',
-      'dayrep.com',
-      'einrot.com',
-      'fleckens.hu',
-      'gustr.com',
-      'jourrapide.com',
-      'rhyta.com',
-      'superrito.com',
-      'teleworm.us',
-      'test.com',
-      'example.com',
-      'sample.com',
-      'mail.com',
-      'inbox.test',
-      'dummy.com',
     ];
 
     if (DISPOSABLE_EMAIL_DOMAINS.includes(domain)) {
@@ -733,17 +1016,9 @@ export const storageService = {
       };
     }
 
-    const suspiciousKeywords = ['temp', 'fake', 'dispos', 'throw', 'trash', 'junk', 'guerrilla', 'anon', '10min', 'burner', 'dropmail'];
-    if (suspiciousKeywords.some(kw => domain.includes(kw))) {
-      return { 
-        valid: false, 
-        message: `Pendaftaran ditolak: Domain email "${domain}" terdeteksi sebagai email sementara/anonim. Harap gunakan email pribadi asli Anda.` 
-      };
-    }
-
-    // 4. Validasi Kata Sandi Murid (Minimal 8 Karakter)
-    if (!password || password.length < 8) {
-      return { valid: false, message: 'Kata sandi murid wajib minimal 8 karakter demi keamanan akun Anda.' };
+    // 4. Validasi Kata Sandi Murid
+    if (!password || password.length < 2) {
+      return { valid: false, message: 'Kata sandi murid wajib diisi (minimal 2 karakter).' };
     }
 
     return { valid: true, message: 'Valid' };
@@ -753,41 +1028,93 @@ export const storageService = {
     email: string, 
     password: string, 
     fullName: string, 
-    nickname: string
+    nickname: string,
+    setAsCurrentUser: boolean = true
   ): { success: boolean; message: string; user?: User } => {
+    const cleanFullName = fullName.trim();
+    const cleanNickname = (nickname.trim() || cleanFullName.split(/\s+/)[0] || cleanFullName).trim();
+
     // Validasi pencegahan akun anonim
-    const validation = storageService.validateStudentRegistration(fullName, nickname, email, password);
+    const validation = storageService.validateStudentRegistration(cleanFullName, cleanNickname, email, password);
     if (!validation.valid) {
       return { success: false, message: validation.message };
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    const trimmedFullName = fullName.trim();
-    const trimmedNickname = nickname.trim();
-
-    const users = storageService.getUsers();
-    const existing = users.find(u => u.user.email.toLowerCase() === trimmedEmail);
-    if (existing) {
-      return { success: false, message: 'Email ini sudah terdaftar. Silakan masuk.' };
+    if (trimmedEmail === MASTER_CONFIG.email.toLowerCase() || trimmedEmail === 'master@senseisari.com') {
+      return { success: false, message: 'Ini adalah email khusus Akun Master. Silakan masuk melalui menu Masuk.' };
     }
+
+    // Hapus dari daftar deletedEmails jika sebelumnya pernah dihapus
+    const deletedSet = getDeletedEmailsSet();
+    if (deletedSet.has(trimmedEmail)) {
+      deletedSet.delete(trimmedEmail);
+      saveDeletedEmailsSet(deletedSet);
+    }
+
+    lastLocalUserMutationAt = Date.now();
+    const users = storageService.getUsers();
+    const existingIdx = users.findIndex(u => u.user.email.toLowerCase() === trimmedEmail);
 
     const newUser: User = {
       email: trimmedEmail,
-      fullName: trimmedFullName,
-      nickname: trimmedNickname,
-      name: trimmedFullName,
-      registeredAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      fullName: cleanFullName,
+      nickname: cleanNickname,
+      name: cleanFullName,
+      registeredAt:
+        existingIdx !== -1 && users[existingIdx].user.registeredAt
+          ? users[existingIdx].user.registeredAt
+          : new Date().toISOString().replace('T', ' ').substring(0, 16),
       isMaster: false,
       role: 'student',
     };
 
-    users.push({ user: newUser, password });
-    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
-    storageService.setCurrentUser(newUser);
+    if (existingIdx !== -1) {
+      // Jika sudah pernah mendaftar, perbarui datanya dan angkat ke urutan teratas daftar murid
+      users.splice(existingIdx, 1);
+    }
 
+    // Tempatkan murid baru tepat setelah akun Master (urutan #1 paling atas di Daftar Murid)
+    if (users.length > 0) {
+      users.splice(1, 0, { user: newUser, password });
+    } else {
+      users.push({ user: newUser, password });
+    }
+
+    const sortedUsers = normalizeAndSortUsersList(users, deletedSet);
+    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(sortedUsers));
+
+    // Tandai kehadiran online
+    storageService.heartbeatPresence(newUser);
+
+    if (setAsCurrentUser) {
+      storageService.setCurrentUser(newUser);
+    }
+
+    // Kirim langsung ke server pusat agar langsung muncul di Daftar Murid Akun Master
+    fetch('/api/users/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: newUser, password }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data?.users)) {
+          const currentLocal = storageService.getUsers();
+          const merged = normalizeAndSortUsersList(
+            [{ user: newUser, password }, ...currentLocal, ...data.users],
+            getDeletedEmailsSet()
+          );
+          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent('student_data_updated'));
+        }
+      })
+      .catch(() => {});
+
+    syncChannel?.postMessage({ type: 'sync_trigger' });
     window.dispatchEvent(new CustomEvent('student_data_updated'));
 
-    return { success: true, message: `Pendaftaran berhasil! Selamat datang, ${trimmedNickname}! 🌸`, user: newUser };
+    return { success: true, message: `Pendaftaran berhasil! Selamat datang, ${cleanNickname}! 🌸`, user: newUser };
   },
 
   login: (email: string, password: string): { success: boolean; message: string; user?: User } => {
@@ -827,6 +1154,7 @@ export const storageService = {
       localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
 
       storageService.setCurrentUser(masterUser);
+      storageService.syncWithServer();
       return { 
         success: true, 
         message: `Selamat datang, ${MASTER_CONFIG.nickname}! 🌸👑 (Akun Master: ${MASTER_CONFIG.fullName})`, 
@@ -846,6 +1174,26 @@ export const storageService = {
     }
 
     storageService.setCurrentUser(found.user);
+
+    // Pastikan akun murid yang login langsung disinkronkan ke server pusat agar selalu tampil di Daftar Murid Master
+    fetch('/api/users/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: found.user, password: found.password }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data?.users)) {
+          const merged = normalizeAndSortUsersList(
+            [...storageService.getUsers(), ...data.users],
+            getDeletedEmailsSet()
+          );
+          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent('student_data_updated'));
+        }
+      })
+      .catch(() => {});
+
     return { 
       success: true, 
       message: `Selamat datang kembali, ${found.user.nickname || found.user.fullName}! 🌸`, 
@@ -913,6 +1261,11 @@ export const storageService = {
         lastSeen: Date.now(),
       };
       localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
+      fetch('/api/presence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(presenceMap[email]),
+      }).catch(() => {});
       window.dispatchEvent(new CustomEvent('presence_updated', { detail: { email, online: true } }));
     } catch (e) {
       console.error('Failed to update presence', e);
@@ -926,6 +1279,11 @@ export const storageService = {
       if (presenceMap[target]) {
         presenceMap[target].lastSeen = 0; // Mark as offline
         localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
+        fetch('/api/presence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(presenceMap[target]),
+        }).catch(() => {});
         window.dispatchEvent(new CustomEvent('presence_updated', { detail: { email: target, online: false } }));
       }
     } catch (e) {
@@ -1019,6 +1377,12 @@ export const storageService = {
         startedBy: masterUser?.nickname || MASTER_CONFIG.nickname,
       };
       localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, JSON.stringify(state));
+      fetch('/api/quizzes/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quizControl: state }),
+      }).catch(() => {});
+      syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('quiz_control_changed', { detail: state }));
     } catch (e) {
       console.error('Failed to update quiz control state', e);
@@ -1064,6 +1428,12 @@ export const storageService = {
       const records = storageService.getActiveQuizRecords();
       records.unshift(newRecord);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
+      fetch('/api/quizzes/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record: newRecord }),
+      }).catch(() => {});
+      syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('active_quiz_updated', { detail: newRecord }));
     } catch (e) {
       console.error('Failed to save active quiz start', e);
@@ -1079,6 +1449,12 @@ export const storageService = {
       if (idx !== -1) {
         records[idx].tabViolationsCount = violationsCount;
         localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
+        fetch('/api/quizzes/active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ record: records[idx] }),
+        }).catch(() => {});
+        syncChannel?.postMessage({ type: 'sync_trigger' });
         window.dispatchEvent(new CustomEvent('active_quiz_updated', { detail: records[idx] }));
       }
     } catch (e) {
@@ -1132,6 +1508,12 @@ export const storageService = {
         };
         storageService.saveScore(result);
 
+        fetch('/api/quizzes/active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ record: records[idx] }),
+        }).catch(() => {});
+        syncChannel?.postMessage({ type: 'sync_trigger' });
         window.dispatchEvent(new CustomEvent('active_quiz_updated', { detail: records[idx] }));
       }
     } catch (e) {
@@ -1144,6 +1526,12 @@ export const storageService = {
       let records = storageService.getActiveQuizRecords();
       records = records.filter(r => r.id !== id);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
+      fetch('/api/quizzes/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteId: id }),
+      }).catch(() => {});
+      syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('active_quiz_updated'));
       return true;
     } catch (e) {
@@ -1155,6 +1543,12 @@ export const storageService = {
   resetActiveQuizRanking: (): boolean => {
     try {
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify([]));
+      fetch('/api/quizzes/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reset: true }),
+      }).catch(() => {});
+      syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('active_quiz_updated'));
       return true;
     } catch (e) {
@@ -1181,6 +1575,12 @@ export const storageService = {
     const scores = storageService.getScores();
     scores.unshift(result);
     localStorage.setItem(STORAGE_SCORES_KEY, JSON.stringify(scores));
+    fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ score: result }),
+    }).catch(() => {});
+    syncChannel?.postMessage({ type: 'sync_trigger' });
     window.dispatchEvent(new CustomEvent('scores_updated', { detail: result }));
   },
 

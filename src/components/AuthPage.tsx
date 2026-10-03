@@ -173,33 +173,36 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
     // If currently on login tab, switch to registration tab so student can fill names
     if (authMode === 'login') {
       setAuthMode('register');
-      setErrorMsg('Silakan lengkapi Nama Lengkap & Nama Panggilan asli Anda untuk mendaftar akun murid resmi.');
+      setErrorMsg('Silakan lengkapi Nama Lengkap & Kata Sandi Anda untuk mendaftar akun murid baru.');
       return;
     }
 
-    if (!password || password.length < 8) {
-      setErrorMsg('Kata sandi murid wajib minimal 8 karakter demi keamanan akun Anda.');
+    const cleanFullName = fullName.trim();
+    const cleanNickname = (nickname.trim() || cleanFullName.split(/\s+/)[0] || cleanFullName).trim();
+
+    if (!cleanFullName || cleanFullName.length < 2) {
+      setErrorMsg('Nama lengkap murid wajib diisi (minimal 2 karakter).');
       return;
     }
 
-    if (!confirmPassword) {
-      setErrorMsg('Harap masukkan ulang kata sandi pada kolom Ulangi Kata Sandi.');
+    if (!password || password.length < 2) {
+      setErrorMsg('Kata sandi murid wajib diisi (minimal 2 karakter).');
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (confirmPassword && password !== confirmPassword) {
       setErrorMsg('Konfirmasi kata sandi tidak cocok. Pastikan kedua kata sandi yang Anda ketik sama persis.');
       return;
     }
 
     // Validasi pencegahan akun anonim
-    const validation = storageService.validateStudentRegistration(fullName, nickname, email, password);
+    const validation = storageService.validateStudentRegistration(cleanFullName, cleanNickname, email, password);
     if (!validation.valid) {
       setErrorMsg(validation.message);
       return;
     }
 
-    const res = storageService.register(email, password, fullName, nickname);
+    const res = storageService.register(email, password, cleanFullName, cleanNickname);
     if (res.success && res.user) {
       onSuccess(res.user, true);
     } else {
@@ -371,8 +374,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                       <Smile className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
                       <input
                         type="text"
-                        required
-                        placeholder="contoh: Budi"
+                        placeholder="contoh: Budi (otomatis jika dikosongkan)"
                         value={nickname}
                         onChange={(e) => setNickname(e.target.value)}
                         className="w-full pl-10 pr-3.5 py-2.5 bg-white border border-[#ddcaa8] rounded-xl text-sm text-[#2b1d19] placeholder:text-[#a88a70]/70 focus:outline-hidden focus:border-[#881337] focus:ring-1 focus:ring-[#881337] transition-all"
@@ -390,9 +392,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                       <span>Ketentuan Pendaftaran Akun Resmi:</span>
                     </div>
                     <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-[#735338] leading-relaxed">
-                      <li>Wajib menggunakan <strong>nama lengkap asli</strong> (minimal 2 kata, bukan nama samaran/anonim).</li>
+                      <li>Wajib menggunakan <strong>nama lengkap asli</strong> (bukan nama samaran/anonim).</li>
                       <li>Wajib menggunakan <strong>alamat email pribadi aktif</strong> (layanan email sementara / anonim dilarang).</li>
-                      <li>Data Anda dicatat resmi untuk rapor dan bimbingan kemajuan belajar Sensei Sari.</li>
+                      <li>Data Anda langsung tersimpan dan muncul otomatis di <strong>Daftar Murid Akun Master Sensei Sari</strong>.</li>
                     </ul>
                   </div>
                 </>
@@ -481,7 +483,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
-                      required
                       placeholder="Ketik ulang kata sandi yang sama"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -502,31 +503,49 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                 </div>
               )}
 
-              {/* Action Buttons as specified:
-                  Tombol "Masuk" (latar merah tua, teks putih) | "Daftar" (latar merah muda pudar) */}
+              {/* Action Buttons */}
               <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (authMode !== 'login') {
-                      setAuthMode('login');
-                      setErrorMsg('');
-                    } else {
-                      handleLogin();
-                    }
-                  }}
-                  className="flex-1 py-3 px-4 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
-                >
-                  <span>Masuk</span>
-                </button>
+                {authMode === 'login' ? (
+                  <>
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 px-4 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
+                    >
+                      <span>Masuk</span>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleRegister()}
-                  className="flex-1 py-3 px-4 bg-[#fce7f3] hover:bg-[#fbcfe8] text-[#881337] border border-[#f9a8d4] font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
-                >
-                  <span>Daftar</span>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('register');
+                        setErrorMsg('');
+                      }}
+                      className="flex-1 py-3 px-4 bg-[#fce7f3] hover:bg-[#fbcfe8] text-[#881337] border border-[#f9a8d4] font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
+                    >
+                      <span>Daftar Murid Baru</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 px-4 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
+                    >
+                      <span>Daftar Sebagai Murid Baru</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('login');
+                        setErrorMsg('');
+                      }}
+                      className="py-3 px-4 bg-[#f5ede1] hover:bg-[#ebdccb] text-[#624734] font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]"
+                    >
+                      <span>Kembali ke Masuk</span>
+                    </button>
+                  </>
+                )}
               </div>
             </form>
 
