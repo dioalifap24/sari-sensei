@@ -1,0 +1,42 @@
+{
+  "users": [
+    {
+      "user": {
+        "email": "dioalifap24@gmail.com",
+        "fullName": "GLOSTER GLADIATOR",
+        "nickname": "skywalker",
+        "name": "GLOSTER GLADIATOR",
+        "registeredAt": "2026-09-01 08:00",
+        "isMaster": true,
+        "role": "master"
+      },
+      "password": "96"
+    },
+    {
+      "user": {
+        "email": "kingugik@gmail.com",
+        "fullName": "king ugik",
+        "nickname": "king ugik",
+        "name": "king ugik",
+        "registeredAt": "2026-10-01 06:52",
+        "isMaster": false,
+        "role": "student"
+      },
+      "password": "1234"
+    }
+  ],
+  "scores": [],
+  "activeQuizzes": [],
+  "quizControl": {
+    "isActive": false
+  },
+  "onlinePresence": {},
+  "deletedEmails": [
+    "budi.santoso@gmail.com",
+    "anisa.dewi@gmail.com",
+    "rizky.pratama@gmail.com",
+    "putri.ayu@gmail.com"
+  ],
+  "rankingResetAt": 0,
+  "updatedAt": 1791044000000
+}

@@ -46,7 +46,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
   const handleSendVerificationEmail = () => {
     const trimmed = forgotEmail.trim().toLowerCase();
     if (!trimmed) {
-      setForgotMsg({ text: 'Harap masukkan alamat email murid terdaftar Anda.', type: 'error' });
+      setForgotMsg({ text: 'Harap masukkan alamat email terdaftar Anda (atau dioalifap24@gmail.com untuk Akun Master).', type: 'error' });
       return;
     }
 
@@ -110,14 +110,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
     }
   };
 
-  // Langkah 3: Simpan kata sandi baru (minimal 8 karakter, 2x pengisian)
+  // Langkah 3: Simpan kata sandi baru (setelah verifikasi email resmi untuk Murid maupun Akun Master dioalifap24@gmail.com)
   const handleSaveNewPasswordWithVerification = () => {
     const cleanPass = forgotNewPass.trim();
     const cleanConfirm = forgotConfirmPass.trim();
+    const isMasterReset = forgotEmail.trim().toLowerCase() === 'dioalifap24@gmail.com';
 
-    if (!cleanPass || cleanPass.length < 8) {
-      setForgotMsg({ text: 'Kata sandi baru murid wajib minimal 8 karakter demi keamanan.', type: 'error' });
-      return;
+    if (isMasterReset) {
+      if (!cleanPass || cleanPass.length < 2 || cleanPass.length > 10) {
+        setForgotMsg({ text: 'Kata sandi baru Akun Master bebas antara minimal 2 sampai maksimal 10 karakter.', type: 'error' });
+        return;
+      }
+    } else {
+      if (!cleanPass || cleanPass.length < 8) {
+        setForgotMsg({ text: 'Kata sandi baru murid wajib minimal 8 karakter demi keamanan.', type: 'error' });
+        return;
+      }
     }
 
     if (!cleanConfirm) {
@@ -134,7 +142,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
     const res = storageService.completePasswordResetWithVerification(forgotEmail, codeToUse, cleanPass);
     if (res.success) {
       setForgotMsg({ 
-        text: 'Kata sandi akun murid berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda. 🌸', 
+        text: isMasterReset
+          ? 'Kata sandi Akun Master (dioalifap24@gmail.com) berhasil diperbarui melalui verifikasi email resmi! 🌸👑'
+          : 'Kata sandi akun murid berhasil diperbarui! Silakan masuk dengan kata sandi baru Anda. 🌸', 
         type: 'success' 
       });
       setPassword(cleanPass);
@@ -579,7 +589,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#881337] font-japanese">
-                  Verifikasi Pembaruan Kata Sandi Murid
+                  Verifikasi Pembaruan Kata Sandi
                 </h3>
                 <p className="text-xs text-[#735338]">
                   Penyedia Resmi: <span className="font-mono text-[#881337] font-bold">{VERIFICATION_PROVIDER.email}</span>
@@ -628,16 +638,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                 <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-2xl text-xs text-[#6e533d] space-y-1">
                   <div className="font-bold text-[#881337] flex items-center gap-1.5">
                     <ShieldAlert className="w-4 h-4 text-[#881337]" />
-                    <span>Perlindungan Keamanan Akun Murid:</span>
+                    <span>Perlindungan Keamanan Akun (Murid & Master):</span>
                   </div>
                   <p className="text-[11px] leading-relaxed text-[#735338]">
-                    Sistem tidak mengizinkan perubahan kata sandi langsung di web tanpa verifikasi email resmi. Email verifikasi berisi kode keamanan 6 digit akan dikirimkan oleh <strong>{VERIFICATION_PROVIDER.name}</strong>.
+                    Baik akun murid maupun <strong>Akun Master (dioalifap24@gmail.com)</strong> wajib melakukan verifikasi melalui email terdaftar sebelum mengubah kata sandi. Kode keamanan 6 digit akan dikirimkan ke email Anda oleh <strong>{VERIFICATION_PROVIDER.name}</strong>.
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#5a4230] mb-1">
-                    Alamat Email Murid Terdaftar <span className="text-red-500">*</span>
+                    Alamat Email Terdaftar (Murid / Akun Master dioalifap24@gmail.com) <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
@@ -720,7 +730,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                       Subjek: {VERIFICATION_PROVIDER.subject}
                     </div>
                     <p className="text-[11px] leading-relaxed text-[#5a4230] pt-1">
-                      Halo <strong>{activeVerificationData?.recipientName}</strong>, kami menerima permohonan pembaruan kata sandi untuk akun murid Sensei Sari Anda. Gunakan kode keamanan resmi berikut:
+                      Halo <strong>{activeVerificationData?.recipientName}</strong>, kami menerima permohonan pembaruan kata sandi untuk{' '}
+                      {forgotEmail.trim().toLowerCase() === 'dioalifap24@gmail.com' ? (
+                        <strong>Akun Master Sensei Sari (dioalifap24@gmail.com)</strong>
+                      ) : (
+                        'akun murid Sensei Sari Anda'
+                      )}. Gunakan kode keamanan resmi berikut:
                     </p>
 
                     {/* Kode Verifikasi Menonjol */}
@@ -807,14 +822,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                 {/* Input Kata Sandi Baru */}
                 <div>
                   <label className="block text-xs font-bold text-[#5a4230] mb-1">
-                    Kata Sandi Baru Murid (Minimal 8 Karakter) <span className="text-red-500">*</span>
+                    {forgotEmail.trim().toLowerCase() === 'dioalifap24@gmail.com'
+                      ? 'Kata Sandi Baru Akun Master (2 – 10 Karakter)'
+                      : 'Kata Sandi Baru Murid (Minimal 8 Karakter)'}{' '}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a88a70]" />
                     <input
                       type={showForgotNewPass ? 'text' : 'password'}
                       required
-                      placeholder="Minimal 8 karakter"
+                      placeholder={
+                        forgotEmail.trim().toLowerCase() === 'dioalifap24@gmail.com'
+                          ? '2 sampai 10 karakter (Akun Master)'
+                          : 'Minimal 8 karakter'
+                      }
                       value={forgotNewPass}
                       onChange={(e) => setForgotNewPass(e.target.value)}
                       className="w-full pl-10 pr-11 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm text-[#2b1d19] outline-hidden"

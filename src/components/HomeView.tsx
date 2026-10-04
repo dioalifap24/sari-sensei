@@ -20,31 +20,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
   currentUser,
 }) => {
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
-  const [studentsCreds, setStudentsCreds] = useState<{ user: User; password: string }[]>([]);
 
   useEffect(() => {
     const refreshHomeData = () => {
       setQuizControl(storageService.getQuizControlState());
-      setStudentsCreds(storageService.getAllStudentsWithCredentials());
     };
     refreshHomeData();
     storageService.syncWithServer().then(refreshHomeData);
 
     window.addEventListener('quiz_control_changed', refreshHomeData);
-    window.addEventListener('student_data_updated', refreshHomeData);
-    window.addEventListener('presence_updated', refreshHomeData);
     window.addEventListener('storage', refreshHomeData);
 
     return () => {
       window.removeEventListener('quiz_control_changed', refreshHomeData);
-      window.removeEventListener('student_data_updated', refreshHomeData);
-      window.removeEventListener('presence_updated', refreshHomeData);
       window.removeEventListener('storage', refreshHomeData);
     };
   }, []);
 
   const isMasterUser = storageService.isMaster(currentUser);
-  const SAMPLE_EMAILS = ['budi.santoso@gmail.com', 'anisa.dewi@gmail.com', 'rizky.pratama@gmail.com', 'putri.ayu@gmail.com'];
 
   const levels: { id: JLPTLevel; label: string; desc: string }[] = [
     { id: 'N5', label: 'N5', desc: 'Pemula Dasar (Hiragana, Katakana & 100 Kanji)' },
@@ -336,127 +329,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <Shield className="w-6 h-6 text-amber-700" />
                 </div>
                 <span className="text-xs font-extrabold px-2.5 py-0.5 bg-amber-200 text-amber-950 rounded-md border border-amber-300">
-                  Panel Master ({studentsCreds.length} Murid)
+                  Khusus Master
                 </span>
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#881337] font-japanese flex items-center gap-1.5">
-                  📋 Daftar Murid & Nilai
+                  📋 Nilai Semua Murid
                 </h3>
                 <p className="text-xs text-[#5e4735] mt-1 leading-relaxed">
-                  Kelola akun murid yang sudah mendaftar ({studentsCreds.length} murid terdaftar), pantau pengerjaan kuis live, dan rekap nilai.
+                  Pantau pengerjaan kuis murid secara live, buka/kunci sesi kuis, dan kelola nilai di Halaman Master.
                 </p>
               </div>
               <div className="mt-4 flex items-center gap-1 text-xs font-extrabold text-amber-900 group-hover:translate-x-1 transition-transform">
-                <span>Buka Halaman Master & Daftar Murid</span>
+                <span>Buka Panel Master</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </div>
             </button>
           )}
         </div>
-
-        {/* PANEL LANGSUNG DAFTAR MURID TERDAFTAR DI BERANDA MASTER */}
-        {isMasterUser && (
-          <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl overflow-hidden shadow-sm mb-8">
-            <div className="bg-gradient-to-r from-[#fae8eb] via-[#fffdfa] to-[#fef3c7] border-b border-[#ebdccb] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#881337] text-white flex items-center justify-center shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-extrabold text-[#881337] font-japanese flex items-center gap-2 flex-wrap">
-                    <span>Daftar Akun Murid yang Sudah Mendaftar</span>
-                    <span className="px-2.5 py-0.5 bg-[#881337] text-white rounded-full text-xs font-black">
-                      {studentsCreds.length} Murid Terdaftar
-                    </span>
-                  </h2>
-                  <p className="text-xs text-[#735338]">
-                    Seluruh akun murid baru & murid aktif yang terdaftar di Portal Kelas Sensei Sari
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => onNavigate('master_management')}
-                className="px-4 py-2.5 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0"
-              >
-                <span>Kelola Lengkap di Halaman Master</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm">
-                <thead>
-                  <tr className="bg-[#fdf8f2] text-[#881337] border-b border-[#ebdccb] font-bold text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4 text-center w-12">No</th>
-                    <th className="py-3 px-4">Nama Murid & Panggilan</th>
-                    <th className="py-3 px-4">Alamat Email</th>
-                    <th className="py-3 px-4">Kata Sandi</th>
-                    <th className="py-3 px-4">Waktu Daftar</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f2e6d6]">
-                  {studentsCreds.map((item, idx) => {
-                    const stu = item.user;
-                    const isNewReg = !SAMPLE_EMAILS.includes(stu.email.toLowerCase());
-                    const dispName = stu.fullName || stu.name || stu.nickname || 'Murid Terdaftar';
-                    const dispNick = stu.nickname || dispName.split(/\s+/)[0] || '-';
-                    const isOnline = storageService.isStudentOnline(stu.email);
-                    return (
-                      <tr
-                        key={stu.email}
-                        className={isNewReg ? 'bg-[#fff9fb] hover:bg-[#fef2f6]' : 'hover:bg-[#fcf8f2]'}
-                      >
-                        <td className="py-3.5 px-4 text-center font-mono font-bold text-[#881337]">
-                          #{idx + 1}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-[#2b1d19]">{dispName}</span>
-                            {isNewReg && (
-                              <span className="px-2 py-0.5 bg-[#881337] text-white rounded-md text-[10px] font-bold">
-                                Murid Baru
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-[#735338]">
-                            Panggilan: <strong className="text-[#881337]">{dispNick}</strong>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono font-bold text-[#2b1d19]">
-                          {stu.email}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-mono font-black text-[#881337] bg-[#fbf6ef] px-2 py-0.5 rounded-md border border-[#e4ccb5]">
-                            {item.password}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-xs text-[#735338]">
-                          {stu.registeredAt || '2026-10-01'}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {isOnline ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-extrabold">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                              <span>Online</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-stone-100 text-stone-600 border border-stone-200 rounded-lg text-xs font-semibold">
-                              <span className="w-2 h-2 rounded-full bg-stone-400" />
-                              <span>Terdaftar</span>
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

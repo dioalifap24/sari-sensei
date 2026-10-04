@@ -14,6 +14,25 @@ const MASTER_CONFIG = {
   nickname: 'skywalker',
 };
 
+const SAMPLE_EMAILS = new Set([
+  'budi.santoso@gmail.com',
+  'anisa.dewi@gmail.com',
+  'rizky.pratama@gmail.com',
+  'putri.ayu@gmail.com',
+]);
+
+const SAMPLE_RECORD_IDS = new Set([
+  'score-1',
+  'score-2',
+  'score-3',
+  'score-4',
+  'score-5',
+  'active-sample-1',
+  'active-sample-2',
+  'active-sample-3',
+  'active-sample-4',
+]);
+
 const INITIAL_STUDENTS = [
   {
     user: {
@@ -39,188 +58,11 @@ const INITIAL_STUDENTS = [
     },
     password: '1234',
   },
-  {
-    user: {
-      email: 'budi.santoso@gmail.com',
-      fullName: 'Budi Santoso',
-      nickname: 'Budi',
-      name: 'Budi Santoso',
-      registeredAt: '2026-09-12 10:15',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
-  {
-    user: {
-      email: 'anisa.dewi@gmail.com',
-      fullName: 'Anisa Dewi Lestari',
-      nickname: 'Anisa',
-      name: 'Anisa Dewi Lestari',
-      registeredAt: '2026-09-15 14:20',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
-  {
-    user: {
-      email: 'rizky.pratama@gmail.com',
-      fullName: 'Rizky Pratama Putra',
-      nickname: 'Rizky',
-      name: 'Rizky Pratama Putra',
-      registeredAt: '2026-09-20 09:40',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
-  {
-    user: {
-      email: 'putri.ayu@gmail.com',
-      fullName: 'Putri Ayu Wandira',
-      nickname: 'Putri',
-      name: 'Putri Ayu Wandira',
-      registeredAt: '2026-09-25 16:05',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
 ];
 
-const INITIAL_SCORES = [
-  {
-    id: 'score-1',
-    userEmail: 'anisa.dewi@gmail.com',
-    studentName: 'Anisa Dewi Lestari',
-    studentNickname: 'Anisa',
-    level: 'N5',
-    score: 96,
-    totalQuestions: 50,
-    correctCount: 48,
-    durationUsedSeconds: 1650,
-    durationSelectedMinutes: 30,
-    completedAt: '2026-09-28 14:10',
-    date: '2026-09-28',
-    startedAtTime: '13:42:30',
-    completedAtTime: '14:10:00',
-  },
-  {
-    id: 'score-2',
-    userEmail: 'budi.santoso@gmail.com',
-    studentName: 'Budi Santoso',
-    studentNickname: 'Budi',
-    level: 'N5',
-    score: 68,
-    totalQuestions: 50,
-    correctCount: 34,
-    durationUsedSeconds: 2100,
-    durationSelectedMinutes: 45,
-    completedAt: '2026-09-28 16:45',
-    date: '2026-09-28',
-    startedAtTime: '16:10:00',
-    completedAtTime: '16:45:00',
-  },
-  {
-    id: 'score-3',
-    userEmail: 'rizky.pratama@gmail.com',
-    studentName: 'Rizky Pratama Putra',
-    studentNickname: 'Rizky',
-    level: 'N4',
-    score: 48,
-    totalQuestions: 50,
-    correctCount: 24,
-    durationUsedSeconds: 2400,
-    durationSelectedMinutes: 45,
-    completedAt: '2026-09-29 11:20',
-    date: '2026-09-29',
-    startedAtTime: '10:40:00',
-    completedAtTime: '11:20:00',
-  },
-  {
-    id: 'score-4',
-    userEmail: 'putri.ayu@gmail.com',
-    studentName: 'Putri Ayu Wandira',
-    studentNickname: 'Putri',
-    level: 'N3',
-    score: 86,
-    totalQuestions: 50,
-    correctCount: 43,
-    durationUsedSeconds: 3120,
-    durationSelectedMinutes: 60,
-    completedAt: '2026-09-29 17:05',
-    date: '2026-09-29',
-    startedAtTime: '16:13:00',
-    completedAtTime: '17:05:00',
-  },
-];
+const INITIAL_SCORES: any[] = [];
 
-const INITIAL_ACTIVE_QUIZZES = [
-  {
-    id: 'active-sample-1',
-    userEmail: 'budi.santoso@gmail.com',
-    studentName: 'Budi Santoso',
-    studentNickname: 'Budi',
-    level: 'N4',
-    date: new Date().toISOString().split('T')[0],
-    startedAtTime: '14:20:00',
-    completedAtTime: null,
-    status: 'in_progress',
-    score: null,
-    totalQuestions: 50,
-    correctCount: null,
-    startedAtTimestamp: Date.now() - 15 * 60 * 1000,
-  },
-  {
-    id: 'active-sample-2',
-    userEmail: 'anisa.dewi@gmail.com',
-    studentName: 'Anisa Dewi Lestari',
-    studentNickname: 'Anisa',
-    level: 'N5',
-    date: '2026-09-28',
-    startedAtTime: '13:42:30',
-    completedAtTime: '14:10:00',
-    status: 'completed',
-    score: 96,
-    totalQuestions: 50,
-    correctCount: 48,
-    startedAtTimestamp: Date.now() - 86400000,
-    completedAtTimestamp: Date.now() - 86400000 + 1650000,
-  },
-  {
-    id: 'active-sample-3',
-    userEmail: 'budi.santoso@gmail.com',
-    studentName: 'Budi Santoso',
-    studentNickname: 'Budi',
-    level: 'N5',
-    date: '2026-09-28',
-    startedAtTime: '16:10:00',
-    completedAtTime: '16:45:00',
-    status: 'completed',
-    score: 68,
-    totalQuestions: 50,
-    correctCount: 34,
-    startedAtTimestamp: Date.now() - 86400000,
-    completedAtTimestamp: Date.now() - 86400000 + 2100000,
-  },
-  {
-    id: 'active-sample-4',
-    userEmail: 'rizky.pratama@gmail.com',
-    studentName: 'Rizky Pratama Putra',
-    studentNickname: 'Rizky',
-    level: 'N4',
-    date: '2026-09-29',
-    startedAtTime: '10:40:00',
-    completedAtTime: '11:20:00',
-    status: 'completed',
-    score: 48,
-    totalQuestions: 50,
-    correctCount: 24,
-    startedAtTimestamp: Date.now() - 43200000,
-    completedAtTimestamp: Date.now() - 43200000 + 2400000,
-  },
-];
+const INITIAL_ACTIVE_QUIZZES: any[] = [];
 
 interface ServerDatabase {
   users: { user: any; password: string }[];
@@ -241,13 +83,40 @@ function loadDatabase(): ServerDatabase {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
+      const rawUsers = Array.isArray(parsed.users) && parsed.users.length > 0 ? parsed.users : [...INITIAL_STUDENTS];
+      const filteredUsers = rawUsers.filter((u: any) => {
+        const em = String(u?.user?.email || u?.email || '').toLowerCase();
+        return em && !SAMPLE_EMAILS.has(em);
+      });
+      const rawScores = Array.isArray(parsed.scores) ? parsed.scores : [];
+      const filteredScores = rawScores.filter((s: any) => {
+        const em = String(s?.userEmail || '').toLowerCase();
+        return !SAMPLE_EMAILS.has(em) && !SAMPLE_RECORD_IDS.has(String(s?.id || ''));
+      });
+      const rawQuizzes = Array.isArray(parsed.activeQuizzes) ? parsed.activeQuizzes : [];
+      const filteredQuizzes = rawQuizzes.filter((q: any) => {
+        const em = String(q?.userEmail || '').toLowerCase();
+        return !SAMPLE_EMAILS.has(em) && !SAMPLE_RECORD_IDS.has(String(q?.id || ''));
+      });
+      const rawPresence = parsed.onlinePresence && typeof parsed.onlinePresence === 'object' ? parsed.onlinePresence : {};
+      const filteredPresence: Record<string, { email: string; name: string; lastSeen: number }> = {};
+      for (const [k, v] of Object.entries(rawPresence)) {
+        if (!SAMPLE_EMAILS.has(k.toLowerCase())) {
+          filteredPresence[k.toLowerCase()] = v as any;
+        }
+      }
+      const deletedSet = new Set<string>([
+        ...(Array.isArray(parsed.deletedEmails) ? parsed.deletedEmails : []),
+        ...Array.from(SAMPLE_EMAILS),
+      ]);
+
       return {
-        users: Array.isArray(parsed.users) && parsed.users.length > 0 ? parsed.users : [...INITIAL_STUDENTS],
-        scores: Array.isArray(parsed.scores) ? parsed.scores : [...INITIAL_SCORES],
-        activeQuizzes: Array.isArray(parsed.activeQuizzes) ? parsed.activeQuizzes : [...INITIAL_ACTIVE_QUIZZES],
+        users: filteredUsers.length > 0 ? filteredUsers : [...INITIAL_STUDENTS],
+        scores: filteredScores,
+        activeQuizzes: filteredQuizzes,
         quizControl: parsed.quizControl || { isActive: false },
-        onlinePresence: parsed.onlinePresence || {},
-        deletedEmails: Array.isArray(parsed.deletedEmails) ? parsed.deletedEmails : [],
+        onlinePresence: filteredPresence,
+        deletedEmails: Array.from(deletedSet),
         rankingResetAt: parsed.rankingResetAt || 0,
         updatedAt: parsed.updatedAt || Date.now(),
       };
@@ -258,11 +127,11 @@ function loadDatabase(): ServerDatabase {
 
   const initialDb: ServerDatabase = {
     users: [...INITIAL_STUDENTS],
-    scores: [...INITIAL_SCORES],
-    activeQuizzes: [...INITIAL_ACTIVE_QUIZZES],
+    scores: [],
+    activeQuizzes: [],
     quizControl: { isActive: false },
     onlinePresence: {},
-    deletedEmails: [],
+    deletedEmails: Array.from(SAMPLE_EMAILS),
     rankingResetAt: 0,
     updatedAt: Date.now(),
   };
@@ -302,14 +171,6 @@ async function startServer() {
     });
   });
 
-  // Helper to ensure a student account exists in db.users and sort real registered students to the top
-  const SAMPLE_EMAILS = new Set([
-    'budi.santoso@gmail.com',
-    'anisa.dewi@gmail.com',
-    'rizky.pratama@gmail.com',
-    'putri.ayu@gmail.com',
-  ]);
-
   function ensureStudentInDb(
     emailRaw: string | undefined,
     fullNameRaw?: string,
@@ -323,6 +184,7 @@ async function startServer() {
       !emailLower ||
       emailLower === MASTER_CONFIG.email.toLowerCase() ||
       emailLower === 'master@senseisari.com' ||
+      SAMPLE_EMAILS.has(emailLower) ||
       db.deletedEmails.includes(emailLower)
     ) {
       return false;
@@ -442,7 +304,8 @@ async function startServer() {
     if (Array.isArray(clientScores)) {
       for (const s of clientScores) {
         if (!s?.id || !s?.userEmail) continue;
-        if (db.deletedEmails.includes(s.userEmail.toLowerCase())) continue;
+        const sEmail = s.userEmail.toLowerCase();
+        if (SAMPLE_EMAILS.has(sEmail) || SAMPLE_RECORD_IDS.has(String(s.id)) || db.deletedEmails.includes(sEmail)) continue;
         if (ensureStudentInDb(s.userEmail, s.studentName, s.studentNickname)) {
           changed = true;
         }
@@ -458,7 +321,8 @@ async function startServer() {
     if (Array.isArray(clientQuizzes)) {
       for (const q of clientQuizzes) {
         if (!q?.id || !q?.userEmail) continue;
-        if (db.deletedEmails.includes(q.userEmail.toLowerCase())) continue;
+        const qEmail = q.userEmail.toLowerCase();
+        if (SAMPLE_EMAILS.has(qEmail) || SAMPLE_RECORD_IDS.has(String(q.id)) || db.deletedEmails.includes(qEmail)) continue;
         if (ensureStudentInDb(q.userEmail, q.studentName, q.studentNickname)) {
           changed = true;
         }
@@ -485,7 +349,7 @@ async function startServer() {
     if (clientPresence && typeof clientPresence === 'object') {
       for (const [emailKey, pVal] of Object.entries(clientPresence as Record<string, any>)) {
         const lowerKey = emailKey.toLowerCase();
-        if (db.deletedEmails.includes(lowerKey)) continue;
+        if (SAMPLE_EMAILS.has(lowerKey) || db.deletedEmails.includes(lowerKey)) continue;
         if (ensureStudentInDb(lowerKey, pVal?.name, pVal?.name ? pVal.name.split(/\s+/)[0] : undefined)) {
           changed = true;
         }

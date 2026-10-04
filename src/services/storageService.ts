@@ -41,6 +41,18 @@ const SAMPLE_STUDENT_EMAIL_SET = new Set([
   'putri.ayu@gmail.com',
 ]);
 
+const SAMPLE_RECORD_IDS = new Set([
+  'score-1',
+  'score-2',
+  'score-3',
+  'score-4',
+  'score-5',
+  'active-sample-1',
+  'active-sample-2',
+  'active-sample-3',
+  'active-sample-4',
+]);
+
 function getDeletedEmailsSet(): Set<string> {
   try {
     const raw = localStorage.getItem(STORAGE_DELETED_EMAILS_KEY);
@@ -77,7 +89,7 @@ function normalizeAndSortUsersList(
       rawUser.isMaster === true ||
       rawUser.role === 'master';
 
-    if (!isMasterAcc && deletedSet.has(emailLower)) continue;
+    if (!isMasterAcc && (deletedSet.has(emailLower) || SAMPLE_STUDENT_EMAIL_SET.has(emailLower))) continue;
 
     const cleanFullName = isMasterAcc
       ? MASTER_CONFIG.fullName
@@ -142,21 +154,15 @@ function normalizeAndSortUsersList(
       u.user.email.toLowerCase() !== masterKey &&
       !SAMPLE_STUDENT_EMAIL_SET.has(u.user.email.toLowerCase())
   );
-  const sampleStudents = allValues.filter(
-    u =>
-      !u.user.isMaster &&
-      u.user.email.toLowerCase() !== masterKey &&
-      SAMPLE_STUDENT_EMAIL_SET.has(u.user.email.toLowerCase())
-  );
 
-  return [...masters, ...realRegisteredStudents, ...sampleStudents];
+  return [...masters, ...realRegisteredStudents];
 }
 
 // Penyedia Verifikasi Perubahan Kata Sandi Resmi
 export const VERIFICATION_PROVIDER = {
   name: 'Sensei Sari Auth Security Center',
   email: 'security-verify@senseisari-center.id',
-  subject: '[Verifikasi Keamanan] Kode Verifikasi Pembaruan Kata Sandi Murid Sensei Sari',
+  subject: '[Verifikasi Keamanan] Kode Verifikasi Pembaruan Kata Sandi Sensei Sari',
 };
 
 // Durasi jeda waktu tidak aktif sebelum logout otomatis murid: 30 Menit
@@ -170,31 +176,10 @@ export const MASTER_CONFIG = {
   nickname: 'skywalker',
 };
 
-// Seed sample online presence so Master sees realistic presence on load
-const INITIAL_PRESENCE: Record<string, { email: string; name: string; lastSeen: number }> = {
-  'budi.santoso@gmail.com': {
-    email: 'budi.santoso@gmail.com',
-    name: 'Budi Santoso',
-    lastSeen: Date.now() - 5000, // 5 detik lalu (Online)
-  },
-  'anisa.dewi@gmail.com': {
-    email: 'anisa.dewi@gmail.com',
-    name: 'Anisa Dewi Lestari',
-    lastSeen: Date.now() - 12000, // 12 detik lalu (Online)
-  },
-  'rizky.pratama@gmail.com': {
-    email: 'rizky.pratama@gmail.com',
-    name: 'Rizky Pratama Putra',
-    lastSeen: Date.now() - 3600000, // 1 jam lalu (Offline)
-  },
-  'putri.ayu@gmail.com': {
-    email: 'putri.ayu@gmail.com',
-    name: 'Putri Ayu Wandira',
-    lastSeen: Date.now() - 7200000, // 2 jam lalu (Offline)
-  },
-};
+// Tanpa akun murid contoh otomatis
+const INITIAL_PRESENCE: Record<string, { email: string; name: string; lastSeen: number }> = {};
 
-// Seed sample students and quiz scores if empty, including Master Account
+// Hanya Akun Master dan Akun Murid Asli yang sudah mendaftar (tanpa akun murid contoh)
 const INITIAL_STUDENTS: { user: User; password: string }[] = [
   {
     user: { 
@@ -220,188 +205,11 @@ const INITIAL_STUDENTS: { user: User; password: string }[] = [
     },
     password: '1234',
   },
-  {
-    user: { 
-      email: 'budi.santoso@gmail.com', 
-      fullName: 'Budi Santoso', 
-      nickname: 'Budi', 
-      name: 'Budi Santoso', 
-      registeredAt: '2026-09-12 10:15',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
-  {
-    user: { 
-      email: 'anisa.dewi@gmail.com', 
-      fullName: 'Anisa Dewi Lestari', 
-      nickname: 'Anisa', 
-      name: 'Anisa Dewi Lestari', 
-      registeredAt: '2026-09-15 14:20',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
-  {
-    user: { 
-      email: 'rizky.pratama@gmail.com', 
-      fullName: 'Rizky Pratama Putra', 
-      nickname: 'Rizky', 
-      name: 'Rizky Pratama Putra', 
-      registeredAt: '2026-09-20 09:40',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
-  {
-    user: { 
-      email: 'putri.ayu@gmail.com', 
-      fullName: 'Putri Ayu Wandira', 
-      nickname: 'Putri', 
-      name: 'Putri Ayu Wandira', 
-      registeredAt: '2026-09-25 16:30',
-      isMaster: false,
-      role: 'student',
-    },
-    password: 'password123',
-  },
 ];
 
-const INITIAL_SCORES: QuizResult[] = [
-  {
-    id: 'score-1',
-    userEmail: 'anisa.dewi@gmail.com',
-    studentName: 'Anisa Dewi Lestari',
-    studentNickname: 'Anisa',
-    level: 'N5',
-    score: 96,
-    totalQuestions: 50,
-    correctCount: 48,
-    durationUsedSeconds: 1650,
-    durationSelectedMinutes: 45,
-    completedAt: '2026-09-28 14:10',
-    date: '2026-09-28',
-    startedAtTime: '13:42:30',
-    completedAtTime: '14:10:00',
-  },
-  {
-    id: 'score-2',
-    userEmail: 'budi.santoso@gmail.com',
-    studentName: 'Budi Santoso',
-    studentNickname: 'Budi',
-    level: 'N5',
-    score: 68, // merah
-    totalQuestions: 50,
-    correctCount: 34,
-    durationUsedSeconds: 2100,
-    durationSelectedMinutes: 45,
-    completedAt: '2026-09-28 16:45',
-    date: '2026-09-28',
-    startedAtTime: '16:10:00',
-    completedAtTime: '16:45:00',
-  },
-  {
-    id: 'score-3',
-    userEmail: 'rizky.pratama@gmail.com',
-    studentName: 'Rizky Pratama Putra',
-    studentNickname: 'Rizky',
-    level: 'N4',
-    score: 48, // hitam
-    totalQuestions: 50,
-    correctCount: 24,
-    durationUsedSeconds: 2400,
-    durationSelectedMinutes: 45,
-    completedAt: '2026-09-29 11:20',
-    date: '2026-09-29',
-    startedAtTime: '10:40:00',
-    completedAtTime: '11:20:00',
-  },
-  {
-    id: 'score-4',
-    userEmail: 'putri.ayu@gmail.com',
-    studentName: 'Putri Ayu Wandira',
-    studentNickname: 'Putri',
-    level: 'N3',
-    score: 86, // hijau
-    totalQuestions: 50,
-    correctCount: 43,
-    durationUsedSeconds: 3120,
-    durationSelectedMinutes: 60,
-    completedAt: '2026-09-29 17:05',
-    date: '2026-09-29',
-    startedAtTime: '16:13:00',
-    completedAtTime: '17:05:00',
-  },
-];
+const INITIAL_SCORES: QuizResult[] = [];
 
-const INITIAL_ACTIVE_QUIZZES: ActiveQuizRecord[] = [
-  {
-    id: 'active-sample-1',
-    userEmail: 'budi.santoso@gmail.com',
-    studentName: 'Budi Santoso',
-    studentNickname: 'Budi',
-    level: 'N4',
-    date: new Date().toISOString().split('T')[0],
-    startedAtTime: '14:20:00',
-    completedAtTime: null,
-    status: 'in_progress',
-    score: null,
-    totalQuestions: 50,
-    correctCount: null,
-    startedAtTimestamp: Date.now() - 15 * 60 * 1000,
-  },
-  {
-    id: 'active-sample-2',
-    userEmail: 'anisa.dewi@gmail.com',
-    studentName: 'Anisa Dewi Lestari',
-    studentNickname: 'Anisa',
-    level: 'N5',
-    date: '2026-09-28',
-    startedAtTime: '13:42:30',
-    completedAtTime: '14:10:00',
-    status: 'completed',
-    score: 96,
-    totalQuestions: 50,
-    correctCount: 48,
-    startedAtTimestamp: Date.now() - 86400000,
-    completedAtTimestamp: Date.now() - 86400000 + 1650000,
-  },
-  {
-    id: 'active-sample-3',
-    userEmail: 'budi.santoso@gmail.com',
-    studentName: 'Budi Santoso',
-    studentNickname: 'Budi',
-    level: 'N5',
-    date: '2026-09-28',
-    startedAtTime: '16:10:00',
-    completedAtTime: '16:45:00',
-    status: 'completed',
-    score: 68,
-    totalQuestions: 50,
-    correctCount: 34,
-    startedAtTimestamp: Date.now() - 86400000,
-    completedAtTimestamp: Date.now() - 86400000 + 2100000,
-  },
-  {
-    id: 'active-sample-4',
-    userEmail: 'rizky.pratama@gmail.com',
-    studentName: 'Rizky Pratama Putra',
-    studentNickname: 'Rizky',
-    level: 'N4',
-    date: '2026-09-29',
-    startedAtTime: '10:40:00',
-    completedAtTime: '11:20:00',
-    status: 'completed',
-    score: 48,
-    totalQuestions: 50,
-    correctCount: 24,
-    startedAtTimestamp: Date.now() - 43200000,
-    completedAtTimestamp: Date.now() - 43200000 + 2400000,
-  },
-];
+const INITIAL_ACTIVE_QUIZZES: ActiveQuizRecord[] = [];
 
 export const storageService = {
   // Initialize default data if needed
@@ -848,8 +656,15 @@ export const storageService = {
       return { success: false, message: verifyCheck.message };
     }
 
-    if (cleanPass.length < 8) {
-      return { success: false, message: 'Kata sandi baru murid wajib minimal 8 karakter.' };
+    const isMasterTarget = trimmedEmail === MASTER_CONFIG.email.toLowerCase() || trimmedEmail === 'master@senseisari.com';
+    if (isMasterTarget) {
+      if (cleanPass.length < 2 || cleanPass.length > 10) {
+        return { success: false, message: 'Kata sandi baru akun Master bebas antara minimal 2 sampai maksimal 10 karakter.' };
+      }
+    } else {
+      if (cleanPass.length < 2) {
+        return { success: false, message: 'Kata sandi baru murid wajib minimal 2 karakter.' };
+      }
     }
 
     // Update password
@@ -1244,9 +1059,19 @@ export const storageService = {
   getOnlinePresenceMap: (): Record<string, { email: string; name: string; lastSeen: number }> => {
     try {
       const data = localStorage.getItem(STORAGE_ONLINE_PRESENCE_KEY);
-      return data ? JSON.parse(data) : INITIAL_PRESENCE;
+      if (!data) return {};
+      const parsed = JSON.parse(data);
+      const cleaned: Record<string, { email: string; name: string; lastSeen: number }> = {};
+      if (parsed && typeof parsed === 'object') {
+        for (const [k, v] of Object.entries(parsed)) {
+          if (!SAMPLE_STUDENT_EMAIL_SET.has(k.toLowerCase())) {
+            cleaned[k.toLowerCase()] = v as any;
+          }
+        }
+      }
+      return cleaned;
     } catch {
-      return INITIAL_PRESENCE;
+      return {};
     }
   },
 
@@ -1393,11 +1218,20 @@ export const storageService = {
   getActiveQuizRecords: (): ActiveQuizRecord[] => {
     try {
       const data = localStorage.getItem(STORAGE_ACTIVE_QUIZZES_KEY);
-      const records: ActiveQuizRecord[] = data ? JSON.parse(data) : INITIAL_ACTIVE_QUIZZES;
-      // Sort newest start time first
-      return records.sort((a, b) => b.startedAtTimestamp - a.startedAtTimestamp);
+      const raw: ActiveQuizRecord[] = data ? JSON.parse(data) : [];
+      const filtered = raw.filter(
+        r =>
+          r &&
+          r.userEmail &&
+          !SAMPLE_STUDENT_EMAIL_SET.has(r.userEmail.toLowerCase()) &&
+          !SAMPLE_RECORD_IDS.has(String(r.id))
+      );
+      if (filtered.length !== raw.length) {
+        localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(filtered));
+      }
+      return filtered.sort((a, b) => b.startedAtTimestamp - a.startedAtTimestamp);
     } catch {
-      return INITIAL_ACTIVE_QUIZZES;
+      return [];
     }
   },
 
@@ -1565,9 +1399,20 @@ export const storageService = {
   getScores: (): QuizResult[] => {
     try {
       const data = localStorage.getItem(STORAGE_SCORES_KEY);
-      return data ? JSON.parse(data) : INITIAL_SCORES;
+      const raw: QuizResult[] = data ? JSON.parse(data) : [];
+      const filtered = raw.filter(
+        s =>
+          s &&
+          s.userEmail &&
+          !SAMPLE_STUDENT_EMAIL_SET.has(s.userEmail.toLowerCase()) &&
+          !SAMPLE_RECORD_IDS.has(String(s.id))
+      );
+      if (filtered.length !== raw.length) {
+        localStorage.setItem(STORAGE_SCORES_KEY, JSON.stringify(filtered));
+      }
+      return filtered;
     } catch {
-      return INITIAL_SCORES;
+      return [];
     }
   },
 
