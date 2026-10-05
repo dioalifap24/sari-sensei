@@ -3,6 +3,7 @@ import { User, QuizResult } from '../types';
 import { storageService } from '../services/storageService';
 import { Award, Clock, Calendar, CheckCircle2, User as UserIcon, BookOpen } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
+import { JLPTStudyProgressSection } from './JLPTStudyProgressSection';
 
 interface PersonalReportViewProps {
   currentUser: User | null;
@@ -15,9 +16,28 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
   onOpenAuth,
   onStartQuiz,
 }) => {
-  const scores: QuizResult[] = currentUser
-    ? storageService.getUserScores(currentUser.email)
-    : [];
+  const [scores, setScores] = React.useState<QuizResult[]>(() =>
+    currentUser ? storageService.getUserScores(currentUser.email) : []
+  );
+
+  React.useEffect(() => {
+    const refreshScores = () => {
+      if (currentUser) {
+        setScores(storageService.getUserScores(currentUser.email));
+      } else {
+        setScores([]);
+      }
+    };
+    refreshScores();
+    storageService.syncWithServer().then(refreshScores);
+
+    window.addEventListener('scores_updated', refreshScores);
+    window.addEventListener('storage', refreshScores);
+    return () => {
+      window.removeEventListener('scores_updated', refreshScores);
+      window.removeEventListener('storage', refreshScores);
+    };
+  }, [currentUser]);
 
   const formatDurationUsed = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -134,6 +154,12 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
           </div>
         </div>
 
+        {/* Visualisasi Bar Kemajuan Belajar JLPT (N5 - N2) Berdasarkan Kosakata & Kanji */}
+        <JLPTStudyProgressSection
+          currentUser={currentUser}
+          activeLevel={storageService.getActiveLevel()}
+        />
+
         {/* Personal Quiz Records Table */}
         {scores.length === 0 ? (
           <div className="p-8 text-center bg-[#fdfbf7] rounded-2xl border border-dashed border-[#ebdccb]">
@@ -142,7 +168,7 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
               Belum ada riwayat kuis
             </p>
             <p className="text-xs text-[#735338] mb-4">
-              Mulai kuis 40 soal sekarang untuk mencatatkan nilai pertama Anda!
+              Mulai kuis 50 soal sekarang untuk mencatatkan nilai pertama Anda!
             </p>
             <button
               onClick={onStartQuiz}

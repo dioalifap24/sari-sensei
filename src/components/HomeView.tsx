@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { JLPTLevel, User, QuizControlState } from '../types';
+import { JLPTLevel, User, QuizControlState, DailyTask } from '../types';
 import { storageService } from '../services/storageService';
-import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown } from 'lucide-react';
+import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown, FolderOpen, CheckCircle2, Clock, Plus } from 'lucide-react';
 import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
+import { DailyTasksFolderModal } from './DailyTasksFolderModal';
+import { JLPTStudyProgressSection } from './JLPTStudyProgressSection';
 
 interface HomeViewProps {
   activeLevel: JLPTLevel;
@@ -20,24 +22,36 @@ export const HomeView: React.FC<HomeViewProps> = ({
   currentUser,
 }) => {
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
+  const [dailyTasks, setDailyTasks] = useState<DailyTask[]>(() => storageService.getDailyTasks());
+  const [isDailyTasksFolderOpen, setIsDailyTasksFolderOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const refreshHomeData = () => {
       setQuizControl(storageService.getQuizControlState());
+      setDailyTasks(storageService.getDailyTasks());
     };
     refreshHomeData();
     storageService.syncWithServer().then(refreshHomeData);
 
     window.addEventListener('quiz_control_changed', refreshHomeData);
+    window.addEventListener('daily_tasks_updated', refreshHomeData);
     window.addEventListener('storage', refreshHomeData);
 
     return () => {
       window.removeEventListener('quiz_control_changed', refreshHomeData);
+      window.removeEventListener('daily_tasks_updated', refreshHomeData);
       window.removeEventListener('storage', refreshHomeData);
     };
   }, []);
 
   const isMasterUser = storageService.isMaster(currentUser);
+  const activeDailyTasks = dailyTasks.filter(t => t.isActive);
+  const myEmail = (currentUser?.email || '').toLowerCase();
+  const myCompletedCount = activeDailyTasks.filter(t =>
+    (t.completions || []).some(c => c.studentEmail.toLowerCase() === myEmail)
+  ).length;
+  const myPendingCount = Math.max(0, activeDailyTasks.length - myCompletedCount);
+  const latestActiveTask = activeDailyTasks[0] || null;
 
   const levels: { id: JLPTLevel; label: string; desc: string }[] = [
     { id: 'N5', label: 'N5', desc: 'Pemula Dasar (Hiragana, Katakana & 100 Kanji)' },
@@ -162,8 +176,56 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* Feature Cards Grid (5 Cards for Students, 6 Cards for Master) */}
+        {/* Feature Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 mb-10">
+          {/* 0. Folder Tugas Harian Sensei Card */}
+          <button
+            onClick={() => setIsDailyTasksFolderOpen(true)}
+            className="group p-5 bg-[#fffdfa] hover:bg-[#fbf4eb] border-2 border-[#dfc7aa] hover:border-[#881337] rounded-2xl text-left shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-3 bg-amber-100 text-[#881337] rounded-xl group-hover:scale-105 transition-transform">
+                <FolderOpen className="w-6 h-6" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ring-2 ${
+                    activeDailyTasks.length > 0
+                      ? 'bg-emerald-500 ring-emerald-300 animate-pulse'
+                      : 'bg-stone-400 ring-stone-200'
+                  }`}
+                />
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                    activeDailyTasks.length > 0
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-stone-100 text-stone-700'
+                  }`}
+                >
+                  {activeDailyTasks.length > 0
+                    ? `${activeDailyTasks.length} Tugas Aktif`
+                    : '0 Tugas Aktif'}
+                </span>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-[#881337] font-japanese flex items-center gap-1.5">
+                📁 Tugas Harian Sensei
+              </h3>
+              <p className="text-xs text-[#5e4735] mt-1 leading-relaxed">
+                {activeDailyTasks.length > 0
+                  ? isMasterUser
+                    ? `Ada ${activeDailyTasks.length} tugas harian aktif. Klik untuk memantau pengumpulan murid atau menambah tugas.`
+                    : `Ada ${activeDailyTasks.length} tugas harian dari Master Sensei! (${myCompletedCount} selesai, ${myPendingCount} belum).`
+                  : 'Buka setiap saat untuk memantau apakah ada tugas harian dari Master Sensei atau belum.'}
+              </p>
+            </div>
+            <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#881337] group-hover:translate-x-1 transition-transform">
+              <span>Buka Folder Tugas Harian</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+
           {/* 1. Materi */}
           <button
             onClick={() => onNavigate('materi')}
@@ -347,7 +409,31 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           )}
         </div>
+
+        {/* Visualisasi Bar Kemajuan Belajar JLPT (N5 - N2) Berdasarkan Kosakata & Kanji */}
+        <JLPTStudyProgressSection
+          currentUser={currentUser}
+          activeLevel={activeLevel}
+          onSelectLevelAndNavigate={(lvl, tab) => {
+            setActiveLevel(lvl);
+            onNavigate(tab);
+          }}
+        />
       </div>
+
+      {/* Modal Folder Tugas Harian Sensei */}
+      <DailyTasksFolderModal
+        isOpen={isDailyTasksFolderOpen}
+        onClose={() => setIsDailyTasksFolderOpen(false)}
+        currentUser={currentUser}
+        activeLevel={activeLevel}
+        onNavigateToFeature={(tab, targetLevel) => {
+          if (targetLevel) {
+            setActiveLevel(targetLevel);
+          }
+          onNavigate(tab);
+        }}
+      />
     </div>
   );
 };

@@ -32,10 +32,17 @@ export function App() {
   const [rocketMode, setRocketMode] = useState<'takeoff' | 'landing'>('takeoff');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Synchronize quiz control state
+  // Synchronize quiz control state & show live notification to students when Master starts quiz session
   useEffect(() => {
+    let prevActive = storageService.getQuizControlState().isActive;
     const handleQuizControlChange = () => {
-      setQuizControl(storageService.getQuizControlState());
+      const latest = storageService.getQuizControlState();
+      setQuizControl(latest);
+      if (!prevActive && latest.isActive && currentUser && !storageService.isMaster(currentUser)) {
+        setToastMessage('🟢 Sesi Kuis Resmi Telah DIBUKA oleh Sensei Sari! Silakan buka menu Kuis untuk mulai mengerjakan.');
+        setTimeout(() => setToastMessage(null), 6000);
+      }
+      prevActive = latest.isActive;
     };
     window.addEventListener('quiz_control_changed', handleQuizControlChange);
     window.addEventListener('storage', handleQuizControlChange);
@@ -43,7 +50,57 @@ export function App() {
       window.removeEventListener('quiz_control_changed', handleQuizControlChange);
       window.removeEventListener('storage', handleQuizControlChange);
     };
-  }, []);
+  }, [currentUser]);
+
+  // Show live notification to students when Master publishes a new daily task
+  useEffect(() => {
+    const handleDailyTaskUpdate = (ev: Event) => {
+      const customEv = ev as CustomEvent<{ newActiveTaskTitle?: string | null }>;
+      const newTitle = customEv.detail?.newActiveTaskTitle;
+      if (newTitle && currentUser && !storageService.isMaster(currentUser)) {
+        setToastMessage(`📁 Tugas Harian Baru dari Master: "${newTitle}"! Buka Folder Tugas Harian di Beranda.`);
+        setTimeout(() => setToastMessage(null), 6000);
+      }
+    };
+    window.addEventListener('daily_tasks_updated', handleDailyTaskUpdate);
+    return () => {
+      window.removeEventListener('daily_tasks_updated', handleDailyTaskUpdate);
+    };
+  }, [currentUser]);
+
+  // Helper deskripsi aktivitas murid secara real-time untuk dipantau di Halaman Master
+  const getStudentActivityDescription = (tab: string, lvl: JLPTLevel, inQuiz: boolean): string => {
+    if (inQuiz) {
+      return `📝 Sedang Mengerjakan Kuis JLPT ${lvl}`;
+    }
+    switch (tab) {
+      case 'home':
+        return `🏠 Membuka Beranda (Target JLPT ${lvl})`;
+      case 'materi':
+        return `📖 Mempelajari Materi JLPT ${lvl}`;
+      case 'vocab':
+        return `🃏 Menghafal Kartu Kosakata (${lvl})`;
+      case 'kanji':
+        return `漢字 Menghafal Kartu Kanji JLPT ${lvl}`;
+      case 'kuis':
+        return `📝 Di Halaman Persiapan Kuis JLPT ${lvl}`;
+      case 'laporan':
+        return `📊 Melihat Rapor & Riwayat Nilai Pribadi`;
+      default:
+        return `🌸 Aktif Belajar (JLPT ${lvl})`;
+    }
+  };
+
+  // Laporkan perpindahan halaman / level murid secara instan ke Akun Master
+  useEffect(() => {
+    if (!currentUser || storageService.isMaster(currentUser)) return;
+    if (isStudentQuizRunning) return; // Saat kuis berjalan, QuizView melaporkan progres nomor soal secara spesifik
+    storageService.heartbeatPresence(currentUser, {
+      currentTab: activeTab,
+      currentActivity: getStudentActivityDescription(activeTab, activeLevel, isStudentQuizRunning),
+      activeLevel,
+    });
+  }, [currentUser, activeTab, activeLevel, isStudentQuizRunning]);
 
   // Activity tracking and 30-minute inactivity auto-logout for regular students
   useEffect(() => {
@@ -52,18 +109,26 @@ export function App() {
     let lastRecorded = 0;
     const recordActivity = () => {
       const now = Date.now();
-      if (now - lastRecorded > 10000) {
+      if (now - lastRecorded > 8000) {
         lastRecorded = now;
         storageService.updateLastActive();
-        if (currentUser && !storageService.isMaster(currentUser)) {
-          storageService.heartbeatPresence(currentUser);
+        if (currentUser && !storageService.isMaster(currentUser) && !isStudentQuizRunning) {
+          storageService.heartbeatPresence(currentUser, {
+            currentTab: activeTab,
+            currentActivity: getStudentActivityDescription(activeTab, activeLevel, isStudentQuizRunning),
+            activeLevel,
+          });
         }
       }
     };
 
     // Initial heartbeat if logged in
-    if (currentUser && !storageService.isMaster(currentUser)) {
-      storageService.heartbeatPresence(currentUser);
+    if (currentUser && !storageService.isMaster(currentUser) && !isStudentQuizRunning) {
+      storageService.heartbeatPresence(currentUser, {
+        currentTab: activeTab,
+        currentActivity: getStudentActivityDescription(activeTab, activeLevel, isStudentQuizRunning),
+        activeLevel,
+      });
     }
 
     const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
@@ -80,6 +145,7 @@ export function App() {
       if (document.visibilityState === 'hidden') {
         storageService.updateLastActive();
       } else if (document.visibilityState === 'visible') {
+        storageService.syncWithServer();
         if (!storageService.isMaster(currentUser)) {
           const session = storageService.checkSessionExpired(currentUser);
           if (session.expired) {
@@ -89,7 +155,13 @@ export function App() {
             setTimeout(() => setToastMessage(null), 5000);
           } else {
             storageService.updateLastActive();
-            storageService.heartbeatPresence(currentUser);
+            if (!isStudentQuizRunning) {
+              storageService.heartbeatPresence(currentUser, {
+                currentTab: activeTab,
+                currentActivity: getStudentActivityDescription(activeTab, activeLevel, isStudentQuizRunning),
+                activeLevel,
+              });
+            }
           }
         }
       }
@@ -97,8 +169,12 @@ export function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const intervalId = window.setInterval(() => {
-      if (currentUser && !storageService.isMaster(currentUser)) {
-        storageService.heartbeatPresence(currentUser);
+      if (currentUser && !storageService.isMaster(currentUser) && !isStudentQuizRunning) {
+        storageService.heartbeatPresence(currentUser, {
+          currentTab: activeTab,
+          currentActivity: getStudentActivityDescription(activeTab, activeLevel, isStudentQuizRunning),
+          activeLevel,
+        });
       }
       if (!storageService.isMaster(currentUser)) {
         const session = storageService.checkSessionExpired(currentUser);
@@ -109,14 +185,15 @@ export function App() {
           setTimeout(() => setToastMessage(null), 5000);
         }
       }
-    }, 30000);
+    }, 10000);
 
     return () => {
       activityEvents.forEach((ev) => window.removeEventListener(ev, recordActivity));
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
-  }, [currentUser]);
+  }, [currentUser, activeTab, activeLevel, isStudentQuizRunning]);
 
   // Restrict Master Management Tab to Master Only
   useEffect(() => {

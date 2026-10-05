@@ -7,6 +7,10 @@ const PORT = 3000;
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'sensei_sari_db.json');
 
+// Cloud Sync Relay Endpoints (Menjembatani sinkronisasi real-time antara ais-dev, ais-pre, dan lintas perangkat)
+const CLOUD_OBJECT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a106331a7571ef';
+const NTFY_SYNC_URL = 'https://ntfy.sh/sari_sensei_sync_8890ebbf_v2';
+
 const MASTER_CONFIG = {
   email: 'dioalifap24@gmail.com',
   password: '96',
@@ -60,16 +64,26 @@ const INITIAL_STUDENTS = [
   },
 ];
 
-const INITIAL_SCORES: any[] = [];
-
-const INITIAL_ACTIVE_QUIZZES: any[] = [];
+interface PresenceEntry {
+  email: string;
+  name: string;
+  nickname?: string;
+  lastSeen: number;
+  currentTab?: string;
+  currentActivity?: string;
+  activeLevel?: string;
+  quizProgress?: string;
+  lastActionAt?: string;
+}
 
 interface ServerDatabase {
   users: { user: any; password: string }[];
   scores: any[];
   activeQuizzes: any[];
-  quizControl: { isActive: boolean; startedAt?: string; startedBy?: string };
-  onlinePresence: Record<string, { email: string; name: string; lastSeen: number }>;
+  quizControl: { isActive: boolean; startedAt?: string; startedBy?: string; updatedAt?: number };
+  onlinePresence: Record<string, PresenceEntry>;
+  dailyTasks: any[];
+  deletedTaskIds: string[];
   deletedEmails: string[];
   rankingResetAt: number;
   updatedAt: number;
@@ -99,23 +113,30 @@ function loadDatabase(): ServerDatabase {
         return !SAMPLE_EMAILS.has(em) && !SAMPLE_RECORD_IDS.has(String(q?.id || ''));
       });
       const rawPresence = parsed.onlinePresence && typeof parsed.onlinePresence === 'object' ? parsed.onlinePresence : {};
-      const filteredPresence: Record<string, { email: string; name: string; lastSeen: number }> = {};
+      const filteredPresence: Record<string, PresenceEntry> = {};
       for (const [k, v] of Object.entries(rawPresence)) {
         if (!SAMPLE_EMAILS.has(k.toLowerCase())) {
-          filteredPresence[k.toLowerCase()] = v as any;
+          filteredPresence[k.toLowerCase()] = v as PresenceEntry;
         }
       }
       const deletedSet = new Set<string>([
         ...(Array.isArray(parsed.deletedEmails) ? parsed.deletedEmails : []),
         ...Array.from(SAMPLE_EMAILS),
       ]);
+      const deletedTasksSet = new Set<string>(
+        Array.isArray(parsed.deletedTaskIds) ? parsed.deletedTaskIds.map((id: any) => String(id)) : []
+      );
+      const rawTasks = Array.isArray(parsed.dailyTasks) ? parsed.dailyTasks : [];
+      const filteredTasks = rawTasks.filter((t: any) => t?.id && !deletedTasksSet.has(String(t.id)));
 
       return {
         users: filteredUsers.length > 0 ? filteredUsers : [...INITIAL_STUDENTS],
         scores: filteredScores,
         activeQuizzes: filteredQuizzes,
-        quizControl: parsed.quizControl || { isActive: false },
+        quizControl: parsed.quizControl || { isActive: false, updatedAt: 0 },
         onlinePresence: filteredPresence,
+        dailyTasks: filteredTasks,
+        deletedTaskIds: Array.from(deletedTasksSet),
         deletedEmails: Array.from(deletedSet),
         rankingResetAt: parsed.rankingResetAt || 0,
         updatedAt: parsed.updatedAt || Date.now(),
@@ -129,23 +150,24 @@ function loadDatabase(): ServerDatabase {
     users: [...INITIAL_STUDENTS],
     scores: [],
     activeQuizzes: [],
-    quizControl: { isActive: false },
+    quizControl: { isActive: false, updatedAt: 0 },
     onlinePresence: {},
+    dailyTasks: [],
+    deletedTaskIds: [],
     deletedEmails: Array.from(SAMPLE_EMAILS),
     rankingResetAt: 0,
     updatedAt: Date.now(),
   };
-  saveDatabase(initialDb);
+  saveDatabaseLocalOnly(initialDb);
   return initialDb;
 }
 
-function saveDatabase(db: ServerDatabase) {
+function saveDatabaseLocalOnly(targetDb: ServerDatabase) {
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    db.updatedAt = Date.now();
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
+    fs.writeFileSync(DB_FILE, JSON.stringify(targetDb, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed to save DB file:', err);
   }
@@ -153,9 +175,441 @@ function saveDatabase(db: ServerDatabase) {
 
 const db = loadDatabase();
 
+function ensureStudentInDb(
+  emailRaw: string | undefined,
+  fullNameRaw?: string,
+  nicknameRaw?: string,
+  passwordRaw?: string,
+  registeredAtRaw?: string
+): boolean {
+  if (!emailRaw) return false;
+  const emailLower = emailRaw.trim().toLowerCase();
+  if (
+    !emailLower ||
+    emailLower === MASTER_CONFIG.email.toLowerCase() ||
+    emailLower === 'master@senseisari.com' ||
+    SAMPLE_EMAILS.has(emailLower) ||
+    db.deletedEmails.includes(emailLower)
+  ) {
+    return false;
+  }
+
+  const existingIdx = db.users.findIndex(u => u?.user?.email?.toLowerCase() === emailLower);
+  const cleanFullName = (fullNameRaw || nicknameRaw || emailLower.split('@')[0] || 'Murid Terdaftar').trim();
+  const cleanNickname = (nicknameRaw || cleanFullName.split(/\s+/)[0] || 'Murid').trim();
+
+  if (existingIdx === -1) {
+    const newEntry = {
+      user: {
+        email: emailLower,
+        fullName: cleanFullName,
+        nickname: cleanNickname,
+        name: cleanFullName,
+        registeredAt: registeredAtRaw || new Date().toISOString().replace('T', ' ').substring(0, 16),
+        isMaster: false,
+        role: 'student',
+      },
+      password: passwordRaw || 'password123',
+    };
+    if (db.users.length > 0) {
+      db.users.splice(1, 0, newEntry);
+    } else {
+      db.users.push(newEntry);
+    }
+    return true;
+  } else {
+    const existingUser = db.users[existingIdx].user;
+    let modified = false;
+    if (
+      cleanFullName &&
+      cleanFullName !== 'Murid' &&
+      cleanFullName !== 'Murid Terdaftar' &&
+      (!existingUser.fullName || existingUser.fullName === 'Murid' || existingUser.fullName === 'Murid Terdaftar')
+    ) {
+      existingUser.fullName = cleanFullName;
+      existingUser.name = cleanFullName;
+      modified = true;
+    }
+    if (cleanNickname && cleanNickname !== 'Murid' && (!existingUser.nickname || existingUser.nickname === 'Murid')) {
+      existingUser.nickname = cleanNickname;
+      modified = true;
+    }
+    if (
+      passwordRaw &&
+      passwordRaw !== '••••••••' &&
+      passwordRaw !== 'password123' &&
+      db.users[existingIdx].password !== passwordRaw
+    ) {
+      db.users[existingIdx].password = passwordRaw;
+      modified = true;
+    }
+    return modified;
+  }
+}
+
+function sortDbUsers() {
+  const masterList = db.users.filter(
+    u =>
+      u?.user?.email?.toLowerCase() === MASTER_CONFIG.email.toLowerCase() ||
+      u?.user?.email?.toLowerCase() === 'master@senseisari.com' ||
+      u?.user?.isMaster === true
+  );
+  const customStudents = db.users.filter(
+    u =>
+      u?.user?.email &&
+      u.user.email.toLowerCase() !== MASTER_CONFIG.email.toLowerCase() &&
+      u.user.email.toLowerCase() !== 'master@senseisari.com' &&
+      !u.user.isMaster &&
+      !SAMPLE_EMAILS.has(u.user.email.toLowerCase()) &&
+      !db.deletedEmails.includes(u.user.email.toLowerCase())
+  );
+  db.users = [...masterList, ...customStudents];
+}
+
+function mergeExternalPayloadIntoDb(payload: any): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  let changed = false;
+
+  // 1. Deleted emails
+  if (Array.isArray(payload.deletedEmails)) {
+    for (const de of payload.deletedEmails) {
+      const lower = String(de || '').trim().toLowerCase();
+      if (lower && lower !== MASTER_CONFIG.email.toLowerCase() && !db.deletedEmails.includes(lower)) {
+        db.deletedEmails.push(lower);
+        db.users = db.users.filter(u => u?.user?.email?.toLowerCase() !== lower);
+        db.scores = db.scores.filter(s => s?.userEmail?.toLowerCase() !== lower);
+        db.activeQuizzes = db.activeQuizzes.filter(q => q?.userEmail?.toLowerCase() !== lower);
+        delete db.onlinePresence[lower];
+        changed = true;
+      }
+    }
+  }
+
+  // 2. Ranking reset timestamp
+  if (typeof payload.rankingResetAt === 'number' && payload.rankingResetAt > (db.rankingResetAt || 0)) {
+    db.rankingResetAt = payload.rankingResetAt;
+    db.activeQuizzes = db.activeQuizzes.filter(q => (q.startedAtTimestamp || 0) >= db.rankingResetAt);
+    changed = true;
+  }
+
+  // 3. QuizControl (Always respect latest updatedAt timestamp!)
+  if (payload.quizControl && typeof payload.quizControl.isActive === 'boolean') {
+    const incomingUpdatedAt = payload.quizControl.updatedAt || 0;
+    const currentUpdatedAt = db.quizControl?.updatedAt || 0;
+    if (incomingUpdatedAt > currentUpdatedAt) {
+      db.quizControl = {
+        isActive: payload.quizControl.isActive,
+        startedAt: payload.quizControl.startedAt,
+        startedBy: payload.quizControl.startedBy,
+        updatedAt: incomingUpdatedAt,
+      };
+      changed = true;
+    }
+  }
+
+  // 4. CurrentUser
+  if (payload.currentUser && payload.currentUser.email) {
+    if (
+      ensureStudentInDb(
+        payload.currentUser.email,
+        payload.currentUser.fullName || payload.currentUser.name,
+        payload.currentUser.nickname,
+        undefined,
+        payload.currentUser.registeredAt
+      )
+    ) {
+      changed = true;
+    }
+  }
+
+  // 5. Users
+  if (Array.isArray(payload.users)) {
+    for (const item of payload.users) {
+      const u = item?.user || item;
+      if (!u?.email) continue;
+      const emailLower = String(u.email).trim().toLowerCase();
+      if (emailLower === MASTER_CONFIG.email.toLowerCase()) {
+        // Check if master password was updated
+        const masterIdx = db.users.findIndex(x => x?.user?.email?.toLowerCase() === emailLower);
+        if (masterIdx !== -1 && item?.password && item.password !== db.users[masterIdx].password) {
+          db.users[masterIdx].password = item.password;
+          changed = true;
+        }
+        continue;
+      }
+      if (
+        ensureStudentInDb(
+          u.email,
+          u.fullName || u.name,
+          u.nickname,
+          item?.password,
+          u.registeredAt
+        )
+      ) {
+        changed = true;
+      }
+    }
+  }
+
+  // 6. Scores
+  if (Array.isArray(payload.scores)) {
+    for (const s of payload.scores) {
+      if (!s?.id || !s?.userEmail) continue;
+      const sEmail = String(s.userEmail).toLowerCase();
+      if (SAMPLE_EMAILS.has(sEmail) || SAMPLE_RECORD_IDS.has(String(s.id)) || db.deletedEmails.includes(sEmail)) continue;
+      if (ensureStudentInDb(s.userEmail, s.studentName, s.studentNickname)) {
+        changed = true;
+      }
+      const exists = db.scores.some(existing => existing.id === s.id);
+      if (!exists) {
+        db.scores.unshift(s);
+        changed = true;
+      }
+    }
+  }
+
+  // 7. ActiveQuizzes
+  if (Array.isArray(payload.activeQuizzes)) {
+    for (const q of payload.activeQuizzes) {
+      if (!q?.id || !q?.userEmail) continue;
+      const qEmail = String(q.userEmail).toLowerCase();
+      if (SAMPLE_EMAILS.has(qEmail) || SAMPLE_RECORD_IDS.has(String(q.id)) || db.deletedEmails.includes(qEmail)) continue;
+      if (ensureStudentInDb(q.userEmail, q.studentName, q.studentNickname)) {
+        changed = true;
+      }
+      if (db.rankingResetAt && (q.startedAtTimestamp || 0) < db.rankingResetAt) continue;
+
+      const idx = db.activeQuizzes.findIndex(existing => existing.id === q.id);
+      if (idx === -1) {
+        db.activeQuizzes.unshift(q);
+        changed = true;
+      } else {
+        const existing = db.activeQuizzes[idx];
+        const statusUpgrade = q.status === 'completed' && existing.status !== 'completed';
+        const violationUpgrade = (q.tabViolationsCount || 0) > (existing.tabViolationsCount || 0);
+        const progressUpgrade =
+          (q.answeredCount || 0) > (existing.answeredCount || 0) ||
+          (q.currentQuestion || 0) > (existing.currentQuestion || 0);
+
+        if (statusUpgrade || violationUpgrade || progressUpgrade) {
+          db.activeQuizzes[idx] = { ...existing, ...q };
+          changed = true;
+        }
+      }
+    }
+  }
+
+  // 8. OnlinePresence & Student Activity
+  if (payload.onlinePresence && typeof payload.onlinePresence === 'object') {
+    for (const [emailKey, pVal] of Object.entries(payload.onlinePresence as Record<string, any>)) {
+      const lowerKey = emailKey.toLowerCase();
+      if (
+        !lowerKey ||
+        lowerKey === MASTER_CONFIG.email.toLowerCase() ||
+        SAMPLE_EMAILS.has(lowerKey) ||
+        db.deletedEmails.includes(lowerKey)
+      ) {
+        continue;
+      }
+      if (ensureStudentInDb(lowerKey, pVal?.name, pVal?.nickname || (pVal?.name ? pVal.name.split(/\s+/)[0] : undefined))) {
+        changed = true;
+      }
+      const current = db.onlinePresence[lowerKey];
+      const incomingSeen = typeof pVal?.lastSeen === 'number' ? pVal.lastSeen : 0;
+      const currentSeen = current ? current.lastSeen || 0 : -1;
+
+      if (!current || incomingSeen >= currentSeen || pVal?.currentActivity !== current.currentActivity) {
+        db.onlinePresence[lowerKey] = {
+          email: lowerKey,
+          name: pVal?.name || current?.name || 'Murid',
+          nickname: pVal?.nickname || current?.nickname || 'Murid',
+          lastSeen: incomingSeen >= 0 ? incomingSeen : currentSeen,
+          currentTab: pVal?.currentTab || current?.currentTab || 'home',
+          currentActivity: pVal?.currentActivity || current?.currentActivity || 'Membuka Aplikasi',
+          activeLevel: pVal?.activeLevel || current?.activeLevel || 'N5',
+          quizProgress: pVal?.quizProgress ?? current?.quizProgress,
+          lastActionAt: pVal?.lastActionAt || current?.lastActionAt,
+        };
+        changed = true;
+      }
+    }
+  }
+
+  // 9. Deleted Daily Task IDs
+  if (Array.isArray(payload.deletedTaskIds)) {
+    for (const dtId of payload.deletedTaskIds) {
+      const idStr = String(dtId || '').trim();
+      if (idStr && !db.deletedTaskIds.includes(idStr)) {
+        db.deletedTaskIds.push(idStr);
+        db.dailyTasks = db.dailyTasks.filter(t => String(t?.id) !== idStr);
+        changed = true;
+      }
+    }
+  }
+
+  // 10. Daily Tasks (Tugas Harian Sensei)
+  if (Array.isArray(payload.dailyTasks)) {
+    for (const incomingTask of payload.dailyTasks) {
+      if (!incomingTask?.id || !incomingTask?.title) continue;
+      const taskId = String(incomingTask.id);
+      if (db.deletedTaskIds.includes(taskId)) continue;
+
+      const idx = db.dailyTasks.findIndex(t => String(t?.id) === taskId);
+      if (idx === -1) {
+        db.dailyTasks.unshift({
+          ...incomingTask,
+          completions: Array.isArray(incomingTask.completions) ? incomingTask.completions : [],
+          updatedAt: incomingTask.updatedAt || Date.now(),
+        });
+        changed = true;
+      } else {
+        const existing = db.dailyTasks[idx];
+        // Merge completions by studentEmail
+        const compMap = new Map<string, any>();
+        for (const c of [...(existing.completions || []), ...(incomingTask.completions || [])]) {
+          if (c?.studentEmail) {
+            const em = String(c.studentEmail).toLowerCase();
+            if (!SAMPLE_EMAILS.has(em) && !db.deletedEmails.includes(em)) {
+              const prevC = compMap.get(em);
+              if (!prevC || (c.completedAtTimestamp || 0) >= (prevC.completedAtTimestamp || 0)) {
+                compMap.set(em, c);
+              }
+            }
+          }
+        }
+        const mergedCompletions = Array.from(compMap.values());
+        const incomingUpdated = incomingTask.updatedAt || 0;
+        const existingUpdated = existing.updatedAt || 0;
+
+        if (incomingUpdated > existingUpdated || mergedCompletions.length !== (existing.completions || []).length) {
+          db.dailyTasks[idx] = {
+            ...(incomingUpdated >= existingUpdated ? { ...existing, ...incomingTask } : existing),
+            completions: mergedCompletions,
+            updatedAt: Math.max(incomingUpdated, existingUpdated),
+          };
+          changed = true;
+        }
+      }
+    }
+    db.dailyTasks.sort((a, b) => (b.createdAtTimestamp || 0) - (a.createdAtTimestamp || 0));
+  }
+
+  sortDbUsers();
+  return changed;
+}
+
+let isPushingCloud = false;
+let pendingCloudPush = false;
+
+async function pushDatabaseToCloud() {
+  if (isPushingCloud) {
+    pendingCloudPush = true;
+    return;
+  }
+  isPushingCloud = true;
+  try {
+    const snapshot = {
+      users: db.users,
+      scores: db.scores,
+      activeQuizzes: db.activeQuizzes,
+      quizControl: db.quizControl,
+      onlinePresence: db.onlinePresence,
+      dailyTasks: db.dailyTasks,
+      deletedTaskIds: db.deletedTaskIds,
+      deletedEmails: db.deletedEmails,
+      rankingResetAt: db.rankingResetAt,
+      updatedAt: db.updatedAt,
+    };
+
+    // 1. Push full state to persistent Cloud JSON object
+    await fetch(CLOUD_OBJECT_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'sari_sensei_db',
+        data: snapshot,
+      }),
+    }).catch(() => {});
+
+    // 2. Broadcast real-time notification via ntfy.sh so SSE clients & peer servers immediately sync
+    const compactEvent = JSON.stringify({
+      type: 'cloud_state_sync',
+      quizControl: db.quizControl,
+      usersCount: db.users.length,
+      updatedAt: db.updatedAt,
+    });
+    await fetch(NTFY_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: compactEvent,
+    }).catch(() => {});
+  } catch {
+    // Ignore transient network errors
+  } finally {
+    isPushingCloud = false;
+    if (pendingCloudPush) {
+      pendingCloudPush = false;
+      pushDatabaseToCloud();
+    }
+  }
+}
+
+let isPullingCloud = false;
+async function pullDatabaseFromCloud() {
+  if (isPullingCloud) return;
+  isPullingCloud = true;
+  try {
+    const res = await fetch(CLOUD_OBJECT_URL);
+    if (res.ok) {
+      const json = await res.json();
+      const cloudData = json?.data;
+      if (cloudData && typeof cloudData === 'object') {
+        const changed = mergeExternalPayloadIntoDb(cloudData);
+        if (changed) {
+          db.updatedAt = Date.now();
+          saveDatabaseLocalOnly(db);
+        }
+      }
+    }
+  } catch {
+    // Ignore offline/transient error
+  } finally {
+    isPullingCloud = false;
+  }
+}
+
+function saveDatabase(targetDb: ServerDatabase, skipCloudPush = false) {
+  targetDb.updatedAt = Date.now();
+  saveDatabaseLocalOnly(targetDb);
+  if (!skipCloudPush) {
+    pushDatabaseToCloud();
+  }
+}
+
 async function startServer() {
   const app = express();
+
+  // Enable CORS so any preview/shared URL or mobile browser can access endpoints directly
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+      return;
+    }
+    next();
+  });
+
   app.use(express.json({ limit: '5mb' }));
+
+  // Initial pull from cloud on server startup & periodic background cloud sync every 3 seconds
+  pullDatabaseFromCloud().then(() => {
+    pushDatabaseToCloud();
+  });
+  setInterval(() => {
+    pullDatabaseFromCloud();
+  }, 3000);
 
   // GET /api/state - Return full synchronized state
   app.get('/api/state', (_req, res) => {
@@ -165,208 +619,17 @@ async function startServer() {
       activeQuizzes: db.activeQuizzes,
       quizControl: db.quizControl,
       onlinePresence: db.onlinePresence,
+      dailyTasks: db.dailyTasks,
+      deletedTaskIds: db.deletedTaskIds,
       deletedEmails: db.deletedEmails,
       rankingResetAt: db.rankingResetAt,
       updatedAt: db.updatedAt,
     });
   });
 
-  function ensureStudentInDb(
-    emailRaw: string | undefined,
-    fullNameRaw?: string,
-    nicknameRaw?: string,
-    passwordRaw?: string,
-    registeredAtRaw?: string
-  ): boolean {
-    if (!emailRaw) return false;
-    const emailLower = emailRaw.trim().toLowerCase();
-    if (
-      !emailLower ||
-      emailLower === MASTER_CONFIG.email.toLowerCase() ||
-      emailLower === 'master@senseisari.com' ||
-      SAMPLE_EMAILS.has(emailLower) ||
-      db.deletedEmails.includes(emailLower)
-    ) {
-      return false;
-    }
-
-    const existingIdx = db.users.findIndex(u => u?.user?.email?.toLowerCase() === emailLower);
-    const cleanFullName = (fullNameRaw || nicknameRaw || emailLower.split('@')[0] || 'Murid Terdaftar').trim();
-    const cleanNickname = (nicknameRaw || cleanFullName.split(/\s+/)[0] || 'Murid').trim();
-
-    if (existingIdx === -1) {
-      const newEntry = {
-        user: {
-          email: emailLower,
-          fullName: cleanFullName,
-          nickname: cleanNickname,
-          name: cleanFullName,
-          registeredAt: registeredAtRaw || new Date().toISOString().replace('T', ' ').substring(0, 16),
-          isMaster: false,
-          role: 'student',
-        },
-        password: passwordRaw || 'password123',
-      };
-      if (db.users.length > 0) {
-        db.users.splice(1, 0, newEntry);
-      } else {
-        db.users.push(newEntry);
-      }
-      return true;
-    } else {
-      // Update missing name fields if any
-      const existingUser = db.users[existingIdx].user;
-      let modified = false;
-      if (!existingUser.fullName && cleanFullName) {
-        existingUser.fullName = cleanFullName;
-        existingUser.name = cleanFullName;
-        modified = true;
-      }
-      if (!existingUser.nickname && cleanNickname) {
-        existingUser.nickname = cleanNickname;
-        modified = true;
-      }
-      if (passwordRaw && passwordRaw !== '••••••••' && db.users[existingIdx].password !== passwordRaw) {
-        db.users[existingIdx].password = passwordRaw;
-        modified = true;
-      }
-      return modified;
-    }
-  }
-
-  function sortDbUsers() {
-    const masterList = db.users.filter(
-      u =>
-        u?.user?.email?.toLowerCase() === MASTER_CONFIG.email.toLowerCase() ||
-        u?.user?.email?.toLowerCase() === 'master@senseisari.com' ||
-        u?.user?.isMaster === true
-    );
-    const customStudents = db.users.filter(
-      u =>
-        u?.user?.email &&
-        u.user.email.toLowerCase() !== MASTER_CONFIG.email.toLowerCase() &&
-        u.user.email.toLowerCase() !== 'master@senseisari.com' &&
-        !u.user.isMaster &&
-        !SAMPLE_EMAILS.has(u.user.email.toLowerCase())
-    );
-    const sampleStudents = db.users.filter(
-      u => u?.user?.email && SAMPLE_EMAILS.has(u.user.email.toLowerCase())
-    );
-    db.users = [...masterList, ...customStudents, ...sampleStudents];
-  }
-
   // POST /api/sync - Bi-directional smart merge from client localStorage to server
   app.post('/api/sync', (req, res) => {
-    const {
-      users: clientUsers,
-      currentUser: clientCurrentUser,
-      scores: clientScores,
-      activeQuizzes: clientQuizzes,
-      onlinePresence: clientPresence,
-    } = req.body || {};
-    let changed = false;
-
-    // 0. If client has a logged-in student (currentUser), ensure they are in db.users
-    if (clientCurrentUser && clientCurrentUser.email) {
-      if (
-        ensureStudentInDb(
-          clientCurrentUser.email,
-          clientCurrentUser.fullName || clientCurrentUser.name,
-          clientCurrentUser.nickname,
-          undefined,
-          clientCurrentUser.registeredAt
-        )
-      ) {
-        changed = true;
-      }
-    }
-
-    // 1. Merge users (any student registered in client localStorage that is not on server and not deleted)
-    if (Array.isArray(clientUsers)) {
-      for (const item of clientUsers) {
-        const u = item?.user || item;
-        if (!u?.email) continue;
-        if (
-          ensureStudentInDb(
-            u.email,
-            u.fullName || u.name,
-            u.nickname,
-            item?.password,
-            u.registeredAt
-          )
-        ) {
-          changed = true;
-        }
-      }
-    }
-
-    // 2. Merge scores & ensure any student who has a score is in db.users
-    if (Array.isArray(clientScores)) {
-      for (const s of clientScores) {
-        if (!s?.id || !s?.userEmail) continue;
-        const sEmail = s.userEmail.toLowerCase();
-        if (SAMPLE_EMAILS.has(sEmail) || SAMPLE_RECORD_IDS.has(String(s.id)) || db.deletedEmails.includes(sEmail)) continue;
-        if (ensureStudentInDb(s.userEmail, s.studentName, s.studentNickname)) {
-          changed = true;
-        }
-        const exists = db.scores.some(existing => existing.id === s.id);
-        if (!exists) {
-          db.scores.unshift(s);
-          changed = true;
-        }
-      }
-    }
-
-    // 3. Merge activeQuizzes & ensure any student in activeQuizzes is in db.users
-    if (Array.isArray(clientQuizzes)) {
-      for (const q of clientQuizzes) {
-        if (!q?.id || !q?.userEmail) continue;
-        const qEmail = q.userEmail.toLowerCase();
-        if (SAMPLE_EMAILS.has(qEmail) || SAMPLE_RECORD_IDS.has(String(q.id)) || db.deletedEmails.includes(qEmail)) continue;
-        if (ensureStudentInDb(q.userEmail, q.studentName, q.studentNickname)) {
-          changed = true;
-        }
-        if (db.rankingResetAt && (q.startedAtTimestamp || 0) < db.rankingResetAt) continue;
-
-        const idx = db.activeQuizzes.findIndex(existing => existing.id === q.id);
-        if (idx === -1) {
-          db.activeQuizzes.unshift(q);
-          changed = true;
-        } else {
-          const existing = db.activeQuizzes[idx];
-          if (
-            (q.status === 'completed' && existing.status !== 'completed') ||
-            ((q.tabViolationsCount || 0) > (existing.tabViolationsCount || 0))
-          ) {
-            db.activeQuizzes[idx] = { ...existing, ...q };
-            changed = true;
-          }
-        }
-      }
-    }
-
-    // 4. Merge onlinePresence & ensure any student in onlinePresence is in db.users
-    if (clientPresence && typeof clientPresence === 'object') {
-      for (const [emailKey, pVal] of Object.entries(clientPresence as Record<string, any>)) {
-        const lowerKey = emailKey.toLowerCase();
-        if (SAMPLE_EMAILS.has(lowerKey) || db.deletedEmails.includes(lowerKey)) continue;
-        if (ensureStudentInDb(lowerKey, pVal?.name, pVal?.name ? pVal.name.split(/\s+/)[0] : undefined)) {
-          changed = true;
-        }
-        const current = db.onlinePresence[lowerKey];
-        if (!current || (pVal?.lastSeen || 0) > (current.lastSeen || 0)) {
-          db.onlinePresence[lowerKey] = {
-            email: lowerKey,
-            name: pVal.name || 'Murid',
-            lastSeen: pVal.lastSeen || 0,
-          };
-          changed = true;
-        }
-      }
-    }
-
-    sortDbUsers();
-
+    const changed = mergeExternalPayloadIntoDb(req.body || {});
     if (changed) {
       saveDatabase(db);
     }
@@ -377,6 +640,8 @@ async function startServer() {
       activeQuizzes: db.activeQuizzes,
       quizControl: db.quizControl,
       onlinePresence: db.onlinePresence,
+      dailyTasks: db.dailyTasks,
+      deletedTaskIds: db.deletedTaskIds,
       deletedEmails: db.deletedEmails,
       rankingResetAt: db.rankingResetAt,
       updatedAt: db.updatedAt,
@@ -392,7 +657,6 @@ async function startServer() {
     }
 
     const emailLower = user.email.trim().toLowerCase();
-    // Remove from deletedEmails if previously deleted
     db.deletedEmails = db.deletedEmails.filter(e => e !== emailLower);
 
     const existingIdx = db.users.findIndex(u => u.user.email.toLowerCase() === emailLower);
@@ -413,7 +677,6 @@ async function startServer() {
       };
     } else {
       const newEntry = { user: normalizedUser, password: password || 'password123' };
-      // Place right after Master (index 1) so new student is at top of student list
       if (db.users.length > 0) {
         db.users.splice(1, 0, newEntry);
       } else {
@@ -423,12 +686,18 @@ async function startServer() {
 
     sortDbUsers();
 
-    // Mark online immediately
+    // Mark online immediately with registration activity
     if (!normalizedUser.isMaster) {
+      const nowTime = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
       db.onlinePresence[emailLower] = {
         email: emailLower,
         name: normalizedUser.fullName,
+        nickname: normalizedUser.nickname,
         lastSeen: Date.now(),
+        currentTab: 'home',
+        currentActivity: 'Baru Saja Mendaftar & Masuk Beranda',
+        activeLevel: 'N5',
+        lastActionAt: nowTime,
       };
     }
 
@@ -493,8 +762,13 @@ async function startServer() {
   // POST /api/quizzes/control - Toggle Master quiz session
   app.post('/api/quizzes/control', (req, res) => {
     const { quizControl } = req.body || {};
-    if (quizControl) {
-      db.quizControl = quizControl;
+    if (quizControl && typeof quizControl.isActive === 'boolean') {
+      db.quizControl = {
+        isActive: quizControl.isActive,
+        startedAt: quizControl.startedAt,
+        startedBy: quizControl.startedBy,
+        updatedAt: quizControl.updatedAt || Date.now(),
+      };
       saveDatabase(db);
     }
     res.json({ success: true, quizControl: db.quizControl });
@@ -549,21 +823,66 @@ async function startServer() {
     res.json({ success: true, scores: db.scores, users: db.users });
   });
 
-  // POST /api/presence - Update student online/offline status
+  // POST /api/presence - Update student online/offline status & live activity
   app.post('/api/presence', (req, res) => {
-    const { email, name, nickname, lastSeen } = req.body || {};
+    const { email, name, nickname, lastSeen, currentTab, currentActivity, activeLevel, quizProgress, lastActionAt } = req.body || {};
     if (email) {
       const emailLower = email.trim().toLowerCase();
       ensureStudentInDb(emailLower, name, nickname || (name ? name.split(/\s+/)[0] : undefined));
       sortDbUsers();
+      const prev = db.onlinePresence[emailLower];
       db.onlinePresence[emailLower] = {
         email: emailLower,
-        name: name || db.onlinePresence[emailLower]?.name || 'Murid',
+        name: name || prev?.name || 'Murid',
+        nickname: nickname || prev?.nickname || (name ? name.split(/\s+/)[0] : 'Murid'),
         lastSeen: typeof lastSeen === 'number' ? lastSeen : Date.now(),
+        currentTab: currentTab || prev?.currentTab || 'home',
+        currentActivity: currentActivity || prev?.currentActivity || 'Membuka Aplikasi',
+        activeLevel: activeLevel || prev?.activeLevel || 'N5',
+        quizProgress: quizProgress !== undefined ? quizProgress : prev?.quizProgress,
+        lastActionAt: lastActionAt || prev?.lastActionAt || new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       };
       saveDatabase(db);
     }
     res.json({ success: true, onlinePresence: db.onlinePresence, users: db.users });
+  });
+
+  // POST /api/daily-tasks - Create, update, delete, or complete a daily task
+  app.post('/api/daily-tasks', (req, res) => {
+    const { task, deleteTaskId } = req.body || {};
+    if (deleteTaskId) {
+      const idStr = String(deleteTaskId).trim();
+      if (idStr && !db.deletedTaskIds.includes(idStr)) {
+        db.deletedTaskIds.push(idStr);
+      }
+      db.dailyTasks = db.dailyTasks.filter(t => String(t?.id) !== idStr);
+      saveDatabase(db);
+      res.json({ success: true, dailyTasks: db.dailyTasks, deletedTaskIds: db.deletedTaskIds });
+      return;
+    }
+
+    if (task && task.id) {
+      const idStr = String(task.id).trim();
+      db.deletedTaskIds = db.deletedTaskIds.filter(id => id !== idStr);
+      const idx = db.dailyTasks.findIndex(t => String(t?.id) === idStr);
+      if (idx === -1) {
+        db.dailyTasks.unshift({
+          ...task,
+          completions: Array.isArray(task.completions) ? task.completions : [],
+          updatedAt: task.updatedAt || Date.now(),
+        });
+      } else {
+        db.dailyTasks[idx] = {
+          ...db.dailyTasks[idx],
+          ...task,
+          completions: Array.isArray(task.completions) ? task.completions : db.dailyTasks[idx].completions || [],
+          updatedAt: task.updatedAt || Date.now(),
+        };
+      }
+      db.dailyTasks.sort((a, b) => (b.createdAtTimestamp || 0) - (a.createdAtTimestamp || 0));
+      saveDatabase(db);
+    }
+    res.json({ success: true, dailyTasks: db.dailyTasks, deletedTaskIds: db.deletedTaskIds });
   });
 
   // Vite middleware for development or static serving for production

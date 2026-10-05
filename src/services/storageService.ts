@@ -1,15 +1,26 @@
-import { JLPTLevel, QuizResult, User, ActiveQuizRecord, QuizControlState, VocabCard } from '../types';
+import { JLPTLevel, QuizResult, User, ActiveQuizRecord, QuizControlState, VocabCard, StudentPresenceInfo, DailyTask, DailyTaskCompletion, DailyTaskCategory, LevelStudyProgress } from '../types';
+import { VOCAB_MAZII_DICTIONARY } from '../data/vocabData';
+import { KANJI_SENSEI_SARI } from '../data/kanjiSenseiSari';
 
 const STORAGE_USERS_KEY = 'sensei_sari_users_v1';
 const STORAGE_CURRENT_USER_KEY = 'sensei_sari_current_user_v1';
 const STORAGE_SCORES_KEY = 'sensei_sari_scores_v1';
 const STORAGE_ACTIVE_LEVEL_KEY = 'sensei_sari_active_level_v1';
 const STORAGE_MEMORIZED_KANJI_KEY = 'sensei_sari_memorized_kanji_v1';
+const STORAGE_MEMORIZED_VOCAB_KEY = 'sensei_sari_memorized_vocab_v1';
 const STORAGE_LAST_ACTIVE_KEY = 'sensei_sari_last_active_v1';
 const STORAGE_ACTIVE_QUIZZES_KEY = 'sensei_sari_active_quizzes_v1';
 const STORAGE_QUIZ_CONTROL_KEY = 'sensei_sari_quiz_control_v1';
 const STORAGE_ONLINE_PRESENCE_KEY = 'sensei_sari_online_presence_v1';
 const STORAGE_PASSWORD_RESET_VERIFICATION_KEY = 'sensei_sari_pwd_reset_verify_v1';
+const STORAGE_DELETED_EMAILS_KEY = 'sensei_sari_deleted_emails_v1';
+const STORAGE_RANKING_RESET_AT_KEY = 'sensei_sari_ranking_reset_at_v1';
+const STORAGE_DAILY_TASKS_KEY = 'sensei_sari_daily_tasks_v1';
+const STORAGE_DELETED_TASK_IDS_KEY = 'sensei_sari_deleted_task_ids_v1';
+
+// Cloud Sync Relay Endpoints (Menjamin sinkronisasi real-time antar ais-dev, ais-pre, HP murid, dan laptop Master)
+const CLOUD_OBJECT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a106331a7571ef';
+const NTFY_SYNC_URL = 'https://ntfy.sh/sari_sensei_sync_8890ebbf_v2';
 
 // BroadcastChannel untuk sinkronisasi instan antar tab di browser yang sama
 const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
@@ -25,15 +36,18 @@ if (syncChannel) {
       window.dispatchEvent(new CustomEvent('quiz_control_changed'));
       window.dispatchEvent(new CustomEvent('scores_updated'));
       window.dispatchEvent(new CustomEvent('presence_updated'));
+      window.dispatchEvent(new CustomEvent('daily_tasks_updated'));
+      window.dispatchEvent(new CustomEvent('study_progress_updated'));
     }
   };
 }
 
 let syncIntervalStarted = false;
+let sseConnectionStarted = false;
 let isSyncingWithServer = false;
 let lastLocalUserMutationAt = 0;
+let lastCloudPollAt = 0;
 
-const STORAGE_DELETED_EMAILS_KEY = 'sensei_sari_deleted_emails_v1';
 const SAMPLE_STUDENT_EMAIL_SET = new Set([
   'budi.santoso@gmail.com',
   'anisa.dewi@gmail.com',
@@ -67,6 +81,41 @@ function getDeletedEmailsSet(): Set<string> {
 function saveDeletedEmailsSet(set: Set<string>) {
   try {
     localStorage.setItem(STORAGE_DELETED_EMAILS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+function getDeletedTaskIdsSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_DELETED_TASK_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map((id: string) => String(id).trim()) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDeletedTaskIdsSet(set: Set<string>) {
+  try {
+    localStorage.setItem(STORAGE_DELETED_TASK_IDS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+function getRankingResetAt(): number {
+  try {
+    const val = localStorage.getItem(STORAGE_RANKING_RESET_AT_KEY);
+    return val ? parseInt(val, 10) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setRankingResetAt(ts: number) {
+  try {
+    const current = getRankingResetAt();
+    if (ts > current) {
+      localStorage.setItem(STORAGE_RANKING_RESET_AT_KEY, String(ts));
+    }
   } catch {}
 }
 
@@ -115,15 +164,23 @@ function normalizeAndSortUsersList(
         password: item.password || (isMasterAcc ? MASTER_CONFIG.password : 'password123'),
       });
     } else {
-      // Preserve better password or fuller name if available
       if (item.password && item.password !== 'password123' && existing.password === 'password123') {
         existing.password = item.password;
       }
-      if (rawUser.fullName && (!existing.user.fullName || existing.user.fullName === 'Murid Terdaftar')) {
+      if (
+        cleanFullName &&
+        cleanFullName !== 'Murid' &&
+        cleanFullName !== 'Murid Terdaftar' &&
+        (!existing.user.fullName || existing.user.fullName === 'Murid Terdaftar' || existing.user.fullName === 'Murid')
+      ) {
         existing.user.fullName = cleanFullName;
         existing.user.name = cleanFullName;
       }
-      if (rawUser.nickname && (!existing.user.nickname || existing.user.nickname === 'Murid')) {
+      if (
+        cleanNickname &&
+        cleanNickname !== 'Murid' &&
+        (!existing.user.nickname || existing.user.nickname === 'Murid')
+      ) {
         existing.user.nickname = cleanNickname;
       }
     }
@@ -158,6 +215,404 @@ function normalizeAndSortUsersList(
   return [...masters, ...realRegisteredStudents];
 }
 
+// Broadcast event instan ke ntfy.sh agar perangkat lain (HP murid / laptop Master) langsung menerima dalam < 0.3 detik
+function broadcastCloudRealtimeEvent(eventPayload: Record<string, any>) {
+  try {
+    fetch(NTFY_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        ...eventPayload,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  } catch {}
+}
+
+// Terapkan data masuk (dari Server lokal, Cloud Object, atau SSE ntfy.sh) ke LocalStorage
+function applyIncomingSyncData(serverData: any) {
+  if (!serverData || typeof serverData !== 'object') return;
+
+  // 1. Deleted emails
+  if (Array.isArray(serverData.deletedEmails)) {
+    const deletedSet = getDeletedEmailsSet();
+    let delChanged = false;
+    for (const de of serverData.deletedEmails) {
+      if (de) {
+        const lower = String(de).toLowerCase().trim();
+        if (!deletedSet.has(lower)) {
+          deletedSet.add(lower);
+          delChanged = true;
+        }
+      }
+    }
+    if (delChanged) {
+      saveDeletedEmailsSet(deletedSet);
+    }
+  }
+
+  // 2. Ranking Reset Timestamp
+  if (typeof serverData.rankingResetAt === 'number' && serverData.rankingResetAt > getRankingResetAt()) {
+    setRankingResetAt(serverData.rankingResetAt);
+  }
+
+  // 3. Quiz Control State (Compare updatedAt so newest Master toggle always wins!)
+  if (serverData.quizControl && typeof serverData.quizControl.isActive === 'boolean') {
+    const localCtrl = storageService.getQuizControlState();
+    const incomingUpdated = serverData.quizControl.updatedAt || 0;
+    const localUpdated = localCtrl.updatedAt || 0;
+    if (incomingUpdated >= localUpdated) {
+      const nextCtrl: QuizControlState = {
+        isActive: serverData.quizControl.isActive,
+        startedAt: serverData.quizControl.startedAt,
+        startedBy: serverData.quizControl.startedBy,
+        updatedAt: incomingUpdated || Date.now(),
+      };
+      const currentCtrlStr = localStorage.getItem(STORAGE_QUIZ_CONTROL_KEY);
+      const nextCtrlStr = JSON.stringify(nextCtrl);
+      if (currentCtrlStr !== nextCtrlStr) {
+        localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, nextCtrlStr);
+        window.dispatchEvent(new CustomEvent('quiz_control_changed', { detail: nextCtrl }));
+      }
+    }
+  }
+
+  // 4. Users
+  let hasUserChanges = false;
+  if (Array.isArray(serverData.users) && serverData.users.length > 0) {
+    const deletedSet = getDeletedEmailsSet();
+    const latestLocalRaw = localStorage.getItem(STORAGE_USERS_KEY);
+    const latestLocalUsers = latestLocalRaw ? JSON.parse(latestLocalRaw) : storageService.getUsers();
+    const mergedUsers = normalizeAndSortUsersList(
+      [...latestLocalUsers, ...serverData.users],
+      deletedSet
+    );
+    const nextUsersStr = JSON.stringify(mergedUsers);
+    if (latestLocalRaw !== nextUsersStr) {
+      localStorage.setItem(STORAGE_USERS_KEY, nextUsersStr);
+      hasUserChanges = true;
+    }
+  }
+
+  // 5. Scores
+  if (Array.isArray(serverData.scores)) {
+    const deletedSet = getDeletedEmailsSet();
+    const localScores = storageService.getScores();
+    const scoreMap = new Map<string, QuizResult>();
+    for (const s of [...serverData.scores, ...localScores]) {
+      if (!s?.id || !s?.userEmail) continue;
+      const em = String(s.userEmail).toLowerCase();
+      if (SAMPLE_STUDENT_EMAIL_SET.has(em) || SAMPLE_RECORD_IDS.has(String(s.id)) || deletedSet.has(em)) continue;
+      if (!scoreMap.has(s.id)) {
+        scoreMap.set(s.id, s);
+      }
+    }
+    const mergedScores = Array.from(scoreMap.values());
+    const currentScoresStr = localStorage.getItem(STORAGE_SCORES_KEY);
+    const nextScoresStr = JSON.stringify(mergedScores);
+    if (currentScoresStr !== nextScoresStr) {
+      localStorage.setItem(STORAGE_SCORES_KEY, nextScoresStr);
+      window.dispatchEvent(new CustomEvent('scores_updated'));
+    }
+  }
+
+  // 6. Active Quizzes
+  if (Array.isArray(serverData.activeQuizzes)) {
+    const deletedSet = getDeletedEmailsSet();
+    const resetAt = getRankingResetAt();
+    const localQuizzes = storageService.getActiveQuizRecords();
+    const quizMap = new Map<string, ActiveQuizRecord>();
+
+    for (const q of [...localQuizzes, ...serverData.activeQuizzes]) {
+      if (!q?.id || !q?.userEmail) continue;
+      const em = String(q.userEmail).toLowerCase();
+      if (SAMPLE_STUDENT_EMAIL_SET.has(em) || SAMPLE_RECORD_IDS.has(String(q.id)) || deletedSet.has(em)) continue;
+      if (resetAt && (q.startedAtTimestamp || 0) < resetAt) continue;
+
+      const existing = quizMap.get(q.id);
+      if (!existing) {
+        quizMap.set(q.id, q);
+      } else {
+        quizMap.set(q.id, {
+          ...existing,
+          ...q,
+          status: existing.status === 'completed' || q.status === 'completed' ? 'completed' : 'in_progress',
+          score: q.score !== null && q.score !== undefined ? q.score : existing.score,
+          correctCount: q.correctCount !== null && q.correctCount !== undefined ? q.correctCount : existing.correctCount,
+          completedAtTime: q.completedAtTime || existing.completedAtTime,
+          completedAtTimestamp: q.completedAtTimestamp || existing.completedAtTimestamp,
+          answeredCount: Math.max(existing.answeredCount || 0, q.answeredCount || 0),
+          currentQuestion: Math.max(existing.currentQuestion || 0, q.currentQuestion || 0),
+          tabViolationsCount: Math.max(existing.tabViolationsCount || 0, q.tabViolationsCount || 0),
+        });
+      }
+    }
+
+    const mergedQuizzes = Array.from(quizMap.values()).sort((a, b) => b.startedAtTimestamp - a.startedAtTimestamp);
+    const currentQuizzesStr = localStorage.getItem(STORAGE_ACTIVE_QUIZZES_KEY);
+    const nextQuizzesStr = JSON.stringify(mergedQuizzes);
+    if (currentQuizzesStr !== nextQuizzesStr) {
+      localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, nextQuizzesStr);
+      window.dispatchEvent(new CustomEvent('active_quiz_updated'));
+    }
+  }
+
+  // 7. Online Presence & Student Live Activity
+  if (serverData.onlinePresence && typeof serverData.onlinePresence === 'object') {
+    const deletedSet = getDeletedEmailsSet();
+    const localPresence = storageService.getOnlinePresenceMap();
+    const mergedPresence: Record<string, StudentPresenceInfo> = { ...localPresence };
+
+    for (const [k, v] of Object.entries(serverData.onlinePresence as Record<string, any>)) {
+      const lowerKey = k.toLowerCase();
+      if (SAMPLE_STUDENT_EMAIL_SET.has(lowerKey) || deletedSet.has(lowerKey)) continue;
+      const existing = mergedPresence[lowerKey];
+      const incomingSeen = typeof v?.lastSeen === 'number' ? v.lastSeen : 0;
+      const existingSeen = existing ? existing.lastSeen || 0 : -1;
+
+      if (!existing || incomingSeen >= existingSeen || v?.currentActivity !== existing.currentActivity) {
+        mergedPresence[lowerKey] = {
+          email: lowerKey,
+          name: v?.name || existing?.name || 'Murid',
+          nickname: v?.nickname || existing?.nickname || 'Murid',
+          lastSeen: Math.max(incomingSeen, existingSeen),
+          currentTab: v?.currentTab || existing?.currentTab || 'home',
+          currentActivity: v?.currentActivity || existing?.currentActivity || 'Membuka Aplikasi',
+          activeLevel: v?.activeLevel || existing?.activeLevel || 'N5',
+          quizProgress: v?.quizProgress ?? existing?.quizProgress,
+          lastActionAt: v?.lastActionAt || existing?.lastActionAt,
+        };
+      }
+    }
+
+    const currentPresStr = localStorage.getItem(STORAGE_ONLINE_PRESENCE_KEY);
+    const nextPresStr = JSON.stringify(mergedPresence);
+    if (currentPresStr !== nextPresStr) {
+      localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, nextPresStr);
+      window.dispatchEvent(new CustomEvent('presence_updated'));
+    }
+  }
+
+  // 8. Deleted Daily Task IDs
+  if (Array.isArray(serverData.deletedTaskIds)) {
+    const delTaskSet = getDeletedTaskIdsSet();
+    let delTaskChanged = false;
+    for (const tid of serverData.deletedTaskIds) {
+      if (tid) {
+        const sId = String(tid).trim();
+        if (!delTaskSet.has(sId)) {
+          delTaskSet.add(sId);
+          delTaskChanged = true;
+        }
+      }
+    }
+    if (delTaskChanged) {
+      saveDeletedTaskIdsSet(delTaskSet);
+      const filteredLocalTasks = storageService.getDailyTasks().filter(t => !delTaskSet.has(String(t.id)));
+      localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(filteredLocalTasks));
+      window.dispatchEvent(new CustomEvent('daily_tasks_updated'));
+    }
+  }
+
+  // 9. Daily Tasks (Tugas Harian Sensei)
+  if (Array.isArray(serverData.dailyTasks)) {
+    const delTaskSet = getDeletedTaskIdsSet();
+    const deletedEmails = getDeletedEmailsSet();
+    const localTasks = storageService.getDailyTasks();
+    const localIds = new Set(localTasks.map(t => t.id));
+    const taskMap = new Map<string, DailyTask>();
+    let newActiveTaskTitle: string | null = null;
+
+    for (const lt of localTasks) {
+      if (lt?.id && !delTaskSet.has(String(lt.id))) {
+        taskMap.set(String(lt.id), lt);
+      }
+    }
+
+    for (const incoming of serverData.dailyTasks as DailyTask[]) {
+      if (!incoming?.id || !incoming?.title) continue;
+      const tId = String(incoming.id);
+      if (delTaskSet.has(tId)) continue;
+
+      if (!localIds.has(tId) && incoming.isActive) {
+        newActiveTaskTitle = incoming.title;
+      }
+
+      const existing = taskMap.get(tId);
+      if (!existing) {
+        taskMap.set(tId, {
+          ...incoming,
+          completions: Array.isArray(incoming.completions) ? incoming.completions : [],
+          updatedAt: incoming.updatedAt || Date.now(),
+        });
+      } else {
+        const compMap = new Map<string, DailyTaskCompletion>();
+        for (const c of [...(existing.completions || []), ...(incoming.completions || [])]) {
+          if (c?.studentEmail) {
+            const em = String(c.studentEmail).toLowerCase();
+            if (!SAMPLE_STUDENT_EMAIL_SET.has(em) && !deletedEmails.has(em)) {
+              const prevC = compMap.get(em);
+              if (!prevC || (c.completedAtTimestamp || 0) >= (prevC.completedAtTimestamp || 0)) {
+                compMap.set(em, c);
+              }
+            }
+          }
+        }
+        const mergedCompletions = Array.from(compMap.values());
+        const incomingUpdated = incoming.updatedAt || 0;
+        const existingUpdated = existing.updatedAt || 0;
+
+        taskMap.set(tId, {
+          ...(incomingUpdated >= existingUpdated ? { ...existing, ...incoming } : existing),
+          completions: mergedCompletions,
+          updatedAt: Math.max(incomingUpdated, existingUpdated),
+        });
+      }
+    }
+
+    const mergedTasks = Array.from(taskMap.values()).sort(
+      (a, b) => (b.createdAtTimestamp || 0) - (a.createdAtTimestamp || 0)
+    );
+    const currentTasksStr = localStorage.getItem(STORAGE_DAILY_TASKS_KEY);
+    const nextTasksStr = JSON.stringify(mergedTasks);
+    if (currentTasksStr !== nextTasksStr) {
+      localStorage.setItem(STORAGE_DAILY_TASKS_KEY, nextTasksStr);
+      window.dispatchEvent(
+        new CustomEvent('daily_tasks_updated', {
+          detail: { newActiveTaskTitle },
+        })
+      );
+    }
+  }
+
+  if (hasUserChanges) {
+    window.dispatchEvent(new CustomEvent('student_data_updated'));
+  }
+}
+
+// Tangani event real-time dari ntfy.sh SSE atau polling
+function handleRealtimeCloudPacket(packet: any) {
+  if (!packet || typeof packet !== 'object') return;
+
+  if (packet.quizControl && typeof packet.quizControl.isActive === 'boolean') {
+    applyIncomingSyncData({ quizControl: packet.quizControl });
+  }
+  if (packet.type === 'daily_task_upserted' && packet.task) {
+    applyIncomingSyncData({ dailyTasks: [packet.task] });
+  }
+  if (packet.type === 'daily_task_deleted' && packet.taskId) {
+    applyIncomingSyncData({ deletedTaskIds: [packet.taskId] });
+  }
+  if (packet.type === 'user_registered' && packet.entry) {
+    applyIncomingSyncData({
+      users: [packet.entry],
+      onlinePresence: packet.presence ? { [packet.entry.user.email.toLowerCase()]: packet.presence } : undefined,
+    });
+  }
+  if (packet.type === 'user_deleted' && packet.email) {
+    const targetEmail = String(packet.email).toLowerCase().trim();
+    const deletedSet = getDeletedEmailsSet();
+    deletedSet.add(targetEmail);
+    saveDeletedEmailsSet(deletedSet);
+    const users = storageService.getUsers().filter(u => u.user.email.toLowerCase() !== targetEmail);
+    localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    window.dispatchEvent(new CustomEvent('student_data_updated'));
+  }
+  if (packet.type === 'active_quiz' && packet.record) {
+    applyIncomingSyncData({
+      activeQuizzes: [packet.record],
+      users: packet.record.userEmail
+        ? [{
+            user: {
+              email: packet.record.userEmail,
+              fullName: packet.record.studentName,
+              nickname: packet.record.studentNickname,
+              name: packet.record.studentName,
+              registeredAt: `${packet.record.date || '2026-10-04'} 08:00`,
+              isMaster: false,
+              role: 'student',
+            },
+            password: 'password123',
+          }]
+        : undefined,
+    });
+  }
+  if (packet.type === 'ranking_reset' && packet.rankingResetAt) {
+    setRankingResetAt(packet.rankingResetAt);
+    localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify([]));
+    window.dispatchEvent(new CustomEvent('active_quiz_updated'));
+  }
+  if (packet.type === 'score_saved' && packet.score) {
+    applyIncomingSyncData({ scores: [packet.score] });
+  }
+  if (packet.type === 'presence_update' && packet.presence && packet.presence.email) {
+    applyIncomingSyncData({
+      onlinePresence: { [packet.presence.email.toLowerCase()]: packet.presence },
+    });
+  }
+  if (packet.type === 'cloud_state_sync') {
+    // Trigger pull from Cloud Object if needed
+    pullStateFromCloudObject();
+  }
+}
+
+async function pullStateFromCloudObject() {
+  try {
+    const res = await fetch(CLOUD_OBJECT_URL);
+    if (!res.ok) return;
+    const json = await res.json();
+    if (json?.data && typeof json.data === 'object') {
+      applyIncomingSyncData(json.data);
+    }
+  } catch {}
+}
+
+async function pushStateToCloudObject() {
+  try {
+    const snapshot = {
+      users: storageService.getUsers(),
+      scores: storageService.getScores(),
+      activeQuizzes: storageService.getActiveQuizRecords(),
+      quizControl: storageService.getQuizControlState(),
+      onlinePresence: storageService.getOnlinePresenceMap(),
+      dailyTasks: storageService.getDailyTasks(),
+      deletedTaskIds: Array.from(getDeletedTaskIdsSet()),
+      deletedEmails: Array.from(getDeletedEmailsSet()),
+      rankingResetAt: getRankingResetAt(),
+      updatedAt: Date.now(),
+    };
+    await fetch(CLOUD_OBJECT_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'sari_sensei_db',
+        data: snapshot,
+      }),
+    });
+  } catch {}
+}
+
+function startRealtimeCloudSSE() {
+  if (sseConnectionStarted || typeof window === 'undefined' || typeof EventSource === 'undefined') return;
+  sseConnectionStarted = true;
+  try {
+    const es = new EventSource(`${NTFY_SYNC_URL}/sse`);
+    es.onmessage = (ev) => {
+      try {
+        const outer = JSON.parse(ev.data);
+        const msgStr = outer?.message || ev.data;
+        if (typeof msgStr === 'string' && msgStr.startsWith('{')) {
+          const inner = JSON.parse(msgStr);
+          handleRealtimeCloudPacket(inner);
+        }
+      } catch {}
+    };
+    es.onerror = () => {
+      // Browser EventSource automatically reconnects
+    };
+  } catch {}
+}
+
 // Penyedia Verifikasi Perubahan Kata Sandi Resmi
 export const VERIFICATION_PROVIDER = {
   name: 'Sensei Sari Auth Security Center',
@@ -175,9 +630,6 @@ export const MASTER_CONFIG = {
   fullName: 'GLOSTER GLADIATOR',
   nickname: 'skywalker',
 };
-
-// Tanpa akun murid contoh otomatis
-const INITIAL_PRESENCE: Record<string, { email: string; name: string; lastSeen: number }> = {};
 
 // Hanya Akun Master dan Akun Murid Asli yang sudah mendaftar (tanpa akun murid contoh)
 const INITIAL_STUDENTS: { user: User; password: string }[] = [
@@ -208,7 +660,6 @@ const INITIAL_STUDENTS: { user: User; password: string }[] = [
 ];
 
 const INITIAL_SCORES: QuizResult[] = [];
-
 const INITIAL_ACTIVE_QUIZZES: ActiveQuizRecord[] = [];
 
 export const storageService = {
@@ -227,10 +678,13 @@ export const storageService = {
       }
 
       if (!localStorage.getItem(STORAGE_QUIZ_CONTROL_KEY)) {
-        localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, JSON.stringify({ isActive: false }));
+        localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, JSON.stringify({ isActive: false, updatedAt: 0 }));
       }
 
-      // Jalankan sinkronisasi ke server backend agar akun murid baru langsung muncul di akun Master lintas tab/perangkat
+      // 1. Jalankan SSE Real-Time Cloud Listener agar perubahan lintas perangkat langsung masuk (< 0.3 detik)
+      startRealtimeCloudSSE();
+
+      // 2. Jalankan sinkronisasi ke server backend & Cloud Object
       storageService.syncWithServer();
       if (!syncIntervalStarted && typeof window !== 'undefined') {
         syncIntervalStarted = true;
@@ -243,19 +697,24 @@ export const storageService = {
     }
   },
 
-  // Sinkronisasi dua arah antara LocalStorage & Server Pusat (Agar Murid Baru Langsung Muncul di Akun Master)
+  // Sinkronisasi dua arah antara LocalStorage, Server Lokal, dan Cloud Sync Pusat
   syncWithServer: async (): Promise<void> => {
     if (isSyncingWithServer) return;
     isSyncingWithServer = true;
-    const syncStartedAt = Date.now();
     try {
       const localUsers = storageService.getUsers();
       const currentUser = storageService.getCurrentUser();
       const localScores = storageService.getScores();
       const localQuizzes = storageService.getActiveQuizRecords();
       const localPresence = storageService.getOnlinePresenceMap();
+      const localQuizControl = storageService.getQuizControlState();
+      const localDailyTasks = storageService.getDailyTasks();
+      const deletedTaskIds = Array.from(getDeletedTaskIdsSet());
+      const deletedEmails = Array.from(getDeletedEmailsSet());
+      const rankingResetAt = getRankingResetAt();
 
-      const res = await fetch('/api/sync', {
+      // 1. Sinkronisasi dengan Express Server lokal (/api/sync)
+      const localSyncPromise = fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -264,84 +723,42 @@ export const storageService = {
           scores: localScores,
           activeQuizzes: localQuizzes,
           onlinePresence: localPresence,
+          quizControl: localQuizControl,
+          dailyTasks: localDailyTasks,
+          deletedTaskIds,
+          deletedEmails,
+          rankingResetAt,
         }),
-      });
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          if (data) applyIncomingSyncData(data);
+        })
+        .catch(() => {});
 
-      if (!res.ok) return;
-      const serverData = await res.json();
-
-      if (Array.isArray(serverData.deletedEmails)) {
-        const deletedSet = getDeletedEmailsSet();
-        for (const de of serverData.deletedEmails) {
-          if (de) deletedSet.add(String(de).toLowerCase().trim());
-        }
-        saveDeletedEmailsSet(deletedSet);
+      // 2. Sinkronisasi langsung dengan Cloud Object & Ntfy Poll setiap 3 detik (menjembatani ais-dev & ais-pre)
+      const now = Date.now();
+      if (now - lastCloudPollAt > 2500) {
+        lastCloudPollAt = now;
+        pullStateFromCloudObject();
+        fetch(`${NTFY_SYNC_URL}/json?poll=1&since=15m`)
+          .then(r => (r.ok ? r.text() : ''))
+          .then(text => {
+            if (!text) return;
+            const lines = text.split('\n').filter(Boolean);
+            for (const line of lines) {
+              try {
+                const outer = JSON.parse(line);
+                if (outer?.message && typeof outer.message === 'string' && outer.message.startsWith('{')) {
+                  handleRealtimeCloudPacket(JSON.parse(outer.message));
+                }
+              } catch {}
+            }
+          })
+          .catch(() => {});
       }
 
-      let hasUserChanges = false;
-      if (Array.isArray(serverData.users) && serverData.users.length > 0) {
-        const deletedSet = getDeletedEmailsSet();
-        // Re-read current local users in case a registration happened while fetch was in flight
-        const latestLocalRaw = localStorage.getItem(STORAGE_USERS_KEY);
-        const latestLocalUsers = latestLocalRaw ? JSON.parse(latestLocalRaw) : localUsers;
-        const mergedUsers = normalizeAndSortUsersList(
-          [...latestLocalUsers, ...serverData.users],
-          deletedSet
-        );
-        const nextUsersStr = JSON.stringify(mergedUsers);
-        if (latestLocalRaw !== nextUsersStr && lastLocalUserMutationAt <= syncStartedAt) {
-          localStorage.setItem(STORAGE_USERS_KEY, nextUsersStr);
-          hasUserChanges = true;
-        } else if (lastLocalUserMutationAt > syncStartedAt) {
-          // Merge without losing the newly mutated local user
-          const safeMerged = normalizeAndSortUsersList(
-            [...latestLocalUsers, ...serverData.users],
-            deletedSet
-          );
-          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(safeMerged));
-          hasUserChanges = true;
-        }
-      }
-
-      if (Array.isArray(serverData.scores)) {
-        const currentScoresStr = localStorage.getItem(STORAGE_SCORES_KEY);
-        const nextScoresStr = JSON.stringify(serverData.scores);
-        if (currentScoresStr !== nextScoresStr) {
-          localStorage.setItem(STORAGE_SCORES_KEY, nextScoresStr);
-          window.dispatchEvent(new CustomEvent('scores_updated'));
-        }
-      }
-
-      if (Array.isArray(serverData.activeQuizzes)) {
-        const currentQuizzesStr = localStorage.getItem(STORAGE_ACTIVE_QUIZZES_KEY);
-        const nextQuizzesStr = JSON.stringify(serverData.activeQuizzes);
-        if (currentQuizzesStr !== nextQuizzesStr) {
-          localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, nextQuizzesStr);
-          window.dispatchEvent(new CustomEvent('active_quiz_updated'));
-        }
-      }
-
-      if (serverData.quizControl) {
-        const currentCtrlStr = localStorage.getItem(STORAGE_QUIZ_CONTROL_KEY);
-        const nextCtrlStr = JSON.stringify(serverData.quizControl);
-        if (currentCtrlStr !== nextCtrlStr) {
-          localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, nextCtrlStr);
-          window.dispatchEvent(new CustomEvent('quiz_control_changed', { detail: serverData.quizControl }));
-        }
-      }
-
-      if (serverData.onlinePresence) {
-        const currentPresStr = localStorage.getItem(STORAGE_ONLINE_PRESENCE_KEY);
-        const nextPresStr = JSON.stringify(serverData.onlinePresence);
-        if (currentPresStr !== nextPresStr) {
-          localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, nextPresStr);
-          window.dispatchEvent(new CustomEvent('presence_updated'));
-        }
-      }
-
-      if (hasUserChanges) {
-        window.dispatchEvent(new CustomEvent('student_data_updated'));
-      }
+      await localSyncPromise;
     } catch {
       // Abaikan jika sedang offline sementara
     } finally {
@@ -365,7 +782,6 @@ export const storageService = {
       const deletedSet = getDeletedEmailsSet();
       const collected: { user: User; password: string }[] = [];
 
-      // 1. Baca dari kunci utama & kunci versi sebelumnya jika ada
       const userKeys = [
         STORAGE_USERS_KEY,
         'sensei_sari_users_v2',
@@ -391,7 +807,6 @@ export const storageService = {
         }
       }
 
-      // 2. Pulihkan dari sesi pengguna yang sedang login (currentUser)
       const currentUserKeys = [
         STORAGE_CURRENT_USER_KEY,
         'sensei_sari_current_user_v2',
@@ -409,7 +824,6 @@ export const storageService = {
         }
       }
 
-      // 3. Pulihkan akun murid yang pernah tercatat di riwayat nilai kuis (scores)
       const scoreKeys = [STORAGE_SCORES_KEY, 'sensei_sari_scores_v2', 'sensei_sari_scores'];
       for (const sk of scoreKeys) {
         const rawScores = localStorage.getItem(sk);
@@ -438,7 +852,6 @@ export const storageService = {
         }
       }
 
-      // 4. Pulihkan akun murid yang pernah tercatat di kuis aktif (activeQuizzes)
       const activeKeys = [STORAGE_ACTIVE_QUIZZES_KEY, 'sensei_sari_active_quizzes_v2', 'sensei_sari_active_quizzes'];
       for (const ak of activeKeys) {
         const rawAct = localStorage.getItem(ak);
@@ -467,7 +880,6 @@ export const storageService = {
         }
       }
 
-      // 5. Pulihkan akun murid yang pernah tercatat di onlinePresence
       const rawPres = localStorage.getItem(STORAGE_ONLINE_PRESENCE_KEY);
       if (rawPres) {
         try {
@@ -480,7 +892,7 @@ export const storageService = {
                   user: {
                     email: emailKey,
                     fullName: pName,
-                    nickname: pName.split(/\s+/)[0] || pName,
+                    nickname: pVal?.nickname || pName.split(/\s+/)[0] || pName,
                     name: pName,
                     registeredAt: '2026-10-01 08:00',
                     isMaster: false,
@@ -494,7 +906,6 @@ export const storageService = {
         } catch {}
       }
 
-      // 6. Tambahkan INITIAL_STUDENTS sebagai fallback terakhir
       collected.push(...INITIAL_STUDENTS);
 
       const normalized = normalizeAndSortUsersList(collected, deletedSet);
@@ -509,7 +920,7 @@ export const storageService = {
     }
   },
 
-  // Get list of students (non-master or all)
+  // Get list of students (non-master)
   getAllStudents: (): User[] => {
     const users = storageService.getUsers();
     return users
@@ -529,9 +940,6 @@ export const storageService = {
     const cleanPass = newPassword.trim();
     const isMasterTarget = trimmedEmail === MASTER_CONFIG.email.toLowerCase() || trimmedEmail === 'master@senseisari.com';
 
-    // Aturan Kata Sandi:
-    // Akun Master: Bebas menggunakan berapapun karakter minimal 2 sampai 10 karakter
-    // Akun Murid: Wajib minimal 8 karakter
     if (isMasterTarget) {
       if (cleanPass.length < 2 || cleanPass.length > 10) {
         return { success: false, message: 'Kata sandi akun master bebas antara minimal 2 sampai maksimal 10 karakter.' };
@@ -555,6 +963,11 @@ export const storageService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: trimmedEmail, newPassword: cleanPass }),
     }).catch(() => {});
+    broadcastCloudRealtimeEvent({
+      type: 'user_registered',
+      entry: users[idx],
+    });
+    pushStateToCloudObject();
     syncChannel?.postMessage({ type: 'sync_trigger' });
     window.dispatchEvent(new CustomEvent('student_data_updated'));
     return { 
@@ -584,10 +997,9 @@ export const storageService = {
       return { success: false, message: 'Alamat email tidak terdaftar dalam sistem Sensei Sari.' };
     }
 
-    // Generate 6 digit security code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const now = Date.now();
-    const expiresAt = now + 15 * 60 * 1000; // 15 menit
+    const expiresAt = now + 15 * 60 * 1000;
 
     const verificationPayload = {
       email: trimmedEmail,
@@ -650,7 +1062,6 @@ export const storageService = {
     const trimmedEmail = email.trim().toLowerCase();
     const cleanPass = newPassword.trim();
 
-    // Pastikan kode valid
     const verifyCheck = storageService.verifyPasswordResetCode(trimmedEmail, code);
     if (!verifyCheck.success) {
       return { success: false, message: verifyCheck.message };
@@ -667,7 +1078,6 @@ export const storageService = {
       }
     }
 
-    // Update password
     const result = storageService.updateStudentPassword(trimmedEmail, cleanPass);
     if (result.success) {
       localStorage.removeItem(STORAGE_PASSWORD_RESET_VERIFICATION_KEY);
@@ -680,46 +1090,45 @@ export const storageService = {
     try {
       const targetEmail = studentEmail.trim().toLowerCase();
       if (targetEmail === MASTER_CONFIG.email.toLowerCase()) {
-        return false; // Prevent deleting master
+        return false;
       }
 
-      // 0. Record in deletedEmails so auto-recovery does not resurrect deleted student
       const deletedSet = getDeletedEmailsSet();
       deletedSet.add(targetEmail);
       saveDeletedEmailsSet(deletedSet);
       lastLocalUserMutationAt = Date.now();
 
-      // 1. Remove from users list
       let users = storageService.getUsers();
       users = users.filter(u => u.user.email.toLowerCase() !== targetEmail);
       localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
 
-      // 2. Remove all quiz scores
       let scores = storageService.getScores();
       scores = scores.filter(s => s.userEmail.toLowerCase() !== targetEmail);
       localStorage.setItem(STORAGE_SCORES_KEY, JSON.stringify(scores));
 
-      // 3. Remove all active quiz records
       let activeQuizzes = storageService.getActiveQuizRecords();
       activeQuizzes = activeQuizzes.filter(q => q.userEmail.toLowerCase() !== targetEmail);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(activeQuizzes));
 
-      // 3b. Remove from online presence
       const presMap = storageService.getOnlinePresenceMap();
       if (presMap[targetEmail]) {
         delete presMap[targetEmail];
         localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presMap));
       }
 
-      // 4. Sync deletion to server & BroadcastChannel
       fetch('/api/users/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail }),
       }).catch(() => {});
+
+      broadcastCloudRealtimeEvent({
+        type: 'user_deleted',
+        email: targetEmail,
+      });
+      pushStateToCloudObject();
       syncChannel?.postMessage({ type: 'sync_trigger' });
 
-      // 5. Trigger live event
       window.dispatchEvent(new CustomEvent('student_data_updated', { detail: { deletedEmail: targetEmail } }));
       return true;
     } catch (e) {
@@ -739,7 +1148,6 @@ export const storageService = {
     const trimmedNickname = (nickname.trim() || trimmedFullName.split(/\s+/)[0] || trimmedFullName).trim();
     const trimmedEmail = email.trim().toLowerCase();
 
-    // 1. Validasi Nama Lengkap
     if (!trimmedFullName || trimmedFullName.length < 2) {
       return { valid: false, message: 'Nama lengkap wajib diisi (minimal 2 karakter).' };
     }
@@ -748,7 +1156,6 @@ export const storageService = {
       return { valid: false, message: 'Nama lengkap harus menggunakan huruf alfabet yang sah.' };
     }
 
-    // Blacklist kata kunci nama anonim murni
     const ANONYMOUS_NAME_KEYWORDS = [
       'anon',
       'anonim',
@@ -773,7 +1180,6 @@ export const storageService = {
       }
     }
 
-    // 2. Validasi Nama Panggilan
     if (!trimmedNickname || trimmedNickname.length < 2) {
       return { valid: false, message: 'Nama panggilan wajib diisi (minimal 2 karakter).' };
     }
@@ -788,7 +1194,6 @@ export const storageService = {
       }
     }
 
-    // 3. Validasi Email (Pencegahan email sementara / disposable / anonim)
     if (!trimmedEmail) {
       return { valid: false, message: 'Alamat email wajib diisi.' };
     }
@@ -803,7 +1208,6 @@ export const storageService = {
       return { valid: false, message: 'Format alamat email tidak lengkap.' };
     }
 
-    // Blacklist domain disposable / temp mail murni
     const DISPOSABLE_EMAIL_DOMAINS = [
       'tempmail.com',
       'temp-mail.org',
@@ -831,7 +1235,6 @@ export const storageService = {
       };
     }
 
-    // 4. Validasi Kata Sandi Murid
     if (!password || password.length < 2) {
       return { valid: false, message: 'Kata sandi murid wajib diisi (minimal 2 karakter).' };
     }
@@ -849,7 +1252,6 @@ export const storageService = {
     const cleanFullName = fullName.trim();
     const cleanNickname = (nickname.trim() || cleanFullName.split(/\s+/)[0] || cleanFullName).trim();
 
-    // Validasi pencegahan akun anonim
     const validation = storageService.validateStudentRegistration(cleanFullName, cleanNickname, email, password);
     if (!validation.valid) {
       return { success: false, message: validation.message };
@@ -860,7 +1262,6 @@ export const storageService = {
       return { success: false, message: 'Ini adalah email khusus Akun Master. Silakan masuk melalui menu Masuk.' };
     }
 
-    // Hapus dari daftar deletedEmails jika sebelumnya pernah dihapus
     const deletedSet = getDeletedEmailsSet();
     if (deletedSet.has(trimmedEmail)) {
       deletedSet.delete(trimmedEmail);
@@ -885,11 +1286,9 @@ export const storageService = {
     };
 
     if (existingIdx !== -1) {
-      // Jika sudah pernah mendaftar, perbarui datanya dan angkat ke urutan teratas daftar murid
       users.splice(existingIdx, 1);
     }
 
-    // Tempatkan murid baru tepat setelah akun Master (urutan #1 paling atas di Daftar Murid)
     if (users.length > 0) {
       users.splice(1, 0, { user: newUser, password });
     } else {
@@ -899,14 +1298,20 @@ export const storageService = {
     const sortedUsers = normalizeAndSortUsersList(users, deletedSet);
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(sortedUsers));
 
-    // Tandai kehadiran online
-    storageService.heartbeatPresence(newUser);
+    // Tandai kehadiran online & aktivitas pendaftaran baru
+    storageService.heartbeatPresence(newUser, {
+      currentTab: 'home',
+      currentActivity: setAsCurrentUser
+        ? 'Baru Mendaftar & Masuk ke Beranda'
+        : 'Baru Didaftarkan oleh Master',
+      activeLevel: 'N5',
+    });
 
     if (setAsCurrentUser) {
       storageService.setCurrentUser(newUser);
     }
 
-    // Kirim langsung ke server pusat agar langsung muncul di Daftar Murid Akun Master
+    // 1. Kirim langsung ke server lokal
     fetch('/api/users/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -925,6 +1330,15 @@ export const storageService = {
         }
       })
       .catch(() => {});
+
+    // 2. Broadcast instan ke Cloud SSE & Cloud Object agar langsung muncul di Daftar Murid Akun Master
+    const presenceEntry = storageService.getOnlinePresenceMap()[trimmedEmail];
+    broadcastCloudRealtimeEvent({
+      type: 'user_registered',
+      entry: { user: newUser, password },
+      presence: presenceEntry,
+    });
+    pushStateToCloudObject();
 
     syncChannel?.postMessage({ type: 'sync_trigger' });
     window.dispatchEvent(new CustomEvent('student_data_updated'));
@@ -956,7 +1370,6 @@ export const storageService = {
         role: 'master',
       };
       
-      // Update in storage if needed
       const existingIdx = users.findIndex(u => u.user.email.toLowerCase() === MASTER_CONFIG.email.toLowerCase());
       if (existingIdx !== -1) {
         users[existingIdx].user = masterUser;
@@ -983,14 +1396,25 @@ export const storageService = {
       return { success: false, message: 'Email belum terdaftar. Silakan pilih tab "Daftar Akun Baru" dan isi nama lengkap Anda.' };
     }
 
-    const isPasswordValid = found.password === password;
+    const isPasswordValid = found.password === password || found.password === 'password123';
     if (!isPasswordValid) {
       return { success: false, message: 'Kata sandi salah. Silakan periksa kembali.' };
     }
 
-    storageService.setCurrentUser(found.user);
+    // Jika sebelumnya dipulihkan dengan password123, simpan kata sandi asli murid
+    if (found.password === 'password123' && password !== 'password123') {
+      found.password = password;
+      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+    }
 
-    // Pastikan akun murid yang login langsung disinkronkan ke server pusat agar selalu tampil di Daftar Murid Master
+    storageService.setCurrentUser(found.user);
+    storageService.heartbeatPresence(found.user, {
+      currentTab: 'home',
+      currentActivity: 'Baru Login & Masuk ke Beranda',
+      activeLevel: storageService.getActiveLevel(),
+    });
+
+    // Pastikan akun murid yang login langsung disinkronkan ke server pusat & Cloud
     fetch('/api/users/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1009,6 +1433,13 @@ export const storageService = {
       })
       .catch(() => {});
 
+    broadcastCloudRealtimeEvent({
+      type: 'user_registered',
+      entry: found,
+      presence: storageService.getOnlinePresenceMap()[trimmedEmail],
+    });
+    pushStateToCloudObject();
+
     return { 
       success: true, 
       message: `Selamat datang kembali, ${found.user.nickname || found.user.fullName}! 🌸`, 
@@ -1021,7 +1452,6 @@ export const storageService = {
       const data = localStorage.getItem(STORAGE_CURRENT_USER_KEY);
       if (!data) return null;
       const parsed: User = JSON.parse(data);
-      // Synchronize master details if current user is master
       if (storageService.isMaster(parsed)) {
         parsed.fullName = MASTER_CONFIG.fullName;
         parsed.nickname = MASTER_CONFIG.nickname;
@@ -1055,17 +1485,17 @@ export const storageService = {
     storageService.setCurrentUser(null);
   },
 
-  // Online Presence System (Murid Sedang Mengakses Web)
-  getOnlinePresenceMap: (): Record<string, { email: string; name: string; lastSeen: number }> => {
+  // Online Presence & Live Activity System (Pantau Semua Aktivitas Murid di Halaman Master)
+  getOnlinePresenceMap: (): Record<string, StudentPresenceInfo> => {
     try {
       const data = localStorage.getItem(STORAGE_ONLINE_PRESENCE_KEY);
       if (!data) return {};
       const parsed = JSON.parse(data);
-      const cleaned: Record<string, { email: string; name: string; lastSeen: number }> = {};
+      const cleaned: Record<string, StudentPresenceInfo> = {};
       if (parsed && typeof parsed === 'object') {
         for (const [k, v] of Object.entries(parsed)) {
           if (!SAMPLE_STUDENT_EMAIL_SET.has(k.toLowerCase())) {
-            cleaned[k.toLowerCase()] = v as any;
+            cleaned[k.toLowerCase()] = v as StudentPresenceInfo;
           }
         }
       }
@@ -1075,22 +1505,57 @@ export const storageService = {
     }
   },
 
-  heartbeatPresence: (user: User) => {
+  getStudentPresenceInfo: (email: string): StudentPresenceInfo | null => {
+    const map = storageService.getOnlinePresenceMap();
+    return map[email.trim().toLowerCase()] || null;
+  },
+
+  heartbeatPresence: (
+    user: User,
+    activityDetails?: {
+      currentTab?: string;
+      currentActivity?: string;
+      activeLevel?: JLPTLevel;
+      quizProgress?: string;
+    }
+  ) => {
     if (!user || storageService.isMaster(user)) return;
     try {
       const presenceMap = storageService.getOnlinePresenceMap();
       const email = user.email.toLowerCase();
+      const prev = presenceMap[email];
+      const nowTime = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      const activityChanged =
+        activityDetails?.currentActivity && activityDetails.currentActivity !== prev?.currentActivity;
+
       presenceMap[email] = {
         email,
-        name: user.fullName || user.nickname || 'Murid',
+        name: user.fullName || user.nickname || prev?.name || 'Murid',
+        nickname: user.nickname || user.fullName?.split(/\s+/)[0] || prev?.nickname || 'Murid',
         lastSeen: Date.now(),
+        currentTab: activityDetails?.currentTab || prev?.currentTab || 'home',
+        currentActivity: activityDetails?.currentActivity || prev?.currentActivity || '🏠 Di Beranda Portal Kelas',
+        activeLevel: activityDetails?.activeLevel || prev?.activeLevel || storageService.getActiveLevel(),
+        quizProgress: activityDetails?.quizProgress !== undefined ? activityDetails.quizProgress : prev?.quizProgress,
+        lastActionAt: activityChanged ? nowTime : prev?.lastActionAt || nowTime,
       };
+
       localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
       fetch('/api/presence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(presenceMap[email]),
       }).catch(() => {});
+
+      if (activityChanged) {
+        broadcastCloudRealtimeEvent({
+          type: 'presence_update',
+          presence: presenceMap[email],
+        });
+        pushStateToCloudObject();
+      }
+
       window.dispatchEvent(new CustomEvent('presence_updated', { detail: { email, online: true } }));
     } catch (e) {
       console.error('Failed to update presence', e);
@@ -1101,14 +1566,22 @@ export const storageService = {
     try {
       const presenceMap = storageService.getOnlinePresenceMap();
       const target = email.toLowerCase();
+      const nowTime = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
       if (presenceMap[target]) {
-        presenceMap[target].lastSeen = 0; // Mark as offline
+        presenceMap[target].lastSeen = 0;
+        presenceMap[target].currentActivity = '⚪ Keluar / Offline';
+        presenceMap[target].lastActionAt = nowTime;
         localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
         fetch('/api/presence', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(presenceMap[target]),
         }).catch(() => {});
+        broadcastCloudRealtimeEvent({
+          type: 'presence_update',
+          presence: presenceMap[target],
+        });
+        pushStateToCloudObject();
         window.dispatchEvent(new CustomEvent('presence_updated', { detail: { email: target, online: false } }));
       }
     } catch (e) {
@@ -1119,13 +1592,11 @@ export const storageService = {
   isStudentOnline: (email: string): boolean => {
     const targetEmail = email.toLowerCase();
 
-    // Jika murid sedang login aktif di tab/browser ini
     const current = storageService.getCurrentUser();
     if (current && current.email.toLowerCase() === targetEmail && !storageService.isMaster(current)) {
       return true;
     }
 
-    // Cek rekaman kuis yang sedang aktif berlangsung (status 'in_progress' dalam 45 menit terakhir)
     const activeQuizzes = storageService.getActiveQuizRecords();
     const hasLiveQuiz = activeQuizzes.some(
       q => q.userEmail.toLowerCase() === targetEmail && 
@@ -1136,10 +1607,9 @@ export const storageService = {
       return true;
     }
 
-    // Cek timestamp heartbeat terakhir (online jika aktif dalam 60 detik terakhir)
     const presenceMap = storageService.getOnlinePresenceMap();
     const presence = presenceMap[targetEmail];
-    if (presence && (Date.now() - presence.lastSeen) < 60_000) {
+    if (presence && presence.lastSeen > 0 && (Date.now() - presence.lastSeen) < 120_000) {
       return true;
     }
 
@@ -1151,7 +1621,6 @@ export const storageService = {
     return students.filter(s => storageService.isStudentOnline(s.email)).length;
   },
 
-  // Active timestamp tracking
   updateLastActive: () => {
     try {
       localStorage.setItem(STORAGE_LAST_ACTIVE_KEY, Date.now().toString());
@@ -1169,7 +1638,6 @@ export const storageService = {
 
   checkSessionExpired: (user: User | null): { expired: boolean; remainingMinutes: number } => {
     if (!user) return { expired: true, remainingMinutes: 0 };
-    // Master account does not auto-logout
     if (storageService.isMaster(user)) {
       return { expired: false, remainingMinutes: 999999 };
     }
@@ -1188,9 +1656,9 @@ export const storageService = {
   getQuizControlState: (): QuizControlState => {
     try {
       const data = localStorage.getItem(STORAGE_QUIZ_CONTROL_KEY);
-      return data ? JSON.parse(data) : { isActive: false };
+      return data ? JSON.parse(data) : { isActive: false, updatedAt: 0 };
     } catch {
-      return { isActive: false };
+      return { isActive: false, updatedAt: 0 };
     }
   },
 
@@ -1200,13 +1668,24 @@ export const storageService = {
         isActive,
         startedAt: isActive ? new Date().toISOString() : undefined,
         startedBy: masterUser?.nickname || MASTER_CONFIG.nickname,
+        updatedAt: Date.now(),
       };
       localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, JSON.stringify(state));
+
+      // 1. Kirim ke server lokal
       fetch('/api/quizzes/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quizControl: state }),
       }).catch(() => {});
+
+      // 2. Broadcast instan ke Cloud SSE & Cloud Object agar semua murid langsung melihat "Sesi Kuis Dimulai!"
+      broadcastCloudRealtimeEvent({
+        type: 'quiz_control',
+        quizControl: state,
+      });
+      pushStateToCloudObject();
+
       syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('quiz_control_changed', { detail: state }));
     } catch (e) {
@@ -1254,6 +1733,8 @@ export const storageService = {
       score: null,
       totalQuestions,
       correctCount: null,
+      answeredCount: 0,
+      currentQuestion: 1,
       startedAtTimestamp: now.getTime(),
       completedAtTimestamp: null,
     };
@@ -1262,11 +1743,26 @@ export const storageService = {
       const records = storageService.getActiveQuizRecords();
       records.unshift(newRecord);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
+
+      storageService.heartbeatPresence(user, {
+        currentTab: 'kuis',
+        currentActivity: `📝 Sedang Mengerjakan Kuis JLPT ${level} (Soal 1/${totalQuestions})`,
+        activeLevel: level,
+        quizProgress: `0/${totalQuestions} terjawab`,
+      });
+
       fetch('/api/quizzes/active', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ record: newRecord }),
       }).catch(() => {});
+
+      broadcastCloudRealtimeEvent({
+        type: 'active_quiz',
+        record: newRecord,
+      });
+      pushStateToCloudObject();
+
       syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('active_quiz_updated', { detail: newRecord }));
     } catch (e) {
@@ -1274,6 +1770,42 @@ export const storageService = {
     }
 
     return sessionId;
+  },
+
+  updateActiveQuizProgress: (
+    sessionId: string,
+    user: User | null,
+    level: JLPTLevel,
+    currentQuestion: number,
+    answeredCount: number,
+    totalQuestions: number = 50
+  ) => {
+    try {
+      const records = storageService.getActiveQuizRecords();
+      const idx = records.findIndex(r => r.id === sessionId);
+      if (idx !== -1) {
+        records[idx].currentQuestion = currentQuestion;
+        records[idx].answeredCount = answeredCount;
+        localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
+        fetch('/api/quizzes/active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ record: records[idx] }),
+        }).catch(() => {});
+        broadcastCloudRealtimeEvent({
+          type: 'active_quiz',
+          record: records[idx],
+        });
+      }
+      if (user && !storageService.isMaster(user)) {
+        storageService.heartbeatPresence(user, {
+          currentTab: 'kuis',
+          currentActivity: `📝 Sedang Mengerjakan Kuis JLPT ${level} (Soal ${currentQuestion}/${totalQuestions} · ${answeredCount} terjawab)`,
+          activeLevel: level,
+          quizProgress: `${answeredCount}/${totalQuestions} terjawab`,
+        });
+      }
+    } catch {}
   },
 
   recordQuizViolation: (sessionId: string, violationsCount: number) => {
@@ -1288,6 +1820,11 @@ export const storageService = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ record: records[idx] }),
         }).catch(() => {});
+        broadcastCloudRealtimeEvent({
+          type: 'active_quiz',
+          record: records[idx],
+        });
+        pushStateToCloudObject();
         syncChannel?.postMessage({ type: 'sync_trigger' });
         window.dispatchEvent(new CustomEvent('active_quiz_updated', { detail: records[idx] }));
       }
@@ -1319,10 +1856,10 @@ export const storageService = {
         records[idx].score = score;
         records[idx].correctCount = correctCount;
         records[idx].totalQuestions = totalQuestions;
+        records[idx].answeredCount = totalQuestions;
         records[idx].tabViolationsCount = tabViolationsCount;
         localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
 
-        // Also permanently save to quiz results history
         const result: QuizResult = {
           id: 'score-' + Date.now(),
           userEmail: records[idx].userEmail,
@@ -1342,11 +1879,28 @@ export const storageService = {
         };
         storageService.saveScore(result);
 
+        const current = storageService.getCurrentUser();
+        if (current && !storageService.isMaster(current)) {
+          storageService.heartbeatPresence(current, {
+            currentTab: 'kuis',
+            currentActivity: `✅ Selesai Kuis JLPT ${records[idx].level} (Nilai: ${score})`,
+            activeLevel: records[idx].level,
+            quizProgress: `Selesai (Nilai: ${score})`,
+          });
+        }
+
         fetch('/api/quizzes/active', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ record: records[idx] }),
         }).catch(() => {});
+
+        broadcastCloudRealtimeEvent({
+          type: 'active_quiz',
+          record: records[idx],
+        });
+        pushStateToCloudObject();
+
         syncChannel?.postMessage({ type: 'sync_trigger' });
         window.dispatchEvent(new CustomEvent('active_quiz_updated', { detail: records[idx] }));
       }
@@ -1365,23 +1919,30 @@ export const storageService = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deleteId: id }),
       }).catch(() => {});
+      pushStateToCloudObject();
       syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('active_quiz_updated'));
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   },
 
-  // Reset papan ranking sesi kuis (hanya mengosongkan rekaman sesi aktif, tanpa menyentuh riwayat nilai permanen / total kuis / rapor)
   resetActiveQuizRanking: (): boolean => {
     try {
+      const resetTs = Date.now();
+      setRankingResetAt(resetTs);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify([]));
       fetch('/api/quizzes/active', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reset: true }),
       }).catch(() => {});
+      broadcastCloudRealtimeEvent({
+        type: 'ranking_reset',
+        rankingResetAt: resetTs,
+      });
+      pushStateToCloudObject();
       syncChannel?.postMessage({ type: 'sync_trigger' });
       window.dispatchEvent(new CustomEvent('active_quiz_updated'));
       return true;
@@ -1425,6 +1986,11 @@ export const storageService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ score: result }),
     }).catch(() => {});
+    broadcastCloudRealtimeEvent({
+      type: 'score_saved',
+      score: result,
+    });
+    pushStateToCloudObject();
     syncChannel?.postMessage({ type: 'sync_trigger' });
     window.dispatchEvent(new CustomEvent('scores_updated', { detail: result }));
   },
@@ -1444,7 +2010,7 @@ export const storageService = {
     localStorage.setItem(STORAGE_ACTIVE_LEVEL_KEY, level);
   },
 
-  // Kanji Memorization
+  // Kanji & Vocabulary Memorization / Study Progress per Level (N5 - N2)
   getMemorizedKanji: (email?: string): number[] => {
     try {
       const user = storageService.getCurrentUser();
@@ -1454,6 +2020,20 @@ export const storageService = {
     } catch {
       return [];
     }
+  },
+
+  markKanjiLearned: (kanjiId: number, email?: string): boolean => {
+    const user = storageService.getCurrentUser();
+    const userEmail = email || user?.email || 'default_user';
+    const list = storageService.getMemorizedKanji(userEmail);
+    if (!list.includes(kanjiId)) {
+      list.push(kanjiId);
+      localStorage.setItem(`${STORAGE_MEMORIZED_KANJI_KEY}_${userEmail.toLowerCase()}`, JSON.stringify(list));
+      syncChannel?.postMessage({ type: 'sync_trigger' });
+      window.dispatchEvent(new CustomEvent('study_progress_updated'));
+      return true;
+    }
+    return false;
   },
 
   toggleMemorizedKanji: (kanjiId: number, email?: string): boolean => {
@@ -1470,6 +2050,8 @@ export const storageService = {
       isMemorized = true;
     }
     localStorage.setItem(`${STORAGE_MEMORIZED_KANJI_KEY}_${userEmail.toLowerCase()}`, JSON.stringify(list));
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('study_progress_updated'));
     return isMemorized;
   },
 
@@ -1477,6 +2059,97 @@ export const storageService = {
     const user = storageService.getCurrentUser();
     const userEmail = email || user?.email || 'default_user';
     localStorage.removeItem(`${STORAGE_MEMORIZED_KANJI_KEY}_${userEmail.toLowerCase()}`);
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('study_progress_updated'));
+  },
+
+  getMemorizedVocab: (email?: string): number[] => {
+    try {
+      const user = storageService.getCurrentUser();
+      const userEmail = email || user?.email || 'default_user';
+      const data = localStorage.getItem(`${STORAGE_MEMORIZED_VOCAB_KEY}_${userEmail.toLowerCase()}`);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  markVocabLearned: (vocabId: number, email?: string): boolean => {
+    const user = storageService.getCurrentUser();
+    const userEmail = email || user?.email || 'default_user';
+    const list = storageService.getMemorizedVocab(userEmail);
+    if (!list.includes(vocabId)) {
+      list.push(vocabId);
+      localStorage.setItem(`${STORAGE_MEMORIZED_VOCAB_KEY}_${userEmail.toLowerCase()}`, JSON.stringify(list));
+      syncChannel?.postMessage({ type: 'sync_trigger' });
+      window.dispatchEvent(new CustomEvent('study_progress_updated'));
+      return true;
+    }
+    return false;
+  },
+
+  toggleMemorizedVocab: (vocabId: number, email?: string): boolean => {
+    const user = storageService.getCurrentUser();
+    const userEmail = email || user?.email || 'default_user';
+    const list = storageService.getMemorizedVocab(userEmail);
+    const index = list.indexOf(vocabId);
+    let isMemorized = false;
+    if (index > -1) {
+      list.splice(index, 1);
+      isMemorized = false;
+    } else {
+      list.push(vocabId);
+      isMemorized = true;
+    }
+    localStorage.setItem(`${STORAGE_MEMORIZED_VOCAB_KEY}_${userEmail.toLowerCase()}`, JSON.stringify(list));
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('study_progress_updated'));
+    return isMemorized;
+  },
+
+  resetMemorizedVocab: (email?: string) => {
+    const user = storageService.getCurrentUser();
+    const userEmail = email || user?.email || 'default_user';
+    localStorage.removeItem(`${STORAGE_MEMORIZED_VOCAB_KEY}_${userEmail.toLowerCase()}`);
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('study_progress_updated'));
+  },
+
+  getJLPTLevelStudyProgress: (email?: string): LevelStudyProgress[] => {
+    const learnedVocabSet = new Set(storageService.getMemorizedVocab(email));
+    const learnedKanjiSet = new Set(storageService.getMemorizedKanji(email));
+    const levels: JLPTLevel[] = ['N5', 'N4', 'N3', 'N2'];
+
+    return levels.map((lvl) => {
+      const levelVocabList = VOCAB_MAZII_DICTIONARY.filter((v) => v.level === lvl);
+      const levelKanjiList = KANJI_SENSEI_SARI.filter((k) => k.level === lvl);
+
+      const vocabTotal = levelVocabList.length;
+      const kanjiTotal = levelKanjiList.length;
+
+      const vocabLearned = levelVocabList.filter((v) => learnedVocabSet.has(v.id)).length;
+      const kanjiLearned = levelKanjiList.filter((k) => learnedKanjiSet.has(k.id)).length;
+
+      const vocabPercent = vocabTotal > 0 ? Math.min(100, Math.round((vocabLearned / vocabTotal) * 100)) : 0;
+      const kanjiPercent = kanjiTotal > 0 ? Math.min(100, Math.round((kanjiLearned / kanjiTotal) * 100)) : 0;
+
+      const totalLearned = vocabLearned + kanjiLearned;
+      const totalItems = vocabTotal + kanjiTotal;
+      const totalPercent = totalItems > 0 ? Math.min(100, Math.round((totalLearned / totalItems) * 100)) : 0;
+
+      return {
+        level: lvl,
+        vocabLearned,
+        vocabTotal,
+        vocabPercent,
+        kanjiLearned,
+        kanjiTotal,
+        kanjiPercent,
+        totalLearned,
+        totalItems,
+        totalPercent,
+      };
+    });
   },
 
   // Vocabulary Synchronization & Level-based Target Storage
@@ -1502,5 +2175,214 @@ export const storageService = {
 
   resetCustomVocab: (): void => {
     localStorage.removeItem('sensei_sari_custom_vocab_v1');
-  }
+  },
+
+  // ================= FOLDER TUGAS HARIAN SENSEI (Master & Murid Real-Time) =================
+  getDailyTasks: (): DailyTask[] => {
+    try {
+      const delTaskSet = getDeletedTaskIdsSet();
+      const raw = localStorage.getItem(STORAGE_DAILY_TASKS_KEY);
+      if (!raw) return [];
+      const parsed: DailyTask[] = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const filtered = parsed.filter(t => t && t.id && !delTaskSet.has(String(t.id)));
+      return filtered.sort((a, b) => (b.createdAtTimestamp || 0) - (a.createdAtTimestamp || 0));
+    } catch {
+      return [];
+    }
+  },
+
+  getActiveDailyTasks: (): DailyTask[] => {
+    return storageService.getDailyTasks().filter(t => t.isActive);
+  },
+
+  createDailyTask: (
+    input: {
+      title: string;
+      description: string;
+      level: JLPTLevel | 'ALL';
+      category: DailyTaskCategory;
+      dueDate?: string;
+      dueTime?: string;
+    },
+    masterUser?: User | null
+  ): DailyTask => {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    const newTask: DailyTask = {
+      id: 'task-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      title: input.title.trim(),
+      description: input.description.trim(),
+      level: input.level || 'ALL',
+      category: input.category || 'umum',
+      dueDate: input.dueDate || dateStr,
+      dueTime: input.dueTime || '21:00',
+      createdAt: `${dateStr} ${timeStr}`,
+      createdAtTimestamp: now.getTime(),
+      createdBy: masterUser?.nickname || MASTER_CONFIG.nickname || 'Sensei Sari',
+      isActive: true,
+      completions: [],
+      updatedAt: now.getTime(),
+    };
+
+    const tasks = storageService.getDailyTasks();
+    tasks.unshift(newTask);
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: newTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: newTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: newTask } }));
+
+    return newTask;
+  },
+
+  updateDailyTask: (
+    taskId: string,
+    updates: Partial<Pick<DailyTask, 'title' | 'description' | 'level' | 'category' | 'dueDate' | 'dueTime' | 'isActive'>>
+  ): DailyTask | null => {
+    const tasks = storageService.getDailyTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return null;
+
+    const updatedTask: DailyTask = {
+      ...tasks[idx],
+      ...updates,
+      updatedAt: Date.now(),
+    };
+    tasks[idx] = updatedTask;
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: updatedTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: updatedTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
+
+    return updatedTask;
+  },
+
+  deleteDailyTask: (taskId: string): boolean => {
+    try {
+      const idStr = String(taskId).trim();
+      const delTaskSet = getDeletedTaskIdsSet();
+      delTaskSet.add(idStr);
+      saveDeletedTaskIdsSet(delTaskSet);
+
+      const tasks = storageService.getDailyTasks().filter(t => String(t.id) !== idStr);
+      localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+      fetch('/api/daily-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteTaskId: idStr }),
+      }).catch(() => {});
+
+      broadcastCloudRealtimeEvent({
+        type: 'daily_task_deleted',
+        taskId: idStr,
+      });
+      pushStateToCloudObject();
+      syncChannel?.postMessage({ type: 'sync_trigger' });
+      window.dispatchEvent(new CustomEvent('daily_tasks_updated'));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  toggleDailyTaskCompletion: (
+    taskId: string,
+    user: User,
+    note?: string
+  ): { completed: boolean; task: DailyTask | null } => {
+    const tasks = storageService.getDailyTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return { completed: false, task: null };
+
+    const targetTask = tasks[idx];
+    const emailLower = user.email.toLowerCase();
+    const existingCompIdx = (targetTask.completions || []).findIndex(
+      c => c.studentEmail.toLowerCase() === emailLower
+    );
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+    let isNowCompleted = false;
+    const nextCompletions = [...(targetTask.completions || [])];
+
+    if (existingCompIdx !== -1 && note === undefined) {
+      // Unmark completion if toggled without note update
+      nextCompletions.splice(existingCompIdx, 1);
+      isNowCompleted = false;
+    } else {
+      const compEntry: DailyTaskCompletion = {
+        studentEmail: emailLower,
+        studentName: user.fullName || user.nickname || 'Murid',
+        studentNickname: user.nickname || user.fullName?.split(/\s+/)[0] || 'Murid',
+        completedAt: `${dateStr} ${timeStr}`,
+        completedAtTimestamp: now.getTime(),
+        note: note?.trim() || (existingCompIdx !== -1 ? nextCompletions[existingCompIdx].note : undefined),
+      };
+      if (existingCompIdx !== -1) {
+        nextCompletions[existingCompIdx] = compEntry;
+      } else {
+        nextCompletions.unshift(compEntry);
+      }
+      isNowCompleted = true;
+    }
+
+    const updatedTask: DailyTask = {
+      ...targetTask,
+      completions: nextCompletions,
+      updatedAt: Date.now(),
+    };
+    tasks[idx] = updatedTask;
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    if (!storageService.isMaster(user)) {
+      storageService.heartbeatPresence(user, {
+        currentTab: 'home',
+        currentActivity: isNowCompleted
+          ? `✅ Menyelesaikan Tugas Harian: ${updatedTask.title}`
+          : `📁 Membuka Folder Tugas Harian Sensei`,
+      });
+    }
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: updatedTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: updatedTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
+
+    return { completed: isNowCompleted, task: updatedTask };
+  },
 };

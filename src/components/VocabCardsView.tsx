@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { JLPTLevel, VocabCard } from '../types';
 import { VOCAB_MAZII_DICTIONARY } from '../data/vocabData';
+import { storageService } from '../services/storageService';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -10,7 +11,8 @@ import {
   BookOpen, 
   Search, 
   X, 
-  Target
+  Target,
+  CheckCircle2
 } from 'lucide-react';
 
 interface VocabCardsViewProps {
@@ -19,13 +21,32 @@ interface VocabCardsViewProps {
 }
 
 export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, setActiveLevel }) => {
-  const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>('all');
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>(activeLevel || 'all');
   const [deck, setDeck] = useState<VocabCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
+  const [memorizedIds, setMemorizedIds] = useState<number[]>(() => storageService.getMemorizedVocab());
+
+  useEffect(() => {
+    if (activeLevel) {
+      setSelectedLevelFilter(activeLevel);
+    }
+  }, [activeLevel]);
+
+  useEffect(() => {
+    const refreshLearned = () => {
+      setMemorizedIds(storageService.getMemorizedVocab());
+    };
+    window.addEventListener('study_progress_updated', refreshLearned);
+    window.addEventListener('storage', refreshLearned);
+    return () => {
+      window.removeEventListener('study_progress_updated', refreshLearned);
+      window.removeEventListener('storage', refreshLearned);
+    };
+  }, []);
 
   // Source pool: 4.845 Kosakata Resmi JLPT (N5: 669, N4: 582, N3: 1.802, N2: 1.792)
   const sourcePool: VocabCard[] = VOCAB_MAZII_DICTIONARY;
@@ -99,6 +120,9 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
   // Level filter change
   const handleLevelFilterChange = (lvl: string) => {
     setSelectedLevelFilter(lvl);
+    if (lvl !== 'all' && setActiveLevel) {
+      setActiveLevel(lvl as JLPTLevel);
+    }
     setCurrentIndex(0);
     setIsFlipped(false);
   };
@@ -177,6 +201,35 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
   };
 
   const currentCard = deck[currentIndex];
+  const memorizedSet = useMemo(() => new Set(memorizedIds), [memorizedIds]);
+  const learnedInCurrentDeck = useMemo(
+    () => deck.filter((c) => memorizedSet.has(c.id)).length,
+    [deck, memorizedSet]
+  );
+  const deckProgressPercent =
+    deck.length > 0 ? Math.min(100, Math.round((learnedInCurrentDeck / deck.length) * 100)) : 0;
+  const isCurrentCardLearned = currentCard ? memorizedSet.has(currentCard.id) : false;
+
+  const handleFlipCard = () => {
+    const nextFlipped = !isFlipped;
+    setIsFlipped(nextFlipped);
+    if (nextFlipped && currentCard) {
+      storageService.markVocabLearned(currentCard.id);
+      setMemorizedIds(storageService.getMemorizedVocab());
+    }
+  };
+
+  const handleToggleLearned = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentCard) return;
+    const nowLearned = storageService.toggleMemorizedVocab(currentCard.id);
+    setMemorizedIds(storageService.getMemorizedVocab());
+    showToast(
+      nowLearned
+        ? `Kosakata 【${currentCard.kana || currentCard.japanese}】 ditandai sudah dipelajari! ✅`
+        : `Status dipelajari dibatalkan untuk 【${currentCard.kana || currentCard.japanese}】.`
+    );
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
@@ -259,6 +312,24 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
             </button>
           ))}
         </div>
+
+        {/* Live Progress Bar for Selected Vocab Deck */}
+        <div className="mt-3 pt-2.5 border-t border-[#f5ede1]">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="font-semibold text-[#5e4735]">
+              Kemajuan Kosakata ({selectedLevelFilter === 'all' ? 'Semua Level' : `Level ${selectedLevelFilter}`}):
+            </span>
+            <span className="font-mono tabular-nums font-bold text-[#881337]">
+              {learnedInCurrentDeck.toLocaleString('id-ID')} / {deck.length.toLocaleString('id-ID')} Dipelajari ({deckProgressPercent}%)
+            </span>
+          </div>
+          <div className="w-full h-2 bg-[#f3e8da] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#881337] to-[#be123c] rounded-full transition-all duration-300"
+              style={{ width: `${Math.max(learnedInCurrentDeck > 0 ? 2 : 0, deckProgressPercent)}%` }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Kolom Pencarian Kata */}
@@ -311,7 +382,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
       {/* Flashcard Component */}
       {currentCard ? (
         <div
-          onClick={() => setIsFlipped(!isFlipped)}
+          onClick={handleFlipCard}
           className={`relative w-full min-h-[320px] sm:min-h-[360px] bg-[#fffdfa] border-2 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-md cursor-pointer select-none transition-all duration-300 transform hover:-translate-y-1 ${
             isFlipped
               ? 'border-[#881337] bg-gradient-to-b from-[#fffaf8] to-[#fff5f0]'
@@ -368,7 +439,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
           )}
 
           {/* Bottom Bar: Action buttons */}
-          <div className="flex items-center justify-between w-full pt-4 border-t border-[#f5ede1]/80">
+          <div className="flex items-center justify-between w-full pt-4 border-t border-[#f5ede1]/80 gap-2">
             <button
               onClick={(e) => speakText(currentCard.kana || currentCard.japanese, e)}
               className={`p-2.5 rounded-full transition-all ${
@@ -379,6 +450,18 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
               title="Dengarkan pengucapan audio"
             >
               <Volume2 className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={handleToggleLearned}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                isCurrentCardLearned
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-[#f5ede1] hover:bg-[#eadbc8] text-[#5e4735]'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{isCurrentCardLearned ? 'Sudah Dipelajari' : 'Tandai Dipelajari'}</span>
             </button>
 
             <span className="text-xs text-[#a88a70]">

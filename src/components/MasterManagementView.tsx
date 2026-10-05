@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, ActiveQuizRecord, QuizControlState, QuizResult } from '../types';
-import { storageService, MASTER_CONFIG } from '../services/storageService';
-import { Users, Award, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Filter, Shield, ShieldAlert, UserX, Clock, Calendar, ChevronRight, Activity, RotateCcw, Trophy, Medal, Sparkles, KeyRound, Eye, EyeOff, Mail, UserPlus } from 'lucide-react';
+import { User, ActiveQuizRecord, QuizControlState, QuizResult, StudentPresenceInfo } from '../types';
+import { storageService } from '../services/storageService';
+import { Users, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Shield, ShieldAlert, UserX, Clock, Calendar, Activity, RotateCcw, Trophy, KeyRound, Eye, EyeOff, Mail, UserPlus, Radio } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 
 interface MasterManagementViewProps {
@@ -9,14 +9,15 @@ interface MasterManagementViewProps {
   onNavigateHome: () => void;
 }
 
-export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ currentUser, onNavigateHome }) => {
-  const [subTab, setSubTab] = useState<'student_list' | 'live_scores'>('live_scores');
-  const [showRegisteredStudentsTable, setShowRegisteredStudentsTable] = useState<boolean>(false);
+export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ currentUser }) => {
+  const [subTab, setSubTab] = useState<'all' | 'student_list' | 'live_scores'>('all');
+  const [showRegisteredStudentsTable, setShowRegisteredStudentsTable] = useState<boolean>(true);
   
-  // Live records and students data
+  // Live records, presence map, and students data
   const [activeRecords, setActiveRecords] = useState<ActiveQuizRecord[]>([]);
   const [studentsList, setStudentsList] = useState<User[]>([]);
   const [studentsCredentials, setStudentsCredentials] = useState<{ user: User; password: string }[]>([]);
+  const [presenceMap, setPresenceMap] = useState<Record<string, StudentPresenceInfo>>({});
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
   const [allScores, setAllScores] = useState<QuizResult[]>([]);
   
@@ -44,12 +45,13 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const [newStuPassword, setNewStuPassword] = useState('');
   const [addStudentError, setAddStudentError] = useState('');
 
-  // Load all data
+  // Load all data from storageService
   const loadData = () => {
     setActiveRecords(storageService.getActiveQuizRecords());
     const creds = storageService.getAllStudentsWithCredentials();
     setStudentsCredentials(creds);
     setStudentsList(creds.map(c => c.user));
+    setPresenceMap(storageService.getOnlinePresenceMap());
     setQuizControl(storageService.getQuizControlState());
     setAllScores(storageService.getAllScores());
   };
@@ -57,7 +59,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const handleManualSyncAndReload = async () => {
     await storageService.syncWithServer();
     loadData();
-    setNotificationMsg('Data daftar murid & nilai kuis berhasil disinkronkan dari server! 🔄');
+    setNotificationMsg('Data daftar murid, aktivitas live, & nilai kuis berhasil disinkronkan! 🔄');
     setTimeout(() => setNotificationMsg(null), 3000);
   };
 
@@ -110,32 +112,29 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     storageService.syncWithServer().then(() => loadData());
     loadData();
 
-    // Auto-refresh & server sync interval every 2 seconds for live tracking
+    // Auto-refresh & server/cloud sync interval every 1.5 seconds for live tracking
     const intervalId = window.setInterval(() => {
       storageService.syncWithServer().then(() => loadData());
-    }, 2000);
+    }, 1500);
 
     // Event listeners for immediate storage updates
-    const handleActiveQuizUpdate = () => loadData();
-    const handleStudentDataUpdate = () => loadData();
-    const handleQuizControlChange = () => loadData();
-    const handleScoresUpdate = () => loadData();
+    const handleUpdate = () => loadData();
 
-    window.addEventListener('active_quiz_updated', handleActiveQuizUpdate);
-    window.addEventListener('student_data_updated', handleStudentDataUpdate);
-    window.addEventListener('quiz_control_changed', handleQuizControlChange);
-    window.addEventListener('scores_updated', handleScoresUpdate);
-    window.addEventListener('presence_updated', loadData);
-    window.addEventListener('storage', loadData);
+    window.addEventListener('active_quiz_updated', handleUpdate);
+    window.addEventListener('student_data_updated', handleUpdate);
+    window.addEventListener('quiz_control_changed', handleUpdate);
+    window.addEventListener('scores_updated', handleUpdate);
+    window.addEventListener('presence_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
 
     return () => {
       clearInterval(intervalId);
-      window.removeEventListener('active_quiz_updated', handleActiveQuizUpdate);
-      window.removeEventListener('student_data_updated', handleStudentDataUpdate);
-      window.removeEventListener('quiz_control_changed', handleQuizControlChange);
-      window.removeEventListener('scores_updated', handleScoresUpdate);
-      window.removeEventListener('presence_updated', loadData);
-      window.removeEventListener('storage', loadData);
+      window.removeEventListener('active_quiz_updated', handleUpdate);
+      window.removeEventListener('student_data_updated', handleUpdate);
+      window.removeEventListener('quiz_control_changed', handleUpdate);
+      window.removeEventListener('scores_updated', handleUpdate);
+      window.removeEventListener('presence_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
     };
   }, []);
 
@@ -146,7 +145,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setQuizControl(storageService.getQuizControlState());
     
     if (newState) {
-      setNotificationMsg('Sesi Kuis Berhasil DIBUKA! 🟢 Akses kuis kini aktif untuk semua murid.');
+      setNotificationMsg('Sesi Kuis Berhasil DIBUKA! 🟢 Semua akun murid kini melihat "Sesi Kuis Dimulai" & dapat mengerjakan kuis.');
     } else {
       setNotificationMsg('Sesi Kuis Berhasil DITUTUP! 🔴 Akses kuis murid kini dikunci.');
     }
@@ -175,7 +174,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setTimeout(() => setNotificationMsg(null), 3000);
   };
 
-  // Confirm Reset Ranking Sesi Kuis (Hanya mereset papan sesi aktif, tanpa mengubah nilai murid di daftar murid, total kuis, atau rapor)
+  // Confirm Reset Ranking Sesi Kuis
   const handleConfirmResetRanking = () => {
     storageService.resetActiveQuizRanking();
     setShowResetRankingModal(false);
@@ -184,17 +183,74 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setTimeout(() => setNotificationMsg(null), 4500);
   };
 
-  // Score color formatting based on user requirement:
+  // Helper untuk mendapatkan aktivitas live murid saat ini (menggabungkan data presence & kuis aktif)
+  const getLiveStudentActivity = (student: User) => {
+    const emailLower = student.email.toLowerCase();
+    const liveQuiz = activeRecords.find(
+      r => r.userEmail.toLowerCase() === emailLower && r.status === 'in_progress'
+    );
+    const pres = presenceMap[emailLower];
+
+    if (liveQuiz) {
+      const qNum = liveQuiz.currentQuestion || 1;
+      const ansCount = liveQuiz.answeredCount || 0;
+      const tot = liveQuiz.totalQuestions || 50;
+      return {
+        badgeText: `📝 Sedang Kuis JLPT ${liveQuiz.level} (Soal ${qNum}/${tot} · ${ansCount} dijawab)`,
+        subText: `Mulai pukul ${liveQuiz.startedAtTime}${liveQuiz.tabViolationsCount ? ` · ⚠️ ${liveQuiz.tabViolationsCount}x Pindah Tab` : ''}`,
+        isTakingQuiz: true,
+        violations: liveQuiz.tabViolationsCount || 0,
+      };
+    }
+
+    if (pres && pres.currentActivity) {
+      return {
+        badgeText: pres.currentActivity,
+        subText: pres.lastActionAt ? `Update terakhir: ${pres.lastActionAt}` : `Level aktif: ${pres.activeLevel || 'N5'}`,
+        isTakingQuiz: false,
+        violations: 0,
+      };
+    }
+
+    const latestCompleted = activeRecords.find(
+      r => r.userEmail.toLowerCase() === emailLower && r.status === 'completed'
+    );
+    if (latestCompleted) {
+      return {
+        badgeText: `✅ Selesai Kuis JLPT ${latestCompleted.level} (Nilai: ${latestCompleted.score})`,
+        subText: `Selesai pukul ${latestCompleted.completedAtTime || '-'}`,
+        isTakingQuiz: false,
+        violations: latestCompleted.tabViolationsCount || 0,
+      };
+    }
+
+    return {
+      badgeText: storageService.isStudentOnline(student.email)
+        ? '🏠 Membuka Beranda Portal Kelas'
+        : '⚪ Belum ada aktivitas sesi ini',
+      subText: `Terdaftar: ${student.registeredAt || '-'}`,
+      isTakingQuiz: false,
+      violations: 0,
+    };
+  };
+
+  // Score color formatting:
   // 0 - 50: Hitam (text-black)
   // 51 - 70: Merah (text-red-600)
   // 71 - 100: Hijau (text-emerald-600)
-  const renderScoreBadge = (score: number | null | undefined, status: string) => {
+  const renderScoreBadge = (rec: ActiveQuizRecord) => {
+    const { score, status, currentQuestion, answeredCount, totalQuestions } = rec;
     if (status === 'in_progress' || score === null || score === undefined) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold animate-pulse">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-          Sedang Dikerjakan
-        </span>
+        <div className="inline-flex flex-col items-center gap-1">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+            Sedang Dikerjakan
+          </span>
+          <span className="text-[11px] font-bold text-[#881337]">
+            Soal {currentQuestion || 1}/{totalQuestions || 50} ({answeredCount || 0} terjawab)
+          </span>
+        </div>
       );
     }
 
@@ -208,7 +264,6 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       colorClasses = 'text-red-600 bg-red-50 border-red-300';
       gradeLabel = 'Cukup / Remedial';
     } else {
-      // 0 - 50 Hitam
       colorClasses = 'text-black bg-stone-100 border-stone-400 font-black';
       gradeLabel = 'Belum Lulus';
     }
@@ -269,7 +324,6 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   };
 
   // Perhitungan Peringkat / Ranking Kuis Sesi Ini
-  // Berdasarkan skor tertinggi, jika skor sama diurutkan berdasarkan waktu selesai
   const completedRecords = activeRecords.filter(
     (r) => r.status === 'completed' && r.score !== null && r.score !== undefined
   );
@@ -323,7 +377,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-6">
       {/* Toast Notification */}
       {notificationMsg && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-[#881337] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-2xl border border-[#fbcfe8] animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-2">
@@ -333,7 +387,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       )}
 
       {/* Top Banner: Master Identity & Sesi Kuis Control */}
-      <div className="bg-gradient-to-r from-[#fae8eb] via-[#fffdfa] to-[#fbf0df] border-2 border-[#eedac5] rounded-3xl p-5 sm:p-7 mb-6 shadow-sm">
+      <div className="bg-gradient-to-r from-[#fae8eb] via-[#fffdfa] to-[#fbf0df] border-2 border-[#eedac5] rounded-3xl p-5 sm:p-7 shadow-sm">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="flex-1">
             {/* Badges Bar: Dashboard Title & Master Identity */}
@@ -347,21 +401,26 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <UchihaClanLogo className="w-4 h-4" />
                 <span>Akun Master: <span className="font-extrabold text-[#881337]">{currentUser?.nickname || 'skywalker'}</span></span>
               </div>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-300 rounded-full text-emerald-800 font-bold text-xs">
+                <Radio className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                <span>Sinkronisasi Cloud Real-Time Aktif</span>
+              </div>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#881337] font-japanese tracking-tight">
-              Daftar Nilai & Manajemen Semua Murid
+              Daftar Murid, Pantauan Aktivitas & Nilai Kuis Live
             </h1>
             <p className="text-xs sm:text-sm text-[#735338] mt-1.5 leading-relaxed max-w-2xl">
-              Pantau pengerjaan kuis murid secara <strong className="text-[#881337]">live & otomatis</strong>, serta kelola akun murid terdaftar secara terpusat.
+              Pantau seluruh murid yang berhasil mendaftar, aktivitas halaman yang sedang dibuka murid secara <strong className="text-[#881337]">live & otomatis</strong>, serta kendalikan sesi kuis dari satu halaman terpusat.
             </p>
           </div>
 
           {/* Sesi Kuis Control Button (Only visible for Master) */}
-          <div className="bg-white/95 border border-[#ebdccb] p-3.5 sm:p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-center gap-3.5 shrink-0 w-full lg:w-auto">
+          <div className="bg-white/95 border-2 border-[#ebdccb] p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row items-center gap-3.5 shrink-0 w-full lg:w-auto">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <span 
-                className={`w-3.5 h-3.5 rounded-full ring-4 transition-all shrink-0 ${
+                className={`w-4 h-4 rounded-full ring-4 transition-all shrink-0 ${
                   quizControl.isActive 
                     ? 'bg-emerald-500 ring-emerald-200 animate-pulse' 
                     : 'bg-rose-500 ring-rose-200'
@@ -370,17 +429,17 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               />
               <div className="text-left">
                 <div className="text-xs font-bold text-[#3d2a1b]">
-                  Status Sesi Kuis:
+                  Status Sesi Kuis Murid:
                 </div>
-                <div className={`text-[11px] font-extrabold ${quizControl.isActive ? 'text-emerald-700' : 'text-rose-600'}`}>
-                  {quizControl.isActive ? '🟢 DIBUKA (Murid Bisa Akses)' : '🔴 DITUTUP (Terkunci)'}
+                <div className={`text-xs font-extrabold ${quizControl.isActive ? 'text-emerald-700' : 'text-rose-600'}`}>
+                  {quizControl.isActive ? '🟢 SESI DIMULAI (Murid Bisa Kuis)' : '🔴 DITUTUP (Terkunci)'}
                 </div>
               </div>
             </div>
 
             <button
               onClick={handleToggleQuizSession}
-              className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-2 text-white active:scale-95 ${
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-2 text-white active:scale-95 ${
                 quizControl.isActive
                   ? 'bg-rose-600 hover:bg-rose-700 ring-2 ring-rose-300'
                   : 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-300'
@@ -389,26 +448,55 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               {quizControl.isActive ? (
                 <>
                   <Square className="w-4 h-4 fill-white" />
-                  <span>Kunci / Tutup Kuis</span>
+                  <span>Akhiri / Kunci Sesi Kuis</span>
                 </>
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-white" />
-                  <span>Buka Akses Kuis</span>
+                  <span>Mulai / Buka Sesi Kuis</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Navigation Sub-Tabs: 1. Nilai & Perankingan Kuis Live | 2. Kelola Akun Murid */}
+        {/* Navigation Sub-Tabs */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#eedac5] pt-4">
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => setSubTab('all')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                subTab === 'all'
+                  ? 'bg-[#881337] text-white shadow-md'
+                  : 'bg-white text-[#735338] border border-[#ebdccb] hover:border-[#881337] hover:text-[#881337]'
+              }`}
+            >
+              <Radio className="w-4 h-4" />
+              <span>Semua Pantauan (Murid + Aktivitas + Kuis)</span>
+            </button>
+
+            <button
               onClick={() => {
-                setSubTab('live_scores');
-                setShowRegisteredStudentsTable(false);
+                setSubTab('student_list');
+                setShowRegisteredStudentsTable(true);
               }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                subTab === 'student_list'
+                  ? 'bg-[#881337] text-white shadow-md'
+                  : 'bg-white text-[#735338] border border-[#ebdccb] hover:border-[#881337] hover:text-[#881337]'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Daftar Murid Terdaftar</span>
+              <span className={`px-2 py-0.5 rounded-md text-[11px] font-black ${
+                subTab === 'student_list' ? 'bg-white/20 text-white' : 'bg-[#fae8eb] text-[#881337]'
+              }`}>
+                {studentsList.length} Murid
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSubTab('live_scores')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 subTab === 'live_scores'
                   ? 'bg-[#881337] text-white shadow-md'
@@ -422,18 +510,6 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               }`}>
                 {activeRecords.length} Sesi
               </span>
-            </button>
-
-            <button
-              onClick={() => setSubTab('student_list')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                subTab === 'student_list'
-                  ? 'bg-[#881337] text-white shadow-md'
-                  : 'bg-white text-[#735338] border border-[#ebdccb] hover:border-[#881337] hover:text-[#881337]'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Daftar Murid (Disembunyikan)</span>
             </button>
           </div>
 
@@ -457,16 +533,599 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               className="flex items-center gap-1.5 px-3 py-2.5 bg-white text-[#735338] hover:text-[#881337] border border-[#ebdccb] rounded-xl hover:bg-[#fff7ee] text-xs font-bold transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sinkronkan Data</span>
+              <span>Sinkronkan Data</span>
             </button>
           </div>
         </div>
       </div>
 
+      {/* Ringkasan Statistik Murid & Aktivitas Kelas */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        {/* Card Total Akun Murid */}
+        <div 
+          onClick={() => setFilterPresence('all')}
+          className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            filterPresence === 'all'
+              ? 'bg-[#fff5f7] border-[#881337] ring-2 ring-[#fbcfe8]'
+              : 'bg-[#fffdfa] border-[#ebdccb] hover:border-[#881337]/50'
+          }`}
+          title="Klik untuk melihat seluruh murid terdaftar"
+        >
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-wider text-[#881337] mb-1 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              <span>Total Murid Terdaftar</span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-[#881337] font-japanese">
+              {studentsList.length} Murid
+            </div>
+            <p className="text-[11px] text-[#735338] mt-0.5">
+              Seluruh akun murid yang berhasil mendaftar
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-[#fae8eb] border border-[#fbcfe8] flex items-center justify-center text-[#881337] shrink-0">
+            <Users className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Card Murid Online */}
+        <div 
+          onClick={() => setFilterPresence(filterPresence === 'online' ? 'all' : 'online')}
+          className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            filterPresence === 'online'
+              ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-200'
+              : 'bg-[#fffdfa] border-[#ebdccb] hover:border-emerald-400'
+          }`}
+          title="Klik untuk memfilter murid yang sedang online"
+        >
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                Sedang Online & Aktif
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-emerald-900 font-japanese">
+              {onlineStudentsCount} Murid
+            </div>
+            <p className="text-[11px] text-emerald-700 mt-0.5">
+              Sedang aktif membuka aplikasi saat ini
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 text-xl shrink-0">
+            🟢
+          </div>
+        </div>
+
+        {/* Card Murid Offline */}
+        <div 
+          onClick={() => setFilterPresence(filterPresence === 'offline' ? 'all' : 'offline')}
+          className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-xs flex items-center justify-between ${
+            filterPresence === 'offline'
+              ? 'bg-stone-100 border-stone-500 ring-2 ring-stone-200'
+              : 'bg-[#fffdfa] border-[#ebdccb] hover:border-stone-400'
+          }`}
+          title="Klik untuk memfilter murid yang sedang offline"
+        >
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-stone-400"></span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#735338]">
+                Sedang Offline
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-[#3d2a1b] font-japanese">
+              {offlineStudentsCount} Murid
+            </div>
+            <p className="text-[11px] text-[#8c6b4b] mt-0.5">
+              Tidak sedang membuka aplikasi
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500 text-xl shrink-0">
+            ⚪
+          </div>
+        </div>
+      </div>
+
       {/* =========================================================================
-          SUB-HALAMAN 1: "NILAI MURID" (LIVE ACTIVITY & SCORE MONITORING + PERANKINGAN)
+          BAGIAN 1: DAFTAR SEMUA MURID YANG BERHASIL MENDAFTAR & PANTAUAN AKTIVITAS LIVE
           ========================================================================= */}
-      {subTab === 'live_scores' && (
+      {(subTab === 'all' || subTab === 'student_list') && (
+        <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl overflow-hidden shadow-xs">
+          {/* Header Bar Daftar Murid dengan Tombol Sembunyikan / Tampilkan */}
+          <div className="bg-[#fbf3e8] border-b border-[#ebdccb] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#881337] text-white flex items-center justify-center shrink-0">
+                {showRegisteredStudentsTable ? <Users className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-extrabold text-[#881337] font-japanese flex items-center gap-2 flex-wrap">
+                  <span>Daftar Semua Murid yang Berhasil Mendaftar & Pantauan Aktivitas Live</span>
+                  <span className="px-2.5 py-0.5 bg-[#fae8eb] text-[#881337] border border-[#f9a8d4] rounded-full text-[11px] font-black">
+                    {studentsList.length} Murid Terdaftar
+                  </span>
+                </h2>
+                <p className="text-[11px] text-[#735338]">
+                  Menampilkan seluruh akun murid yang berhasil mendaftar beserta pantauan halaman & aktivitas live mereka. (Halaman ini hanya dapat dilihat oleh Akun Master).
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowRegisteredStudentsTable((prev) => !prev)}
+              className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-2xs active:scale-95 ${
+                showRegisteredStudentsTable
+                  ? 'bg-white hover:bg-[#fff7ee] text-[#881337] border border-[#dec7b0]'
+                  : 'bg-[#881337] hover:bg-[#70102d] text-white'
+              }`}
+            >
+              {showRegisteredStudentsTable ? (
+                <>
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>Sembunyikan Tabel Sementara</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Tampilkan Tabel Daftar Murid</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {!showRegisteredStudentsTable ? (
+            <div className="p-8 sm:p-10 text-center bg-gradient-to-b from-[#fffdfa] to-[#fdf8f2]">
+              <div className="w-12 h-12 rounded-2xl bg-[#fae8eb] border border-[#fbcfe8] text-[#881337] flex items-center justify-center mx-auto mb-3">
+                <EyeOff className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm sm:text-base font-extrabold text-[#881337] font-japanese">
+                Tabel Daftar Murid Sedang Disembunyikan Sementara
+              </h3>
+              <p className="text-xs text-[#735338] max-w-md mx-auto mt-1 mb-4 leading-relaxed">
+                Klik tombol di bawah untuk menampilkan kembali seluruh daftar murid yang berhasil mendaftar beserta aktivitas live mereka.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowRegisteredStudentsTable(true)}
+                className="px-5 py-2.5 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Tampilkan Semua Daftar Murid Sekarang</span>
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#ebdccb]">
+              {/* Filter & Pencarian Murid Terdaftar */}
+              <div className="bg-[#fffdfa] p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                  <span className="text-xs font-bold text-[#881337]">Filter Kehadiran:</span>
+                  <div className="flex items-center gap-1 bg-[#f5ede1] p-1 rounded-xl text-xs">
+                    <button
+                      onClick={() => setFilterPresence('all')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        filterPresence === 'all'
+                          ? 'bg-[#881337] text-white shadow-2xs'
+                          : 'text-[#735338] hover:text-[#881337]'
+                      }`}
+                    >
+                      Semua ({studentsList.length})
+                    </button>
+                    <button
+                      onClick={() => setFilterPresence('online')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                        filterPresence === 'online'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-emerald-800 hover:text-emerald-950'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span>Online ({onlineStudentsCount})</span>
+                    </button>
+                    <button
+                      onClick={() => setFilterPresence('offline')}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                        filterPresence === 'offline'
+                          ? 'bg-stone-600 text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-stone-400" />
+                      <span>Offline ({offlineStudentsCount})</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search Input */}
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-[#a88a70] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari nama murid, panggilan, atau email..."
+                    className="w-full pl-10 pr-3.5 py-2 bg-white border border-[#dec7b0] focus:border-[#881337] rounded-xl text-xs sm:text-sm text-[#3d2a1b] outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {filteredStudents.length === 0 ? (
+                <div className="p-10 text-center text-[#8c6b4b]">
+                  <div className="text-3xl mb-2">🌸</div>
+                  <p className="font-bold text-sm text-[#3d2a1b]">Belum ada data murid yang cocok dengan filter pencarian.</p>
+                  <p className="text-xs text-[#8c6b4b] mt-1">Klik tombol "Semua" atau "+ Tambah Murid Baru" untuk menambahkan murid.</p>
+                </div>
+              ) : (
+                <>
+                  {/* TAMPILAN TABEL DESKTOP (md ke atas) */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left text-xs sm:text-sm">
+                      <thead>
+                        <tr className="bg-[#fdf8f2] text-[#881337] border-b border-[#ebdccb] font-bold text-xs uppercase tracking-wider">
+                          <th className="py-3.5 px-3 text-center w-12">No</th>
+                          <th className="py-3.5 px-4">Identitas Murid Terdaftar</th>
+                          <th className="py-3.5 px-3 text-center">Status & Aktivitas Live Murid</th>
+                          <th className="py-3.5 px-4">Email & Kata Sandi Akun</th>
+                          <th className="py-3.5 px-4 text-center">Riwayat & Nilai Kuis</th>
+                          <th className="py-3.5 px-4 text-center">Aksi Master</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f2e6d6]">
+                        {filteredStudents.map((student, idx) => {
+                          const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
+                          const totalQuizzes = studentScores.length;
+                          const avgScore = totalQuizzes > 0
+                            ? Math.round(studentScores.reduce((acc, s) => acc + s.score, 0) / totalQuizzes)
+                            : null;
+                          const bestScore = totalQuizzes > 0
+                            ? Math.max(...studentScores.map(s => s.score))
+                            : null;
+
+                          const cred = studentsCredentials.find(c => c.user.email.toLowerCase() === student.email.toLowerCase());
+                          const studentPassword = cred ? cred.password : '••••••••';
+                          const isOnline = storageService.isStudentOnline(student.email);
+                          const activityInfo = getLiveStudentActivity(student);
+                          const displayFullName = student.fullName || student.name || student.nickname || 'Murid Terdaftar';
+                          const displayNickname = student.nickname || displayFullName.split(/\s+/)[0] || '-';
+                          const avatarInitial = displayFullName.charAt(0).toUpperCase();
+
+                          let avgScoreColor = 'text-black bg-stone-100 border-stone-300';
+                          if (avgScore !== null) {
+                            if (avgScore >= 71) {
+                              avgScoreColor = 'text-emerald-700 bg-emerald-50 border-emerald-300';
+                            } else if (avgScore >= 51) {
+                              avgScoreColor = 'text-red-600 bg-red-50 border-red-300';
+                            }
+                          }
+
+                          return (
+                            <tr
+                              key={student.email}
+                              className={`transition-colors ${
+                                activityInfo.isTakingQuiz
+                                  ? 'bg-amber-50/60 hover:bg-amber-50'
+                                  : 'hover:bg-[#fcf8f2]'
+                              }`}
+                            >
+                              {/* Kolom 1: Nomor Urut */}
+                              <td className="py-4 px-3 text-center font-mono font-bold text-[#881337]">
+                                #{idx + 1}
+                              </td>
+
+                              {/* Kolom 2: Identitas Murid Terdaftar */}
+                              <td className="py-4 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="relative shrink-0">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#881337] to-[#9f1239] text-white flex items-center justify-center font-japanese font-black text-base shadow-2xs">
+                                      {avatarInitial}
+                                    </div>
+                                    <span
+                                      className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                                        isOnline ? 'bg-emerald-500' : 'bg-stone-400'
+                                      }`}
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-extrabold text-[#2b1d19] text-sm">
+                                        {displayFullName}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-[#735338] mt-0.5 flex items-center gap-2 flex-wrap">
+                                      <span>Panggilan: <strong className="text-[#881337]">{displayNickname}</strong></span>
+                                      <span aria-hidden="true">·</span>
+                                      <span className="text-[11px] text-[#8c6b4b]">
+                                        Terdaftar: {student.registeredAt || '2026-10-01'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Kolom 3: Status Kehadiran & Aktivitas Live */}
+                              <td className="py-4 px-3">
+                                <div className="flex flex-col items-start gap-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {isOnline ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-extrabold">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                                        <span>Online</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-stone-100 text-stone-600 border border-stone-200 rounded-lg text-[11px] font-semibold">
+                                        <span className="w-2 h-2 rounded-full bg-stone-400" />
+                                        <span>Offline</span>
+                                      </span>
+                                    )}
+
+                                    {activityInfo.violations > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded-md text-[10px] font-black">
+                                        <ShieldAlert className="w-3 h-3 text-rose-600" />
+                                        <span>{activityInfo.violations}x Pindah Tab</span>
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                                    activityInfo.isTakingQuiz
+                                      ? 'bg-amber-100/90 text-amber-950 border-amber-300'
+                                      : isOnline
+                                      ? 'bg-[#fff8ef] text-[#881337] border-[#ebdccb]'
+                                      : 'bg-stone-50 text-stone-600 border-stone-200'
+                                  }`}>
+                                    {activityInfo.badgeText}
+                                  </div>
+                                  <span className="text-[10px] text-[#8c6b4b]">
+                                    {activityInfo.subText}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Kolom 4: Email & Kata Sandi */}
+                              <td className="py-4 px-4">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-1.5 text-xs">
+                                    <Mail className="w-3.5 h-3.5 text-[#881337] shrink-0" />
+                                    <span className="font-mono font-bold text-[#2b1d19] break-all">
+                                      {student.email}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                    <span className="text-[#735338]">Sandi:</span>
+                                    <span className="font-mono font-black text-[#881337] bg-[#fbf6ef] px-2 py-0.5 rounded-md border border-[#e4ccb5]">
+                                      {visiblePasswords[student.email] ? studentPassword : '••••••••'}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePasswordVisibility(student.email)}
+                                      className="px-2 py-0.5 bg-white hover:bg-[#fff7ee] text-[#735338] hover:text-[#881337] border border-[#dec7b0] rounded-md text-[11px] font-bold transition-colors inline-flex items-center gap-1"
+                                    >
+                                      {visiblePasswords[student.email] ? (
+                                        <>
+                                          <EyeOff className="w-3 h-3" />
+                                          <span>Tutup</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Eye className="w-3 h-3" />
+                                          <span>Lihat</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Kolom 5: Riwayat & Nilai Kuis */}
+                              <td className="py-4 px-4 text-center whitespace-nowrap">
+                                {totalQuizzes > 0 ? (
+                                  <div className="inline-flex flex-col items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs font-extrabold text-[#3d2a1b]">
+                                        {totalQuizzes}x Kuis
+                                      </span>
+                                      <span aria-hidden="true" className="text-[#dec7b0]">·</span>
+                                      <span className={`px-2 py-0.5 rounded-md border text-xs font-black ${avgScoreColor}`} title="Rata-rata nilai">
+                                        Rata-rata: {avgScore}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[11px] text-[#735338]">
+                                      <span>Tertinggi: <strong className="text-[#881337]">{bestScore}</strong></span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setStudentDetailModal(student)}
+                                        className="text-[#881337] underline hover:text-[#70102d] font-bold"
+                                      >
+                                        Lihat Rincian
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-[#a88a70] italic">
+                                    Belum ada nilai kuis
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Kolom 6: Aksi Master */}
+                              <td className="py-4 px-4 text-center whitespace-nowrap">
+                                <div className="inline-flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setStudentToResetPassword({ user: student, currentPassword: studentPassword });
+                                      setNewPasswordInput('');
+                                    }}
+                                    className="py-1.5 px-2.5 bg-amber-50 hover:bg-amber-600 text-amber-900 hover:text-white border border-amber-300 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 active:scale-95"
+                                    title="Ubah kata sandi murid ini"
+                                  >
+                                    <KeyRound className="w-3.5 h-3.5" />
+                                    <span>Ubah Sandi</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setStudentToDelete(student)}
+                                    className="py-1.5 px-2.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 active:scale-95"
+                                    title="Hapus akun murid ini"
+                                  >
+                                    <UserX className="w-3.5 h-3.5" />
+                                    <span>Hapus</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* TAMPILAN KARTU RESPONSIF (Layar HP / Mobile < md) */}
+                  <div className="md:hidden divide-y divide-[#ebdccb]">
+                    {filteredStudents.map((student, idx) => {
+                      const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
+                      const totalQuizzes = studentScores.length;
+                      const avgScore = totalQuizzes > 0
+                        ? Math.round(studentScores.reduce((acc, s) => acc + s.score, 0) / totalQuizzes)
+                        : null;
+
+                      const cred = studentsCredentials.find(c => c.user.email.toLowerCase() === student.email.toLowerCase());
+                      const studentPassword = cred ? cred.password : '••••••••';
+                      const isOnline = storageService.isStudentOnline(student.email);
+                      const activityInfo = getLiveStudentActivity(student);
+                      const displayFullName = student.fullName || student.name || student.nickname || 'Murid Terdaftar';
+                      const displayNickname = student.nickname || displayFullName.split(/\s+/)[0] || '-';
+                      const avatarInitial = displayFullName.charAt(0).toUpperCase();
+
+                      let avgScoreColor = 'text-black bg-stone-100 border-stone-300';
+                      if (avgScore !== null) {
+                        if (avgScore >= 71) {
+                          avgScoreColor = 'text-emerald-700 bg-emerald-50 border-emerald-300';
+                        } else if (avgScore >= 51) {
+                          avgScoreColor = 'text-red-600 bg-red-50 border-red-300';
+                        }
+                      }
+
+                      return (
+                        <div key={student.email} className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-[#881337] text-white flex items-center justify-center font-japanese font-black text-base shrink-0">
+                                {avatarInitial}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-mono font-bold text-[#881337]">#{idx + 1}</span>
+                                  <h3 className="text-sm font-extrabold text-[#2b1d19]">{displayFullName}</h3>
+                                </div>
+                                <p className="text-xs text-[#735338] mt-0.5">
+                                  Panggilan: <strong className="text-[#881337]">{displayNickname}</strong> · {student.registeredAt || '2026-10-01'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {isOnline ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-extrabold shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                <span>Online</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-600 border border-stone-200 rounded-lg text-[11px] font-semibold shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                                <span>Offline</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Aktivitas Live di Mobile */}
+                          <div className="p-2.5 bg-[#fff8ef] border border-[#ebdccb] rounded-xl text-xs">
+                            <div className="font-bold text-[#881337]">{activityInfo.badgeText}</div>
+                            <div className="text-[10px] text-[#735338] mt-0.5">{activityInfo.subText}</div>
+                          </div>
+
+                          <div className="bg-[#fbf6ef] border border-[#ebdccb] rounded-xl p-3 space-y-1.5 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <Mail className="w-3.5 h-3.5 text-[#881337] shrink-0" />
+                              <span className="font-mono font-bold text-[#2b1d19] break-all">{student.email}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#ebdccb]/70">
+                              <div className="flex items-center gap-1.5">
+                                <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                <span className="text-[#735338]">Sandi:</span>
+                                <span className="font-mono font-black text-[#881337]">
+                                  {visiblePasswords[student.email] ? studentPassword : '••••••••'}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => togglePasswordVisibility(student.email)}
+                                className="px-2 py-0.5 bg-white border border-[#dec7b0] rounded-md text-[11px] font-bold text-[#881337]"
+                              >
+                                {visiblePasswords[student.email] ? 'Tutup' : 'Lihat'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs bg-white border border-[#f2e6d6] rounded-xl px-3 py-2">
+                            <span className="font-bold text-[#3d2a1b]">Riwayat: {totalQuizzes}x Kuis</span>
+                            {avgScore !== null ? (
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-md border font-black ${avgScoreColor}`}>
+                                  Rata-rata: {avgScore}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setStudentDetailModal(student)}
+                                  className="text-[#881337] underline font-bold"
+                                >
+                                  Rincian
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[#a88a70] italic">Belum ada nilai</span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStudentToResetPassword({ user: student, currentPassword: studentPassword });
+                                setNewPasswordInput('');
+                              }}
+                              className="flex-1 py-2 px-3 bg-amber-50 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                              <span>Ubah Sandi</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setStudentToDelete(student)}
+                              className="flex-1 py-2 px-3 bg-red-50 text-red-600 border border-red-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
+                            >
+                              <UserX className="w-3.5 h-3.5" />
+                              <span>Hapus Murid</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* =========================================================================
+          BAGIAN 2: "NILAI MURID" (LIVE QUIZ PROGRESS, RANKING & SCORE MONITORING)
+          ========================================================================= */}
+      {(subTab === 'all' || subTab === 'live_scores') && (
         <div className="space-y-4">
           {/* Papan Peringkat Sesi Kuis (Top 3 Juara Sesi Ini) */}
           {sortedCompletedRecords.length > 0 && (
@@ -530,16 +1189,11 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
           {/* Filter Bar & Tombol Reset Ranking */}
           <div className="bg-[#fffdfa] border border-[#ebdccb] p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-[#a88a70] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama murid / email..."
-                className="w-full pl-9 pr-3 py-2 bg-white border border-[#dec7b0] focus:border-[#881337] rounded-xl text-xs text-[#3d2a1b] outline-hidden"
-              />
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#881337]" />
+              <span className="text-xs sm:text-sm font-extrabold text-[#881337] font-japanese">
+                Tabel Pantauan Sesi Kuis & Peringkat Live ({filteredRecords.length} Sesi)
+              </span>
             </div>
 
             {/* Filters & Reset Ranking Button */}
@@ -595,7 +1249,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     <th className="py-3 px-3">Tanggal</th>
                     <th className="py-3 px-3">Jam Mulai</th>
                     <th className="py-3 px-3">Jam Selesai</th>
-                    <th className="py-3 px-4 text-center">Nilai Murid</th>
+                    <th className="py-3 px-4 text-center">Progres / Nilai Murid</th>
                     <th className="py-3 px-3 text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -606,7 +1260,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                         <div className="text-2xl mb-1">🌸</div>
                         <p className="font-semibold">Papan perankingan sesi ini belum memiliki rekaman kuis.</p>
                         <p className="text-xs text-[#a88a70] mt-0.5">
-                          Saat murid mulai mengerjakan kuis, perankingan dan rekaman live akan otomatis muncul di tabel ini.
+                          Saat murid mulai mengerjakan kuis, nomor soal yang sedang dikerjakan dan perolehan nilai akan otomatis muncul secara live di tabel ini.
                         </p>
                       </td>
                     </tr>
@@ -618,12 +1272,10 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           rec.status === 'in_progress' ? 'bg-[#fff9f0] hover:bg-[#fef3e3]' : 'hover:bg-[#fcf8f2]'
                         }`}
                       >
-                        {/* Peringkat / Ranking Sesi Ini */}
                         <td className="py-3 px-3 text-center whitespace-nowrap">
                           {renderRankBadge(rankMap.get(rec.id), rec.status)}
                         </td>
 
-                        {/* Nama Murid */}
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-bold text-[#3d2a1b]">
@@ -644,14 +1296,12 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           </div>
                         </td>
 
-                        {/* Level Kuis */}
                         <td className="py-3 px-3">
                           <span className="px-2.5 py-1 bg-[#881337] text-white font-bold rounded-lg text-xs">
                             JLPT {rec.level}
                           </span>
                         </td>
 
-                        {/* Tanggal Pengerjaan */}
                         <td className="py-3 px-3 font-medium text-[#5a4332] whitespace-nowrap">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5 text-[#881337]" />
@@ -659,7 +1309,6 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           </div>
                         </td>
 
-                        {/* Jam Mulai */}
                         <td className="py-3 px-3 font-mono font-semibold text-[#6e533d] whitespace-nowrap">
                           <div className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-[#a88a70]" />
@@ -667,7 +1316,6 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           </div>
                         </td>
 
-                        {/* Jam Selesai: "sedang dikerjakan" vs Jam Live */}
                         <td className="py-3 px-3 whitespace-nowrap">
                           {rec.status === 'in_progress' || !rec.completedAtTime ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-extrabold animate-pulse">
@@ -682,12 +1330,10 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           )}
                         </td>
 
-                        {/* Nilai Murid: Color Coded (0-50 Hitam, 51-70 Merah, 71-100 Hijau) */}
                         <td className="py-3 px-4 text-center whitespace-nowrap">
-                          {renderScoreBadge(rec.score, rec.status)}
+                          {renderScoreBadge(rec)}
                         </td>
 
-                        {/* Aksi */}
                         <td className="py-3 px-3 text-center whitespace-nowrap">
                           <button
                             onClick={() => setRecordToDelete(rec)}
@@ -724,551 +1370,6 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <span><strong>71 – 100:</strong> Berwarna Hijau</span>
               </span>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          SUB-HALAMAN 2: "DAFTAR MURID" (TABEL DISEMBUNYIKAN AGAR MURID TIDAK TAHU DAFTAR MURID LAIN)
-          ========================================================================= */}
-      {subTab === 'student_list' && (
-        <div className="space-y-5">
-          {/* Ringkasan Statistik Murid Terdaftar (Hanya Angka, Tanpa Nama Murid) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {/* Card Total Akun Murid */}
-            <div 
-              onClick={() => setFilterPresence('all')}
-              className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-xs flex items-center justify-between ${
-                filterPresence === 'all'
-                  ? 'bg-[#fff5f7] border-[#881337] ring-2 ring-[#fbcfe8]'
-                  : 'bg-[#fffdfa] border-[#ebdccb] hover:border-[#881337]/50'
-              }`}
-              title="Klik untuk melihat seluruh murid terdaftar"
-            >
-              <div>
-                <div className="text-[11px] font-black uppercase tracking-wider text-[#881337] mb-1 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Total Murid Terdaftar</span>
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-[#881337] font-japanese">
-                  {studentsList.length} Murid
-                </div>
-                <p className="text-[11px] text-[#735338] mt-0.5">
-                  Seluruh akun murid resmi Sensei Sari
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-[#fae8eb] border border-[#fbcfe8] flex items-center justify-center text-[#881337] shrink-0">
-                <Users className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* Card Murid Online */}
-            <div 
-              onClick={() => setFilterPresence(filterPresence === 'online' ? 'all' : 'online')}
-              className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-xs flex items-center justify-between ${
-                filterPresence === 'online'
-                  ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-200'
-                  : 'bg-[#fffdfa] border-[#ebdccb] hover:border-emerald-400'
-              }`}
-              title="Klik untuk memfilter murid yang sedang online"
-            >
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
-                    Sedang Online
-                  </span>
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-emerald-900 font-japanese">
-                  {onlineStudentsCount} Murid
-                </div>
-                <p className="text-[11px] text-emerald-700 mt-0.5">
-                  Sedang aktif membuka aplikasi saat ini
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 text-xl shrink-0">
-                🟢
-              </div>
-            </div>
-
-            {/* Card Murid Offline */}
-            <div 
-              onClick={() => setFilterPresence(filterPresence === 'offline' ? 'all' : 'offline')}
-              className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer shadow-xs flex items-center justify-between ${
-                filterPresence === 'offline'
-                  ? 'bg-stone-100 border-stone-500 ring-2 ring-stone-200'
-                  : 'bg-[#fffdfa] border-[#ebdccb] hover:border-stone-400'
-              }`}
-              title="Klik untuk memfilter murid yang sedang offline"
-            >
-              <div>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-stone-400"></span>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#735338]">
-                    Sedang Offline
-                  </span>
-                </div>
-                <div className="text-2xl sm:text-3xl font-black text-[#3d2a1b] font-japanese">
-                  {offlineStudentsCount} Murid
-                </div>
-                <p className="text-[11px] text-[#8c6b4b] mt-0.5">
-                  Tidak sedang membuka aplikasi
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-500 text-xl shrink-0">
-                ⚪
-              </div>
-            </div>
-          </div>
-
-          {/* Tabel Daftar Murid yang Sudah Mendaftar (Disembunyikan Secara Default) */}
-          <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl overflow-hidden shadow-xs">
-            {/* Header Bar Daftar Murid dengan Tombol Sembunyikan / Tampilkan */}
-            <div className="bg-[#fbf3e8] border-b border-[#ebdccb] px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#881337] text-white flex items-center justify-center shrink-0">
-                  {showRegisteredStudentsTable ? <Users className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-[#881337] font-japanese flex items-center gap-2 flex-wrap">
-                    <span>Tabel Daftar Murid yang Sudah Mendaftar</span>
-                    <span className="px-2.5 py-0.5 bg-[#fae8eb] text-[#881337] border border-[#f9a8d4] rounded-full text-[11px] font-black">
-                      {showRegisteredStudentsTable ? 'Ditampilkan' : '🔒 Disembunyikan'}
-                    </span>
-                  </h2>
-                  <p className="text-[11px] text-[#735338]">
-                    Tabel daftar murid disembunyikan di Halaman Master supaya murid tidak mengetahui daftar murid yang lain.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowRegisteredStudentsTable((prev) => !prev)}
-                className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-2xs active:scale-95 ${
-                  showRegisteredStudentsTable
-                    ? 'bg-[#881337] hover:bg-[#70102d] text-white'
-                    : 'bg-white hover:bg-[#fff7ee] text-[#881337] border border-[#dec7b0]'
-                }`}
-              >
-                {showRegisteredStudentsTable ? (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5" />
-                    <span>Sembunyikan Tabel Daftar Murid</span>
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Tampilkan Tabel Daftar Murid (Khusus Master)</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {!showRegisteredStudentsTable ? (
-              <div className="p-8 sm:p-10 text-center bg-gradient-to-b from-[#fffdfa] to-[#fdf8f2]">
-                <div className="w-12 h-12 rounded-2xl bg-[#fae8eb] border border-[#fbcfe8] text-[#881337] flex items-center justify-center mx-auto mb-3">
-                  <EyeOff className="w-6 h-6" />
-                </div>
-                <h3 className="text-sm sm:text-base font-extrabold text-[#881337] font-japanese">
-                  Tabel Daftar Murid yang Sudah Mendaftar Disembunyikan
-                </h3>
-                <p className="text-xs text-[#735338] max-w-md mx-auto mt-1 leading-relaxed">
-                  Daftar akun murid disembunyikan secara otomatis agar murid lain tidak dapat melihat daftar nama, email, maupun data murid yang lain di Halaman Master.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-[#ebdccb]">
-                {/* Filter & Pencarian Murid Terdaftar */}
-                <div className="bg-[#fffdfa] p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                    <span className="text-xs font-bold text-[#881337]">Status Kehadiran:</span>
-                    <div className="flex items-center gap-1 bg-[#f5ede1] p-1 rounded-xl text-xs">
-                      <button
-                        onClick={() => setFilterPresence('all')}
-                        className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-                          filterPresence === 'all'
-                            ? 'bg-[#881337] text-white shadow-2xs'
-                            : 'text-[#735338] hover:text-[#881337]'
-                        }`}
-                      >
-                        Semua ({studentsList.length})
-                      </button>
-                      <button
-                        onClick={() => setFilterPresence('online')}
-                        className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                          filterPresence === 'online'
-                            ? 'bg-emerald-600 text-white shadow-2xs'
-                            : 'text-emerald-800 hover:text-emerald-950'
-                        }`}
-                      >
-                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                        <span>Online ({onlineStudentsCount})</span>
-                      </button>
-                      <button
-                        onClick={() => setFilterPresence('offline')}
-                        className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                          filterPresence === 'offline'
-                            ? 'bg-stone-600 text-white shadow-2xs'
-                            : 'text-stone-600 hover:text-stone-900'
-                        }`}
-                      >
-                        <span className="w-2 h-2 rounded-full bg-stone-400" />
-                        <span>Offline ({offlineStudentsCount})</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Search Input */}
-                  <div className="relative w-full sm:w-80">
-                    <Search className="w-4 h-4 text-[#a88a70] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Cari nama murid, panggilan, atau email..."
-                      className="w-full pl-10 pr-3.5 py-2 bg-white border border-[#dec7b0] focus:border-[#881337] rounded-xl text-xs sm:text-sm text-[#3d2a1b] outline-hidden"
-                    />
-                  </div>
-                </div>
-
-            {filteredStudents.length === 0 ? (
-              <div className="p-10 text-center text-[#8c6b4b]">
-                <div className="text-3xl mb-2">🌸</div>
-                <p className="font-bold text-sm text-[#3d2a1b]">Tidak ada data murid yang cocok dengan pencarian.</p>
-                <p className="text-xs text-[#8c6b4b] mt-1">Coba ubah kata kunci pencarian atau pilih filter "Semua".</p>
-              </div>
-            ) : (
-              <>
-                {/* TAMPILAN TABEL DESKTOP (md ke atas) */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-xs sm:text-sm">
-                    <thead>
-                      <tr className="bg-[#fdf8f2] text-[#881337] border-b border-[#ebdccb] font-bold text-xs uppercase tracking-wider">
-                        <th className="py-3.5 px-4 text-center w-14">No</th>
-                        <th className="py-3.5 px-4">Identitas Murid Terdaftar</th>
-                        <th className="py-3.5 px-3 text-center">Status</th>
-                        <th className="py-3.5 px-4">Email & Kata Sandi Akun</th>
-                        <th className="py-3.5 px-4 text-center">Riwayat & Nilai Kuis</th>
-                        <th className="py-3.5 px-4 text-center">Aksi Master</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#f2e6d6]">
-                      {filteredStudents.map((student, idx) => {
-                        const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
-                        const totalQuizzes = studentScores.length;
-                        const avgScore = totalQuizzes > 0
-                          ? Math.round(studentScores.reduce((acc, s) => acc + s.score, 0) / totalQuizzes)
-                          : null;
-                        const bestScore = totalQuizzes > 0
-                          ? Math.max(...studentScores.map(s => s.score))
-                          : null;
-
-                        const cred = studentsCredentials.find(c => c.user.email.toLowerCase() === student.email.toLowerCase());
-                        const studentPassword = cred ? cred.password : '••••••••';
-                        const isOnline = storageService.isStudentOnline(student.email);
-                        const displayFullName = student.fullName || student.name || student.nickname || 'Murid Terdaftar';
-                        const displayNickname = student.nickname || displayFullName.split(/\s+/)[0] || '-';
-                        const avatarInitial = displayFullName.charAt(0).toUpperCase();
-
-                        let avgScoreColor = 'text-black bg-stone-100 border-stone-300';
-                        if (avgScore !== null) {
-                          if (avgScore >= 71) {
-                            avgScoreColor = 'text-emerald-700 bg-emerald-50 border-emerald-300';
-                          } else if (avgScore >= 51) {
-                            avgScoreColor = 'text-red-600 bg-red-50 border-red-300';
-                          }
-                        }
-
-                        return (
-                          <tr
-                            key={student.email}
-                            className="transition-colors hover:bg-[#fcf8f2]"
-                          >
-                            {/* Kolom 1: Nomor Urut */}
-                            <td className="py-4 px-4 text-center font-mono font-bold text-[#881337]">
-                              #{idx + 1}
-                            </td>
-
-                            {/* Kolom 2: Identitas Murid Terdaftar */}
-                            <td className="py-4 px-4">
-                              <div className="flex items-center gap-3">
-                                <div className="relative shrink-0">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#881337] to-[#9f1239] text-white flex items-center justify-center font-japanese font-black text-base shadow-2xs">
-                                    {avatarInitial}
-                                  </div>
-                                  <span
-                                    className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                                      isOnline ? 'bg-emerald-500' : 'bg-stone-400'
-                                    }`}
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-extrabold text-[#2b1d19] text-sm">
-                                      {displayFullName}
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-[#735338] mt-0.5 flex items-center gap-2 flex-wrap">
-                                    <span>Panggilan: <strong className="text-[#881337]">{displayNickname}</strong></span>
-                                    <span aria-hidden="true">·</span>
-                                    <span className="text-[11px] text-[#8c6b4b]">
-                                      Terdaftar: {student.registeredAt || '2026-09-01'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Kolom 3: Status Kehadiran */}
-                            <td className="py-4 px-3 text-center whitespace-nowrap">
-                              {isOnline ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-extrabold">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                                  <span>Online</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 text-stone-600 border border-stone-200 rounded-lg text-xs font-semibold">
-                                  <span className="w-2 h-2 rounded-full bg-stone-400" />
-                                  <span>Offline</span>
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Kolom 4: Email & Kata Sandi */}
-                            <td className="py-4 px-4">
-                              <div className="space-y-1.5">
-                                <div className="flex items-center gap-1.5 text-xs">
-                                  <Mail className="w-3.5 h-3.5 text-[#881337] shrink-0" />
-                                  <span className="font-mono font-bold text-[#2b1d19] break-all">
-                                    {student.email}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs">
-                                  <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                                  <span className="text-[#735338]">Sandi:</span>
-                                  <span className="font-mono font-black text-[#881337] bg-[#fbf6ef] px-2 py-0.5 rounded-md border border-[#e4ccb5]">
-                                    {visiblePasswords[student.email] ? studentPassword : '••••••••'}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => togglePasswordVisibility(student.email)}
-                                    className="px-2 py-0.5 bg-white hover:bg-[#fff7ee] text-[#735338] hover:text-[#881337] border border-[#dec7b0] rounded-md text-[11px] font-bold transition-colors inline-flex items-center gap-1"
-                                  >
-                                    {visiblePasswords[student.email] ? (
-                                      <>
-                                        <EyeOff className="w-3 h-3" />
-                                        <span>Tutup</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Eye className="w-3 h-3" />
-                                        <span>Lihat</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Kolom 5: Riwayat & Nilai Kuis */}
-                            <td className="py-4 px-4 text-center whitespace-nowrap">
-                              {totalQuizzes > 0 ? (
-                                <div className="inline-flex flex-col items-center gap-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-extrabold text-[#3d2a1b]">
-                                      {totalQuizzes}x Kuis
-                                    </span>
-                                    <span aria-hidden="true" className="text-[#dec7b0]">·</span>
-                                    <span className={`px-2 py-0.5 rounded-md border text-xs font-black ${avgScoreColor}`} title="Rata-rata nilai">
-                                      Rata-rata: {avgScore}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-[11px] text-[#735338]">
-                                    <span>Nilai Tertinggi: <strong className="text-[#881337]">{bestScore}</strong></span>
-                                    <button
-                                      type="button"
-                                      onClick={() => setStudentDetailModal(student)}
-                                      className="text-[#881337] underline hover:text-[#70102d] font-bold"
-                                    >
-                                      Lihat Rincian
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-[#a88a70] italic">
-                                  Belum ada nilai kuis
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Kolom 6: Aksi Master */}
-                            <td className="py-4 px-4 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center justify-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setStudentToResetPassword({ user: student, currentPassword: studentPassword });
-                                    setNewPasswordInput('');
-                                  }}
-                                  className="py-1.5 px-2.5 bg-amber-50 hover:bg-amber-600 text-amber-900 hover:text-white border border-amber-300 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 active:scale-95"
-                                  title="Ubah kata sandi murid ini"
-                                >
-                                  <KeyRound className="w-3.5 h-3.5" />
-                                  <span>Ubah Sandi</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setStudentToDelete(student)}
-                                  className="py-1.5 px-2.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 font-bold rounded-xl text-xs transition-all inline-flex items-center gap-1 active:scale-95"
-                                  title="Hapus akun murid ini"
-                                >
-                                  <UserX className="w-3.5 h-3.5" />
-                                  <span>Hapus</span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* TAMPILAN KARTU RESPONSIF (Layar HP / Mobile < md) */}
-                <div className="md:hidden divide-y divide-[#ebdccb]">
-                  {filteredStudents.map((student, idx) => {
-                    const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
-                    const totalQuizzes = studentScores.length;
-                    const avgScore = totalQuizzes > 0
-                      ? Math.round(studentScores.reduce((acc, s) => acc + s.score, 0) / totalQuizzes)
-                      : null;
-                    const bestScore = totalQuizzes > 0
-                      ? Math.max(...studentScores.map(s => s.score))
-                      : null;
-
-                    const cred = studentsCredentials.find(c => c.user.email.toLowerCase() === student.email.toLowerCase());
-                    const studentPassword = cred ? cred.password : '••••••••';
-                    const isOnline = storageService.isStudentOnline(student.email);
-                    const displayFullName = student.fullName || student.name || student.nickname || 'Murid Terdaftar';
-                    const displayNickname = student.nickname || displayFullName.split(/\s+/)[0] || '-';
-                    const avatarInitial = displayFullName.charAt(0).toUpperCase();
-
-                    let avgScoreColor = 'text-black bg-stone-100 border-stone-300';
-                    if (avgScore !== null) {
-                      if (avgScore >= 71) {
-                        avgScoreColor = 'text-emerald-700 bg-emerald-50 border-emerald-300';
-                      } else if (avgScore >= 51) {
-                        avgScoreColor = 'text-red-600 bg-red-50 border-red-300';
-                      }
-                    }
-
-                    return (
-                      <div key={student.email} className="p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-[#881337] text-white flex items-center justify-center font-japanese font-black text-base shrink-0">
-                              {avatarInitial}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs font-mono font-bold text-[#881337]">#{idx + 1}</span>
-                                <h3 className="text-sm font-extrabold text-[#2b1d19]">{displayFullName}</h3>
-                              </div>
-                              <p className="text-xs text-[#735338] mt-0.5">
-                                Panggilan: <strong className="text-[#881337]">{displayNickname}</strong> · {student.registeredAt || '2026-09-01'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {isOnline ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-extrabold shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                              <span>Online</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-600 border border-stone-200 rounded-lg text-[11px] font-semibold shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                              <span>Offline</span>
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="bg-[#fbf6ef] border border-[#ebdccb] rounded-xl p-3 space-y-1.5 text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <Mail className="w-3.5 h-3.5 text-[#881337] shrink-0" />
-                            <span className="font-mono font-bold text-[#2b1d19] break-all">{student.email}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#ebdccb]/70">
-                            <div className="flex items-center gap-1.5">
-                              <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                              <span className="text-[#735338]">Sandi:</span>
-                              <span className="font-mono font-black text-[#881337]">
-                                {visiblePasswords[student.email] ? studentPassword : '••••••••'}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => togglePasswordVisibility(student.email)}
-                              className="px-2 py-0.5 bg-white border border-[#dec7b0] rounded-md text-[11px] font-bold text-[#881337]"
-                            >
-                              {visiblePasswords[student.email] ? 'Tutup' : 'Lihat'}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs bg-white border border-[#f2e6d6] rounded-xl px-3 py-2">
-                          <span className="font-bold text-[#3d2a1b]">Riwayat: {totalQuizzes}x Kuis</span>
-                          {avgScore !== null ? (
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-0.5 rounded-md border font-black ${avgScoreColor}`}>
-                                Rata-rata: {avgScore}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setStudentDetailModal(student)}
-                                className="text-[#881337] underline font-bold"
-                              >
-                                Rincian
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[#a88a70] italic">Belum ada nilai</span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setStudentToResetPassword({ user: student, currentPassword: studentPassword });
-                              setNewPasswordInput('');
-                            }}
-                            className="flex-1 py-2 px-3 bg-amber-50 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                            <span>Ubah Sandi</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setStudentToDelete(student)}
-                            className="flex-1 py-2 px-3 bg-red-50 text-red-600 border border-red-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
-                          >
-                            <UserX className="w-3.5 h-3.5" />
-                            <span>Hapus Murid</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1523,7 +1624,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Minimal 8 karakter (contoh: murid2026)"
+                  placeholder="Contoh: 1234 atau murid2026"
                   value={newPasswordInput}
                   onChange={(e) => setNewPasswordInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm font-mono text-[#2b1d19] outline-hidden"
@@ -1531,7 +1632,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 />
               </div>
               <span className="text-[10px] text-[#735338] mt-1 block">
-                Wajib minimal 8 karakter untuk akun murid. Murid dapat langsung masuk dengan kata sandi baru ini.
+                Minimal 2 karakter. Murid dapat langsung masuk dengan kata sandi baru ini.
               </span>
             </div>
 
@@ -1625,12 +1726,12 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
               <div>
                 <label className="block text-xs font-bold text-[#5a4230] mb-1">
-                  Kata Sandi Murid (Minimal 8 Karakter) <span className="text-red-500">*</span>
+                  Kata Sandi Murid <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Minimal 8 karakter"
+                  placeholder="Minimal 2 karakter (contoh: 1234 / murid2026)"
                   value={newStuPassword}
                   onChange={(e) => setNewStuPassword(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-white border border-[#ddcaa8] focus:border-[#881337] rounded-xl text-sm font-mono text-[#2b1d19] outline-hidden"

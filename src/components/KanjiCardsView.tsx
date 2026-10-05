@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { JLPTLevel } from '../types';
 import { KANJI_SENSEI_SARI, SenseiSariKanji } from '../data/kanjiSenseiSari';
+import { storageService } from '../services/storageService';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -8,7 +9,8 @@ import {
   RotateCw,
   Flame,
   Zap,
-  Sparkles
+  Sparkles,
+  CheckCircle2
 } from 'lucide-react';
 
 interface KanjiCardsViewProps {
@@ -31,6 +33,19 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
   const [speaking, setSpeaking] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [fireMode, setFireMode] = useState(true);
+  const [memorizedIds, setMemorizedIds] = useState<number[]>(() => storageService.getMemorizedKanji());
+
+  useEffect(() => {
+    const refreshLearned = () => {
+      setMemorizedIds(storageService.getMemorizedKanji());
+    };
+    window.addEventListener('study_progress_updated', refreshLearned);
+    window.addEventListener('storage', refreshLearned);
+    return () => {
+      window.removeEventListener('study_progress_updated', refreshLearned);
+      window.removeEventListener('storage', refreshLearned);
+    };
+  }, []);
 
   // Sesuai aturan:
   // Pilih N5 → tampil nomor 1–100 saja (Total: 100 Kanji)
@@ -64,6 +79,30 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
   }, [activeLevel]);
 
   const currentCard = deck[currentIndex];
+  const memorizedSet = useMemo(() => new Set(memorizedIds), [memorizedIds]);
+  const learnedInLevelCount = useMemo(
+    () => levelDeck.filter((k) => memorizedSet.has(k.id)).length,
+    [levelDeck, memorizedSet]
+  );
+  const levelProgressPercent =
+    levelDeck.length > 0 ? Math.min(100, Math.round((learnedInLevelCount / levelDeck.length) * 100)) : 0;
+  const isCurrentCardLearned = currentCard ? memorizedSet.has(currentCard.id) : false;
+
+  const handleFlipCard = () => {
+    const nextFlipped = !isFlipped;
+    setIsFlipped(nextFlipped);
+    if (nextFlipped && currentCard) {
+      storageService.markKanjiLearned(currentCard.id);
+      setMemorizedIds(storageService.getMemorizedKanji());
+    }
+  };
+
+  const handleToggleLearned = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentCard) return;
+    storageService.toggleMemorizedKanji(currentCard.id);
+    setMemorizedIds(storageService.getMemorizedKanji());
+  };
 
   // Motivasi dinamis berganti setiap beberapa kartu
   const currentQuote = useMemo(() => {
@@ -175,6 +214,24 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
             );
           })}
         </div>
+
+        {/* Live Progress Bar for Selected Kanji Level */}
+        <div className="mt-3 pt-2.5 border-t border-[#f5d0dc]">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="font-semibold text-[#5e4735]">
+              Kemajuan Kanji Level {activeLevel}:
+            </span>
+            <span className="font-mono tabular-nums font-bold text-[#881337]">
+              {learnedInLevelCount} / {levelDeck.length} Dipelajari ({levelProgressPercent}%)
+            </span>
+          </div>
+          <div className="w-full h-2 bg-[#f3e8da] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#881337] to-amber-600 rounded-full transition-all duration-300"
+              style={{ width: `${Math.max(learnedInLevelCount > 0 ? 2 : 0, levelProgressPercent)}%` }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Kontrol Tambahan: Kotak Pencarian & Sakelar Mode Semangat Api */}
@@ -220,7 +277,7 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
       {/* Latar krem: #fffdfa, Pinggir merah muda: #fbcfe8, Sudut membulat: rounded-3xl + Aura Api */}
       {currentCard ? (
         <div
-          onClick={() => setIsFlipped(!isFlipped)}
+          onClick={handleFlipCard}
           className={`relative w-full min-h-[380px] sm:min-h-[420px] bg-[#fffdfa] border-4 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-lg cursor-pointer select-none transition-all duration-300 transform hover:-translate-y-1 ${
             fireMode ? 'fire-card-glow' : 'border-[#fbcfe8] hover:border-[#881337]'
           } ${
@@ -353,7 +410,7 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
           )}
 
           {/* Footer Kartu: Audio & Semangat */}
-          <div className="flex items-center justify-between w-full pt-3 border-t border-[#f5d0dc]/60 relative z-10">
+          <div className="flex items-center justify-between w-full pt-3 border-t border-[#f5d0dc]/60 relative z-10 gap-2">
             <button
               onClick={(e) => speakJapanese(currentCard.kanji, e)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#faebd7] hover:bg-[#881337] text-[#881337] hover:text-white rounded-xl text-xs font-bold transition-colors"
@@ -363,9 +420,21 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
               <span>Dengar Suara</span>
             </button>
 
-            <span className="text-[11px] text-[#8c6b4b] font-medium flex items-center gap-1">
+            <button
+              onClick={handleToggleLearned}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                isCurrentCardLearned
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-[#f5ede1] hover:bg-[#eadbc8] text-[#5e4735]'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{isCurrentCardLearned ? 'Sudah Dipelajari' : 'Tandai Dipelajari'}</span>
+            </button>
+
+            <span className="text-[11px] text-[#8c6b4b] font-medium hidden sm:flex items-center gap-1">
               <Zap className="w-3 h-3 text-orange-500 fill-orange-500" />
-              <span>Klik kartu untuk membalik</span>
+              <span>Klik untuk membalik</span>
             </span>
           </div>
         </div>

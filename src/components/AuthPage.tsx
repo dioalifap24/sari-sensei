@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, User as UserIcon, Smile, KeyRound, CheckCircle, ShieldCheck, AlertTriangle, Send, CheckCircle2, ArrowRight, RefreshCw, MailCheck, ShieldAlert, Sparkles } from 'lucide-react';
 import { storageService, VERIFICATION_PROVIDER } from '../services/storageService';
 import { User } from '../types';
@@ -10,6 +10,10 @@ interface AuthPageProps {
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  useEffect(() => {
+    storageService.syncWithServer();
+  }, []);
   
   // Registration fields
   const [fullName, setFullName] = useState('');
@@ -122,8 +126,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
         return;
       }
     } else {
-      if (!cleanPass || cleanPass.length < 8) {
-        setForgotMsg({ text: 'Kata sandi baru murid wajib minimal 8 karakter demi keamanan.', type: 'error' });
+      if (!cleanPass || cleanPass.length < 2) {
+        setForgotMsg({ text: 'Kata sandi baru murid wajib minimal 2 karakter.', type: 'error' });
         return;
       }
     }
@@ -163,11 +167,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
     }
   };
 
-  // Handle Login action
-  const handleLogin = (e?: React.FormEvent) => {
+  // Handle Login action (dengan sinkronisasi otomatis ke server/cloud jika baru terdaftar di perangkat lain)
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg('');
-    const res = storageService.login(email, password);
+    let res = storageService.login(email, password);
+    if (!res.success) {
+      await storageService.syncWithServer();
+      res = storageService.login(email, password);
+    }
     if (res.success && res.user) {
       onSuccess(res.user, false);
     } else {

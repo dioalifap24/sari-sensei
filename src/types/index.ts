@@ -41,6 +41,8 @@ export interface ActiveQuizRecord {
   score?: number | null;
   totalQuestions: number;
   correctCount?: number | null;
+  answeredCount?: number;
+  currentQuestion?: number;
   startedAtTimestamp: number;
   completedAtTimestamp?: number | null;
   tabViolationsCount?: number;
@@ -50,6 +52,59 @@ export interface QuizControlState {
   isActive: boolean;
   startedAt?: string;
   startedBy?: string;
+  updatedAt?: number;
+}
+
+export interface StudentPresenceInfo {
+  email: string;
+  name: string;
+  nickname?: string;
+  lastSeen: number;
+  currentTab?: string;
+  currentActivity?: string;
+  activeLevel?: JLPTLevel;
+  quizProgress?: string;
+  lastActionAt?: string;
+}
+
+export interface DailyTaskCompletion {
+  studentEmail: string;
+  studentName: string;
+  studentNickname: string;
+  completedAt: string;
+  completedAtTimestamp: number;
+  note?: string;
+}
+
+export type DailyTaskCategory = 'materi' | 'vocab' | 'kanji' | 'kuis' | 'umum';
+
+export interface DailyTask {
+  id: string;
+  title: string;
+  description: string;
+  level: JLPTLevel | 'ALL';
+  category: DailyTaskCategory;
+  dueDate: string;
+  dueTime?: string;
+  createdAt: string;
+  createdAtTimestamp: number;
+  createdBy: string;
+  isActive: boolean;
+  completions: DailyTaskCompletion[];
+  updatedAt: number;
+}
+
+export interface LevelStudyProgress {
+  level: JLPTLevel;
+  vocabLearned: number;
+  vocabTotal: number;
+  vocabPercent: number;
+  kanjiLearned: number;
+  kanjiTotal: number;
+  kanjiPercent: number;
+  totalLearned: number;
+  totalItems: number;
+  totalPercent: number;
 }
 
 export interface QuizQuestion {

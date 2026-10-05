@@ -173,22 +173,45 @@ export const QuizView: React.FC<QuizViewProps> = ({
     });
   };
 
-  // Load and listen to live quiz control state
-  useEffect(() => {
-    setQuizControl(storageService.getQuizControlState());
+  const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
+  const [statusCheckMsg, setStatusCheckMsg] = useState<string | null>(null);
 
-    const handleQuizControlChange = () => {
+  // Load and listen to live quiz control state + active 1.5s sync while waiting on setup/locked screen
+  useEffect(() => {
+    const syncAndRefreshControl = () => {
       setQuizControl(storageService.getQuizControlState());
     };
+    syncAndRefreshControl();
+    storageService.syncWithServer().then(syncAndRefreshControl);
 
-    window.addEventListener('quiz_control_changed', handleQuizControlChange);
-    window.addEventListener('storage', handleQuizControlChange);
+    const pollInterval = window.setInterval(() => {
+      if (quizStep === 'setup') {
+        storageService.syncWithServer().then(syncAndRefreshControl);
+      }
+    }, 1500);
+
+    window.addEventListener('quiz_control_changed', syncAndRefreshControl);
+    window.addEventListener('storage', syncAndRefreshControl);
 
     return () => {
-      window.removeEventListener('quiz_control_changed', handleQuizControlChange);
-      window.removeEventListener('storage', handleQuizControlChange);
+      clearInterval(pollInterval);
+      window.removeEventListener('quiz_control_changed', syncAndRefreshControl);
+      window.removeEventListener('storage', syncAndRefreshControl);
     };
-  }, []);
+  }, [quizStep]);
+
+  const handleManualCheckQuizStatus = async () => {
+    setIsCheckingStatus(true);
+    setStatusCheckMsg(null);
+    await storageService.syncWithServer();
+    const latest = storageService.getQuizControlState();
+    setQuizControl(latest);
+    setIsCheckingStatus(false);
+    if (!latest.isActive) {
+      setStatusCheckMsg('Sesi kuis masih ditutup oleh Sensei Sari. Halaman ini akan otomatis terbuka begitu Master memulai sesi kuis.');
+      setTimeout(() => setStatusCheckMsg(null), 4000);
+    }
+  };
 
   // Master Sesi Kuis Toggle Handler
   const handleToggleMasterQuizSession = () => {
@@ -199,6 +222,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
   // Start Quiz Handler (Starts timer and records live in "Nilai Murid")
   const handleStartQuiz = () => {
+    // Jika Akun Master menekan tombol Mulai Kuis saat sesi masih tertutup, otomatis buka sesi kuis untuk semua murid!
+    if (isMasterUser && !quizControl.isActive) {
+      storageService.setQuizControlState(true, currentUser || undefined);
+      setQuizControl(storageService.getQuizControlState());
+    }
+
     const rawList = getQuestionsForLevel(activeLevel);
     const prepared = rawList.map((q) => {
       const { options, correctIndex } = shuffleQuestionOptions(q);
@@ -520,10 +549,16 @@ export const QuizView: React.FC<QuizViewProps> = ({
           <p className="text-xs sm:text-sm text-[#6e533d] leading-relaxed max-w-md mx-auto mb-6">
             Murid hanya dapat membuka akses dan mengerjakan kuis setelah <strong>Sensei Sari (Akun Master)</strong> menekan tombol <strong>Mulai Sesi Kuis</strong>.
             <br />
-            <span className="text-[#a88a70] text-xs mt-2 block">
-              Logo bulat di samping tulisan kuis akan otomatis berubah menjadi <strong>🟢 Hijau</strong> saat sesi kuis telah dibuka.
+            <span className="text-emerald-700 font-semibold text-xs mt-2 block">
+              ⚡ Halaman ini terhubung secara <strong>Live Otomatis</strong> — begitu Master memulai sesi kuis, layar Anda akan langsung menampilkan <strong>"Sesi Kuis Dimulai"</strong> tanpa perlu muat ulang!
             </span>
           </p>
+
+          {statusCheckMsg && (
+            <div className="mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 font-semibold max-w-md mx-auto">
+              ℹ️ {statusCheckMsg}
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
@@ -533,10 +568,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
               Kembali ke Beranda
             </button>
             <button
-              onClick={() => window.location.reload()}
-              className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-[#fff7ee] text-[#735338] border border-[#ebdccb] font-bold text-xs sm:text-sm rounded-xl transition-all shadow-2xs"
+              onClick={handleManualCheckQuizStatus}
+              disabled={isCheckingStatus}
+              className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-[#fff7ee] text-[#735338] border border-[#ebdccb] font-bold text-xs sm:text-sm rounded-xl transition-all shadow-2xs flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              Cek Status Kuis Terbaru
+              <RotateCcw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin text-[#881337]' : ''}`} />
+              <span>{isCheckingStatus ? 'Memeriksa Sesi Master...' : 'Periksa Status Sesi Kuis Sekarang'}</span>
             </button>
           </div>
         </div>
@@ -790,10 +827,21 @@ export const QuizView: React.FC<QuizViewProps> = ({
                   <button
                     key={optIdx}
                     onClick={() => {
-                      setUserAnswers({
+                      const nextAnswers = {
                         ...userAnswers,
                         [currentQuestionIndex]: optIdx,
-                      });
+                      };
+                      setUserAnswers(nextAnswers);
+                      if (activeSessionIdRef.current) {
+                        storageService.updateActiveQuizProgress(
+                          activeSessionIdRef.current,
+                          currentUser,
+                          activeLevel,
+                          currentQuestionIndex + 1,
+                          Object.keys(nextAnswers).length,
+                          questions.length
+                        );
+                      }
                     }}
                     className={`w-full p-4 text-left rounded-2xl border-2 transition-all flex items-center gap-3 text-xs sm:text-sm font-medium ${
                       isSelected
@@ -819,7 +867,20 @@ export const QuizView: React.FC<QuizViewProps> = ({
         {/* Navigation Buttons: Prev, Next, Selesaikan */}
         <div className="flex items-center justify-between gap-3">
           <button
-            onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+            onClick={() => {
+              const nextIdx = Math.max(0, currentQuestionIndex - 1);
+              setCurrentQuestionIndex(nextIdx);
+              if (activeSessionIdRef.current) {
+                storageService.updateActiveQuizProgress(
+                  activeSessionIdRef.current,
+                  currentUser,
+                  activeLevel,
+                  nextIdx + 1,
+                  Object.keys(userAnswers).length,
+                  questions.length
+                );
+              }
+            }}
             disabled={currentQuestionIndex === 0}
             className={`px-4 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
               currentQuestionIndex === 0
@@ -841,7 +902,20 @@ export const QuizView: React.FC<QuizViewProps> = ({
             </button>
           ) : (
             <button
-              onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))}
+              onClick={() => {
+                const nextIdx = Math.min(questions.length - 1, currentQuestionIndex + 1);
+                setCurrentQuestionIndex(nextIdx);
+                if (activeSessionIdRef.current) {
+                  storageService.updateActiveQuizProgress(
+                    activeSessionIdRef.current,
+                    currentUser,
+                    activeLevel,
+                    nextIdx + 1,
+                    Object.keys(userAnswers).length,
+                    questions.length
+                  );
+                }
+              }}
               className="px-6 py-3 bg-[#881337] hover:bg-[#70102d] text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5 active:scale-95"
             >
               <span>Berikutnya</span>
@@ -1007,30 +1081,73 @@ export const QuizView: React.FC<QuizViewProps> = ({
           {/* Master Only: Tombol Mulai / Akhiri Kuis */}
           {isMasterUser && (
             <div className="flex items-center gap-2 bg-[#f5ede1] p-2 rounded-2xl">
-              <span className="text-xs font-bold text-[#881337]">Master:</span>
+              <span className="text-xs font-bold text-[#881337]">Sesi Murid:</span>
               <button
                 onClick={handleToggleMasterQuizSession}
-                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs text-white transition-all shadow-xs flex items-center gap-1.5 ${
+                className={`px-3.5 py-2 rounded-xl font-extrabold text-xs text-white transition-all shadow-xs flex items-center gap-1.5 active:scale-95 ${
                   quizControl.isActive 
-                    ? 'bg-rose-600 hover:bg-rose-700' 
-                    : 'bg-emerald-600 hover:bg-emerald-700'
+                    ? 'bg-rose-600 hover:bg-rose-700 ring-2 ring-rose-300' 
+                    : 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-300'
                 }`}
               >
                 {quizControl.isActive ? (
                   <>
                     <Square className="w-3.5 h-3.5 fill-white" />
-                    <span>Akhiri Sesi</span>
+                    <span>Akhiri / Tutup Sesi Kuis Murid</span>
                   </>
                 ) : (
                   <>
                     <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Buka Sesi Kuis</span>
+                    <span>Mulai / Buka Sesi Kuis Murid</span>
                   </>
                 )}
               </button>
             </div>
           )}
         </div>
+
+        {/* Banner Status Sesi Kuis Dimulai (Untuk Murid maupun Master) */}
+        {quizControl.isActive ? (
+          <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in duration-300">
+            <div className="flex items-center gap-3">
+              <span className="w-4 h-4 rounded-full bg-emerald-500 ring-4 ring-emerald-200 animate-pulse shrink-0" />
+              <div>
+                <div className="text-xs sm:text-sm font-black text-emerald-950">
+                  🟢 SESI KUIS MURID SEDANG DIMULAI!
+                </div>
+                <p className="text-[11px] sm:text-xs text-emerald-800 mt-0.5">
+                  {isMasterUser
+                    ? 'Semua akun murid saat ini telah melihat notifikasi "Sesi Kuis Dimulai" dan dapat langsung mengerjakan kuis.'
+                    : 'Sensei Sari telah memulai sesi kuis. Pilih level & durasi waktu di bawah, lalu klik tombol Mulai Mengerjakan Kuis Sekarang!'}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          isMasterUser && (
+            <div className="mb-6 p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <span className="w-4 h-4 rounded-full bg-rose-500 ring-4 ring-rose-200 shrink-0" />
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-rose-950">
+                    🔴 Sesi Kuis Untuk Akun Murid Masih Ditutup
+                  </div>
+                  <p className="text-[11px] text-rose-800 mt-0.5">
+                    Klik tombol <strong>"Mulai / Buka Sesi Kuis Murid"</strong> atau tombol mulai di bawah agar semua akun murid langsung dapat memulai kuis.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleMasterQuizSession}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs shrink-0 flex items-center gap-1.5 active:scale-95"
+              >
+                <Play className="w-3.5 h-3.5 fill-white" />
+                <span>Mulai Sesi Murid Sekarang</span>
+              </button>
+            </div>
+          )
+        )}
 
         {/* Level Switcher */}
         <div className="mb-6">
