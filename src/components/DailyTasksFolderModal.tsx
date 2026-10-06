@@ -239,16 +239,25 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
   const [teacherCommentDraft, setTeacherCommentDraft] = useState<string>('');
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
-  // State Proteksi Keamanan Anti-Screenshot & Anti-AI Bawaan HP
+  // State Proteksi Keamanan Anti-Screenshot & Anti-Terjemahan Otomatis AI
   const folderBoxRef = useRef<HTMLDivElement | null>(null);
-  const [isSecurityBlurred, setIsSecurityBlurred] = useState<boolean>(false);
-  const [securityBlurReason, setSecurityBlurReason] = useState<string>('');
-  const [securityCooldownSec, setSecurityCooldownSec] = useState<number>(0);
+  // isScreenshotCaptureMoment: hanya true selama ~650ms saat jepretan layar berlangsung agar hasil foto screenshot blur, lalu otomatis normal kembali
+  const [isScreenshotCaptureMoment, setIsScreenshotCaptureMoment] = useState<boolean>(false);
+  // isAutoTranslateActive: true selama fitur terjemahan otomatis browser/HP/AI masih menyala; otomatis false & kembali normal begitu dimatikan
+  const [isAutoTranslateActive, setIsAutoTranslateActive] = useState<boolean>(false);
+  const [securityWarningModal, setSecurityWarningModal] = useState<{
+    type: 'screenshot' | 'ai_translate';
+    title: string;
+    message: string;
+  } | null>(null);
   const [securityViolationCount, setSecurityViolationCount] = useState<number>(0);
   const [aiWarningBanner, setAiWarningBanner] = useState<string | null>(null);
   const keystrokeCountByCellRef = useRef<Record<string, number>>({});
   const isComposingByCellRef = useRef<Record<string, boolean>>({});
   const lastScreenshotRecordAtRef = useRef<number>(0);
+  const lastTranslateRecordAtRef = useRef<number>(0);
+  const screenshotRestoreTimerRef = useRef<number | null>(null);
+  const wasAutoTranslateActiveRef = useRef<boolean>(false);
 
   const autoSaveTimerRef = useRef<Record<string, number>>({});
 
@@ -337,27 +346,80 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
     };
   }, [isOpen, currentUser, isMasterUser, activeLevel]);
 
-  // Countdown pembuka kunci layar blur keamanan (3 detik)
-  useEffect(() => {
-    if (!isSecurityBlurred || securityCooldownSec <= 0) return;
-    const t = window.setTimeout(() => {
-      setSecurityCooldownSec(prev => Math.max(0, prev - 1));
-    }, 1000);
-    return () => window.clearTimeout(t);
-  }, [isSecurityBlurred, securityCooldownSec]);
+  // Bersihkan sisa tag DOM terjemahan otomatis jika murid sudah mematikan fitur terjemahan
+  const cleanupResidualTranslationDom = () => {
+    try {
+      const htmlEl = document.documentElement;
+      htmlEl.classList.remove('translated-ltr', 'translated-rtl');
+      if (htmlEl.getAttribute('lang') && htmlEl.getAttribute('lang') !== 'id') {
+        htmlEl.setAttribute('lang', 'id');
+      }
+      document.body?.classList.remove('translated-ltr', 'translated-rtl');
+    } catch {}
+  };
 
-  // Sistem Keamanan Real-Time: Deteksi Tangkapan Layar (Screenshot), Sentuhan 3 Jari, & Overlay AI Bawaan HP
+  // Deteksi apakah fitur Terjemahan Otomatis (Google Translate, Chrome/Safari/Samsung/Xiaomi/Edge AI Translate) sedang aktif
+  const checkDomAutoTranslationActive = (): boolean => {
+    try {
+      const htmlEl = document.documentElement;
+      const bodyEl = document.body;
+      if (
+        htmlEl.classList.contains('translated-ltr') ||
+        htmlEl.classList.contains('translated-rtl') ||
+        bodyEl?.classList.contains('translated-ltr') ||
+        bodyEl?.classList.contains('translated-rtl')
+      ) {
+        return true;
+      }
+      const googBanner = document.querySelector(
+        '.goog-te-banner-frame, iframe.skiptranslate, #goog-gt-tt, .VIpgJd-ZVi9od-ORHb-OEVmcd'
+      );
+      if (googBanner && (googBanner as HTMLElement).offsetParent !== null) {
+        return true;
+      }
+      if (folderBoxRef.current) {
+        const translatedNodes = folderBoxRef.current.querySelector(
+          'font[style*="vertical-align"], [_msttexthash], [_msthash], [data-machine-translated="true"], [data-translated="true"]'
+        );
+        if (translatedNodes) {
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  };
+
+  // Sistem Keamanan Real-Time:
+  // 1) Tugas Sensei hanya blur pada saat jepretan Screenshot berlangsung (~650ms) agar hasil tangkapan layar blur,
+  //    lalu setelah keluar peringatan kecurangan halaman Tugas Harian Sensei otomatis kembali normal & tidak blur.
+  // 2) Saat murid mengaktifkan Terjemahan Otomatis, halaman Tugas Harian blur; begitu Terjemahan Otomatis dari AI/Browser
+  //    dimatikan dan keluar peringatan kecurangan, halaman Tugas Harian Sensei langsung kembali normal & tidak blur.
   useEffect(() => {
     if (!isOpen || isMasterUser) return;
 
-    const triggerInstantSecurityBlur = (reason: string) => {
-      // Zero-latency DOM blur sebelum frame buffer OS menangkap layar
+    const restoreNormalViewAfterScreenshot = (warningMessage: string) => {
+      if (!wasAutoTranslateActiveRef.current) {
+        if (folderBoxRef.current) {
+          folderBoxRef.current.classList.remove('security-instant-blur');
+        }
+      }
+      setIsScreenshotCaptureMoment(false);
+      setSecurityWarningModal({
+        type: 'screenshot',
+        title: '⚠️ Peringatan Kecurangan: Percobaan Screenshot Terdeteksi!',
+        message: `${warningMessage} Hasil jepretan tangkapan layar Anda telah otomatis diblur, sedangkan halaman Tugas Harian Sensei ini kini telah kembali normal agar Anda dapat melanjutkan mengerjakan secara jujur.`,
+      });
+      setAiWarningBanner(
+        '⚠️ Peringatan Kecurangan: Percobaan Screenshot terdeteksi (hasil tangkapan layar otomatis blur & tercatat di akun Master Sensei). Halaman Tugas Harian kembali normal.'
+      );
+    };
+
+    const triggerScreenshotCaptureProtection = (reason: string) => {
+      // Blur seketika (0ms) tepat saat OS mengambil jepretan layar sehingga hasil gambar screenshot menjadi blur
       if (folderBoxRef.current) {
         folderBoxRef.current.classList.add('security-instant-blur');
       }
-      setIsSecurityBlurred(true);
-      setSecurityBlurReason(reason);
-      setSecurityCooldownSec(3);
+      setIsScreenshotCaptureMoment(true);
       setSecurityViolationCount(prev => prev + 1);
 
       try {
@@ -380,6 +442,14 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
           refreshFolderData();
         }
       }
+
+      // Setelah jepretan screenshot selesai (~650ms), tampilkan peringatan kecurangan & kembalikan halaman Tugas Harian ke normal (tidak blur)
+      if (screenshotRestoreTimerRef.current) {
+        window.clearTimeout(screenshotRestoreTimerRef.current);
+      }
+      screenshotRestoreTimerRef.current = window.setTimeout(() => {
+        restoreNormalViewAfterScreenshot(reason);
+      }, 650);
     };
 
     const handleKeyDownOrUp = (e: KeyboardEvent) => {
@@ -392,44 +462,47 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
         (e.ctrlKey || e.metaKey) &&
         ((e.shiftKey && ['s', 'i', 'c', 'j'].includes(keyLower)) ||
           ['p', 'u'].includes(keyLower));
-      const isF12 = e.key === 'F12';
 
-      if (isPrintScreen || isMacScreenshot || isWinSnipOrPrint || isF12) {
+      if (isPrintScreen || isMacScreenshot || isWinSnipOrPrint) {
         e.preventDefault();
         e.stopPropagation();
-        triggerInstantSecurityBlur(
-          'Terdeteksi penekanan tombol Tangkapan Layar (Screenshot / PrintScreen)! Folder Tugas Harian Sensei otomatis diblur.'
+        triggerScreenshotCaptureProtection(
+          'Terdeteksi penekanan tombol Tangkapan Layar (Screenshot / PrintScreen).'
         );
       }
     };
 
-    const handleTouchScreenshotOrAI = (e: TouchEvent) => {
-      // Gestur 2 atau 3 jari pada HP (Screenshot 3 jari Xiaomi/Samsung/Oppo/Vivo/Realme atau cubit AI layar)
-      if (e.touches && e.touches.length >= 2) {
-        triggerInstantSecurityBlur(
-          'Terdeteksi gestur sentuhan multi-jari (Screenshot HP / Pemindai AI Layar)! Folder Tugas Harian Sensei otomatis diblur.'
+    const handleTouchScreenshotGesture = (e: TouchEvent) => {
+      // Gestur 3 jari pada HP (Screenshot usap 3 jari Xiaomi/Samsung/Oppo/Vivo/Realme)
+      if (e.touches && e.touches.length >= 3) {
+        triggerScreenshotCaptureProtection(
+          'Terdeteksi gestur sentuhan 3 jari (Screenshot HP).'
         );
       }
     };
 
     const handleVisibilityChange = () => {
       if (document.hidden || document.visibilityState !== 'visible') {
-        triggerInstantSecurityBlur(
-          'Terdeteksi pengambilan Screenshot tombol HP / pembukaan fitur AI HP / perpindahan layar! Folder Tugas Harian Sensei otomatis diblur.'
+        // Saat layar menangkap screenshot tombol kombinasi HP / perpindahan sistem, blur instan agar hasil jepretan blur
+        triggerScreenshotCaptureProtection(
+          'Terdeteksi pengambilan Screenshot tombol HP / aktivitas tangkapan layar.'
+        );
+      } else {
+        // Begitu kembali ke halaman Tugas Harian Sensei, pastikan halaman kembali normal & tidak blur
+        if (screenshotRestoreTimerRef.current) {
+          window.clearTimeout(screenshotRestoreTimerRef.current);
+        }
+        restoreNormalViewAfterScreenshot(
+          'Terdeteksi aktivitas tangkapan layar (Screenshot).'
         );
       }
     };
 
-    const handleWindowBlur = () => {
-      triggerInstantSecurityBlur(
-        'Terdeteksi overlay tangkapan layar (Screenshot) atau pemanggilan asisten AI bawaan HP! Folder Tugas Harian Sensei otomatis diblur.'
-      );
-    };
-
     const handleCopyOrCut = (e: ClipboardEvent) => {
       e.preventDefault();
+      setSecurityViolationCount(prev => prev + 1);
       setAiWarningBanner(
-        '🚫 Fitur Salin (Copy/Cut) dinonaktifkan! Dilarang menyalin pertanyaan ke aplikasi penerjemah atau AI.'
+        '⚠️ Peringatan Kecurangan: Fitur Salin (Copy/Cut) ke penerjemah otomatis / AI diblokir! Halaman Tugas Harian tetap normal, silakan kerjakan mandiri.'
       );
       if (currentUser) {
         storageService.recordDailyTaskSecurityViolation(
@@ -445,22 +518,86 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
       e.preventDefault();
     };
 
+    // Pemantau Real-Time Fitur Terjemahan Otomatis (Browser / Google Translate / AI HP)
+    const syncAutoTranslateStatus = () => {
+      const activeNow = checkDomAutoTranslationActive();
+      if (activeNow && !wasAutoTranslateActiveRef.current) {
+        wasAutoTranslateActiveRef.current = true;
+        setIsAutoTranslateActive(true);
+        if (folderBoxRef.current) {
+          folderBoxRef.current.classList.add('security-instant-blur');
+        }
+        setSecurityViolationCount(prev => prev + 1);
+
+        if (currentUser) {
+          const nowTs = Date.now();
+          if (nowTs - lastTranslateRecordAtRef.current > 2000) {
+            lastTranslateRecordAtRef.current = nowTs;
+            storageService.recordDailyTaskSecurityViolation(
+              currentUser,
+              'ai_translate',
+              'Mengaktifkan fitur Terjemahan Otomatis (Auto-Translate Browser/AI) pada halaman Tugas Harian Sensei'
+            );
+            refreshFolderData();
+          }
+        }
+      } else if (!activeNow && wasAutoTranslateActiveRef.current) {
+        // Begitu terjemahan otomatis dimatikan oleh murid, langsung kembalikan halaman Tugas Harian ke normal (tidak blur) & tampilkan peringatan kecurangan
+        wasAutoTranslateActiveRef.current = false;
+        setIsAutoTranslateActive(false);
+        if (folderBoxRef.current) {
+          folderBoxRef.current.classList.remove('security-instant-blur');
+        }
+        setSecurityWarningModal({
+          type: 'ai_translate',
+          title: '⚠️ Peringatan Kecurangan: Terjemahan Otomatis Dimatikan',
+          message:
+            'Terdeteksi percobaan mengaktifkan Terjemahan Otomatis / AI (telah ditandai di akun Master Sensei). Karena Terjemahan Otomatis kini telah dimatikan, halaman Tugas Harian Sensei kembali normal dan tidak blur.',
+        });
+        setAiWarningBanner(
+          '⚠️ Peringatan Kecurangan: Terjemahan Otomatis / AI telah dimatikan. Halaman Tugas Harian Sensei kini kembali normal dan tidak blur.'
+        );
+      }
+    };
+
+    const translateObserver = new MutationObserver(() => {
+      syncAutoTranslateStatus();
+    });
+
+    try {
+      translateObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'lang', 'style', 'translate'],
+      });
+      if (document.body) {
+        translateObserver.observe(document.body, {
+          attributes: true,
+          childList: true,
+          subtree: true,
+        });
+      }
+    } catch {}
+
+    const translateCheckInterval = window.setInterval(syncAutoTranslateStatus, 500);
+    syncAutoTranslateStatus();
+
     window.addEventListener('keydown', handleKeyDownOrUp, { capture: true });
     window.addEventListener('keyup', handleKeyDownOrUp, { capture: true });
-    window.addEventListener('touchstart', handleTouchScreenshotOrAI, { capture: true, passive: true });
-    window.addEventListener('touchmove', handleTouchScreenshotOrAI, { capture: true, passive: true });
-    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('touchstart', handleTouchScreenshotGesture, { capture: true, passive: true });
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('copy', handleCopyOrCut, { capture: true });
     document.addEventListener('cut', handleCopyOrCut, { capture: true });
     document.addEventListener('contextmenu', handleContextMenu, { capture: true });
 
     return () => {
+      if (screenshotRestoreTimerRef.current) {
+        window.clearTimeout(screenshotRestoreTimerRef.current);
+      }
+      translateObserver.disconnect();
+      clearInterval(translateCheckInterval);
       window.removeEventListener('keydown', handleKeyDownOrUp, { capture: true });
       window.removeEventListener('keyup', handleKeyDownOrUp, { capture: true });
-      window.removeEventListener('touchstart', handleTouchScreenshotOrAI, { capture: true });
-      window.removeEventListener('touchmove', handleTouchScreenshotOrAI, { capture: true });
-      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('touchstart', handleTouchScreenshotGesture, { capture: true });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('copy', handleCopyOrCut, { capture: true });
       document.removeEventListener('cut', handleCopyOrCut, { capture: true });
@@ -468,12 +605,15 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
     };
   }, [isOpen, isMasterUser, currentUser, activeLevel]);
 
-  const handleUnlockSecurityBlur = () => {
-    if (securityCooldownSec > 0) return;
+  const handleDismissSecurityWarning = () => {
+    cleanupResidualTranslationDom();
+    wasAutoTranslateActiveRef.current = false;
+    setIsAutoTranslateActive(false);
+    setIsScreenshotCaptureMoment(false);
     if (folderBoxRef.current) {
       folderBoxRef.current.classList.remove('security-instant-blur');
     }
-    setIsSecurityBlurred(false);
+    setSecurityWarningModal(null);
   };
 
   // Otomatis kumpulkan tugas & tandai selesai bagi murid ketika timer hitungan mundur selesai (00:00:00)
@@ -723,8 +863,14 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
       const isComposing = isComposingByCellRef.current[cellKey] || false;
 
       if (addedChars >= 9 && typedKeys < 2 && !isComposing) {
+        setSecurityViolationCount(prev => prev + 1);
+        setSecurityWarningModal({
+          type: 'ai_translate',
+          title: '⚠️ Peringatan Kecurangan: Terjemahan Otomatis AI Diblokir!',
+          message: `Terdeteksi penggunaan fitur Terjemahan Otomatis AI / Tempel Instan pada Soal Nomor ${questionIdx} (telah ditandai di akun Master Sensei). Matikan fitur terjemahan otomatis dari AI manapun. Halaman Tugas Harian Sensei telah kembali normal dan tidak blur, silakan ketik jawaban secara mandiri.`,
+        });
         setAiWarningBanner(
-          `🚫 Terdeteksi fitur Terjemahan Otomatis AI / Tempel Instan pada Soal Nomor ${questionIdx}! Harap ketik jawaban bahasa Jepang secara mandiri huruf demi huruf.`
+          `⚠️ Peringatan Kecurangan: Terjemahan Otomatis AI pada Soal Nomor ${questionIdx} diblokir & tercatat di akun Master Sensei. Halaman Tugas Harian tetap normal.`
         );
         if (currentUser) {
           storageService.recordDailyTaskSecurityViolation(
@@ -936,45 +1082,62 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
         if (!isMasterUser) e.preventDefault();
       }}
     >
-      {/* LAYAR KUNCI PELINDUNG SAAT MURID MEMAKSA SCREENSHOT ATAU MEMANGGIL FITUR AI HP */}
-      {!isMasterUser && isSecurityBlurred && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      {/* 1. OVERLAY SAAT TERJEMAHAN OTOMATIS (AUTO-TRANSLATE AI/BROWSER) MASIH AKTIF MENYALA */}
+      {!isMasterUser && isAutoTranslateActive && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/75">
           <div className="bg-[#fffdfa] border-2 border-rose-600 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl space-y-4">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-100 text-rose-700 border border-rose-300 flex items-center justify-center">
               <EyeOff className="w-9 h-9" />
             </div>
             <div className="space-y-1.5">
               <span className="inline-block px-3 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[11px] font-extrabold uppercase tracking-wider">
-                🛡️ Proteksi Keamanan Sensei Sari (#{securityViolationCount})
+                🤖 Terjemahan Otomatis Terdeteksi Aktif
               </span>
               <h3 className="text-lg font-extrabold text-[#881337] font-japanese">
-                Folder Tugas Harian Otomatis Diblur!
+                Matikan Terjemahan Otomatis / AI!
               </h3>
               <p className="text-xs text-stone-700 leading-relaxed">
-                {securityBlurReason ||
-                  'Terdeteksi percobaan mengambil tangkapan layar (Screenshot) atau pemanggilan fitur AI bawaan HP.'}
+                Halaman Tugas Harian Sensei <strong>otomatis diblur selama fitur Terjemahan Otomatis menyala</strong>. Silakan matikan fitur Terjemahan Otomatis dari AI / Browser HP Anda agar halaman Tugas Harian Sensei kembali normal dan tidak blur.
               </p>
-            </div>
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-[11px] text-amber-950 text-left space-y-1">
-              <div className="font-extrabold text-[#881337]">⚠️ Peraturan Pengerjaan Tugas Harian:</div>
-              <ul className="list-disc list-inside space-y-0.5">
-                <li>Dilarang mengambil tangkapan layar (<em>screenshot</em>) soal maupun jawaban.</li>
-                <li>Dilarang menggunakan fitur AI bawaan HP (<em>Circle to Search</em>, <em>Google Lens</em>, atau <em>AI Translate Keyboard</em>).</li>
-              </ul>
             </div>
             <button
               type="button"
-              disabled={securityCooldownSec > 0}
-              onClick={handleUnlockSecurityBlur}
-              className={`w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold text-white transition-all ${
-                securityCooldownSec > 0
-                  ? 'bg-stone-400 cursor-not-allowed'
-                  : 'bg-[#881337] hover:bg-[#9f1239] cursor-pointer shadow-md'
-              }`}
+              onClick={handleDismissSecurityWarning}
+              className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold text-white bg-[#881337] hover:bg-[#9f1239] cursor-pointer shadow-md transition-all"
             >
-              {securityCooldownSec > 0
-                ? `⏳ Membuka Kembali Layar dalam ${securityCooldownSec} Detik...`
-                : '🔓 Saya Mengerti & Lanjutkan Mengerjakan Tanpa Screenshot / AI'}
+              ✅ Saya Sudah Mematikan Terjemahan Otomatis (Kembalikan Normal)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. DIALOG PERINGATAN KECURANGAN (SAAT MUNCUL, HALAMAN TUGAS HARIAN SENSEI SUDAH KEMBALI NORMAL & TIDAK BLUR) */}
+      {!isMasterUser && !isAutoTranslateActive && !isScreenshotCaptureMoment && securityWarningModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/35">
+          <div className="bg-[#fffdfa] border-2 border-rose-600 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-100 text-rose-700 border border-rose-300 flex items-center justify-center">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div className="space-y-1.5">
+              <span className="inline-block px-3 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[11px] font-extrabold uppercase tracking-wider">
+                🛡️ Peringatan Kecurangan Tugas Sensei (#{securityViolationCount})
+              </span>
+              <h3 className="text-base sm:text-lg font-extrabold text-[#881337] font-japanese">
+                {securityWarningModal.title}
+              </h3>
+              <p className="text-xs text-stone-700 leading-relaxed">
+                {securityWarningModal.message}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[11px] text-emerald-950 font-semibold">
+              ✅ Halaman Tugas Harian Sensei telah kembali normal (tidak blur). Tugas hanya blur pada hasil tangkapan layar (screenshot) atau saat terjemahan otomatis aktif.
+            </div>
+            <button
+              type="button"
+              onClick={handleDismissSecurityWarning}
+              className="w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-extrabold text-white bg-[#881337] hover:bg-[#9f1239] cursor-pointer shadow-md transition-all"
+            >
+              Saya Mengerti & Lanjutkan Mengerjakan
             </button>
           </div>
         </div>
@@ -984,7 +1147,11 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
         ref={folderBoxRef}
         className={`bg-[#fffdfa] border-2 border-[#d9c3b0] rounded-3xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden ${
           !isMasterUser ? 'anti-screenshot-protected' : ''
-        } ${!isMasterUser && isSecurityBlurred ? 'security-instant-blur' : ''}`}
+        } ${
+          !isMasterUser && (isScreenshotCaptureMoment || isAutoTranslateActive)
+            ? 'security-instant-blur'
+            : ''
+        }`}
       >
         {/* Top Folder Tab Header */}
         <div className="bg-gradient-to-r from-[#881337] via-[#9f1239] to-[#701a32] text-white px-5 py-4 sm:px-6 sm:py-4 flex items-center justify-between border-b border-[#fbcfe8]/30">
@@ -1893,8 +2060,14 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                         onPaste={e => {
                                           if (!isMasterUser) {
                                             e.preventDefault();
+                                            setSecurityViolationCount(prev => prev + 1);
+                                            setSecurityWarningModal({
+                                              type: 'ai_translate',
+                                              title: '⚠️ Peringatan Kecurangan: Tempel / Terjemahan Otomatis Diblokir!',
+                                              message: `Terdeteksi percobaan menempelkan hasil Terjemahan Otomatis / AI pada Soal Nomor ${qNum} (telah ditandai di akun Master Sensei). Halaman Tugas Harian Sensei tetap normal dan tidak blur, silakan ketik jawaban secara mandiri.`,
+                                            });
                                             setAiWarningBanner(
-                                              `🚫 Fitur Tempel (Paste) & Terjemahan Instan AI diblokir pada Soal Nomor ${qNum}! Silakan ketik jawabanmu secara manual.`
+                                              `⚠️ Peringatan Kecurangan: Fitur Tempel (Paste) & Terjemahan Instan AI diblokir pada Soal Nomor ${qNum}! Halaman Tugas Harian tetap normal.`
                                             );
                                             if (currentUser) {
                                               storageService.recordDailyTaskSecurityViolation(
@@ -1909,8 +2082,14 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                         onDrop={e => {
                                           if (!isMasterUser) {
                                             e.preventDefault();
+                                            setSecurityViolationCount(prev => prev + 1);
+                                            setSecurityWarningModal({
+                                              type: 'ai_translate',
+                                              title: '⚠️ Peringatan Kecurangan: Seret Teks Terjemahan AI Diblokir!',
+                                              message: `Terdeteksi percobaan menyeret teks dari penerjemah / AI pada Soal Nomor ${qNum} (telah ditandai di akun Master Sensei). Halaman Tugas Harian Sensei tetap normal dan tidak blur.`,
+                                            });
                                             setAiWarningBanner(
-                                              '🚫 Fitur seret teks (Drop) dari AI/Penerjemah diblokir!'
+                                              '⚠️ Peringatan Kecurangan: Fitur seret teks (Drop) dari AI/Penerjemah diblokir! Halaman Tugas Harian tetap normal.'
                                             );
                                             if (currentUser) {
                                               storageService.recordDailyTaskSecurityViolation(
