@@ -594,6 +594,12 @@ function handleRealtimeCloudPacket(packet: any) {
   if (packet.type === 'cloud_state_sync' || packet.type === 'server_realtime_state') {
     applyIncomingSyncData(packet);
   }
+  if (packet.type === 'onepiece_quote_counter' && typeof packet.counter === 'number') {
+    const cur = Number(localStorage.getItem('sensei_sari_onepiece_quote_counter') || '0');
+    if (packet.counter > cur) {
+      localStorage.setItem('sensei_sari_onepiece_quote_counter', String(packet.counter));
+    }
+  }
   if (packet.type === 'daily_task_completion_upserted' && packet.taskId && packet.completion) {
     const localTasks = storageService.getDailyTasks();
     const target = localTasks.find(t => String(t.id) === String(packet.taskId));
@@ -642,6 +648,12 @@ function startRealtimeCloudSSE() {
       try {
         if (ev.data && ev.data.startsWith('{')) {
           const parsed = JSON.parse(ev.data);
+          if (parsed.type === 'onepiece_quote_counter' && typeof parsed.counter === 'number') {
+            const cur = Number(localStorage.getItem('sensei_sari_onepiece_quote_counter') || '0');
+            if (parsed.counter > cur) {
+              localStorage.setItem('sensei_sari_onepiece_quote_counter', String(parsed.counter));
+            }
+          }
           applyIncomingSyncData(parsed);
         }
       } catch {}

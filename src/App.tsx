@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { JLPTLevel, User, QuizControlState } from './types';
 import { storageService } from './services/storageService';
 import { Navbar } from './components/Navbar';
@@ -12,11 +12,31 @@ import { MasterManagementView } from './components/MasterManagementView';
 import { AuthPage } from './components/AuthPage';
 import { SakuraEffect } from './components/SakuraEffect';
 import { RocketTakeoffEffect } from './components/RocketTakeoffEffect';
+import {
+  OnePieceFarewellOverlay,
+  OnePieceFarewellQuote,
+  ONE_PIECE_POSTER_DURATION_MS,
+  pickNextUniqueOnePieceQuote,
+  preloadOnePieceFarewellAssets,
+} from './components/OnePieceFarewellOverlay';
 
 export function App() {
-  // Initialize storage seeds
+  // Initialize storage seeds, sync One Piece logout quote counter, & preload character portraits + audio
   useEffect(() => {
     storageService.init();
+    preloadOnePieceFarewellAssets();
+    fetch('/api/onepiece-quote-counter')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data && typeof data.counter === 'number') {
+          const cur = Number(localStorage.getItem('sensei_sari_onepiece_quote_counter') || '0');
+          if (data.counter > cur) {
+            localStorage.setItem('sensei_sari_onepiece_quote_counter', String(data.counter));
+          }
+        }
+        preloadOnePieceFarewellAssets();
+      })
+      .catch(() => {});
   }, []);
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => storageService.getCurrentUser());
@@ -31,6 +51,15 @@ export function App() {
   const [triggerRocketTakeoff, setTriggerRocketTakeoff] = useState(false);
   const [rocketMode, setRocketMode] = useState<'takeoff' | 'landing'>('takeoff');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [onePieceFarewellQuote, setOnePieceFarewellQuote] = useState<OnePieceFarewellQuote | null>(null);
+  const farewellTimeoutRef = useRef<number | null>(null);
+
+  // Preload One Piece portrait images & upcoming quote voice whenever user is logged in
+  useEffect(() => {
+    if (currentUser) {
+      preloadOnePieceFarewellAssets();
+    }
+  }, [currentUser]);
 
   // Synchronize quiz control state & show live notification to students when Master starts quiz session
   useEffect(() => {
@@ -208,6 +237,11 @@ export function App() {
   };
 
   const handleAuthSuccess = (user: User, isNewRegistration: boolean) => {
+    if (farewellTimeoutRef.current) {
+      window.clearTimeout(farewellTimeoutRef.current);
+      farewellTimeoutRef.current = null;
+    }
+    setOnePieceFarewellQuote(null);
     const isMaster = storageService.isMaster(user);
 
     if (isMaster) {
@@ -240,29 +274,25 @@ export function App() {
   };
 
   const handleLogout = () => {
-    const isMaster = storageService.isMaster(currentUser);
-
-    if (isMaster) {
-      // 🛬 KHUSUS AKUN MASTER SAAT LOGOUT (Durasi 6.0 detik sesuai permintaan 5–7 detik):
-      // 1. Ganti kata sampai jumpa dengan: "happy landing capten, selamat meninggalkan jalur lepas landas"
-      // 2. Tampilkan animasi pendaratan roket & kepulan asap pendaratan selama 6 detik
-      storageService.logout();
-      setCurrentUser(null);
-      setRocketMode('landing');
-      setTriggerRocketTakeoff(true);
-      setToastMessage('happy landing capten, selamat meninggalkan jalur lepas landas');
-
-      setTimeout(() => {
-        setTriggerRocketTakeoff(false);
-        setToastMessage(null);
-      }, 6000);
-    } else {
-      // Akun murid biasa:
-      storageService.logout();
-      setCurrentUser(null);
-      setToastMessage('Sampai jumpa lagi! 🌸');
-      setTimeout(() => setToastMessage(null), 3000);
+    if (farewellTimeoutRef.current) {
+      window.clearTimeout(farewellTimeoutRef.current);
+      farewellTimeoutRef.current = null;
     }
+
+    // 1. Seketika (0ms) ambil kutipan berikutnya & tampilkan poster karakter One Piece (tanpa sound)
+    const nextQuote = pickNextUniqueOnePieceQuote();
+    setOnePieceFarewellQuote(nextQuote);
+
+    setTriggerRocketTakeoff(false);
+    storageService.logout();
+    setCurrentUser(null);
+    setToastMessage(null);
+
+    // 2. Tahan tampilan poster selama 30 detik sebelum beralih ke halaman login
+    farewellTimeoutRef.current = window.setTimeout(() => {
+      setOnePieceFarewellQuote(prev => (prev?.id === nextQuote.id ? null : prev));
+      farewellTimeoutRef.current = null;
+    }, ONE_PIECE_POSTER_DURATION_MS);
   };
 
   const handleScoreCelebration = () => {
@@ -303,8 +333,24 @@ export function App() {
     );
   };
 
-  // ================= SCENARIO 1: DEDICATED LOGIN / REGISTER PAGE =================
+  // ================= SCENARIO 1: DEDICATED LOGIN / REGISTER PAGE (OR 30s ONE PIECE POSTER BEFORE LOGIN) =================
   if (!currentUser) {
+    // Selama poster One Piece aktif (30 detik setelah tombol Logout ditekan), tampilkan poster penuh sebelum ke halaman Login
+    if (onePieceFarewellQuote) {
+      return (
+        <OnePieceFarewellOverlay
+          quote={onePieceFarewellQuote}
+          onDismiss={() => {
+            if (farewellTimeoutRef.current) {
+              window.clearTimeout(farewellTimeoutRef.current);
+              farewellTimeoutRef.current = null;
+            }
+            setOnePieceFarewellQuote(null);
+          }}
+        />
+      );
+    }
+
     return (
       <>
         {/* Efek Bunga Sakura untuk Murid */}

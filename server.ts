@@ -720,6 +720,18 @@ async function pullDatabaseFromCloud() {
 // Daftar koneksi SSE aktif untuk broadcast real-time (< 10ms) antara Akun Murid & Akun Master
 const sseClients = new Set<express.Response>();
 
+function broadcastLocalSSE(packet: any) {
+  if (sseClients.size === 0) return;
+  const payload = JSON.stringify(packet);
+  for (const clientRes of sseClients) {
+    try {
+      clientRes.write(`data: ${payload}\n\n`);
+    } catch {
+      sseClients.delete(clientRes);
+    }
+  }
+}
+
 function broadcastRealtimeStateToClients() {
   if (sseClients.size === 0) return;
   const payload = JSON.stringify({
@@ -1096,6 +1108,59 @@ async function startServer() {
       saveDatabase(db);
     }
     res.json({ success: true, dailyTasks: db.dailyTasks, deletedTaskIds: db.deletedTaskIds });
+  });
+
+  // Global One Piece Logout Quote Counter (pastikan setiap murid yang logout selalu mendapat kutipan berbeda)
+  let globalOnePieceQuoteCounter = 0;
+
+  app.get('/api/onepiece-quote-counter', (_req, res) => {
+    res.json({ counter: globalOnePieceQuoteCounter });
+  });
+
+  app.post('/api/onepiece-quote-counter', (req, res) => {
+    const incoming = Number(req.body?.counter);
+    if (!Number.isNaN(incoming) && incoming > globalOnePieceQuoteCounter) {
+      globalOnePieceQuoteCounter = incoming;
+    } else {
+      globalOnePieceQuoteCounter += 1;
+    }
+    broadcastLocalSSE({
+      type: 'onepiece_quote_counter',
+      counter: globalOnePieceQuoteCounter,
+      updatedAt: Date.now(),
+    });
+    res.json({ success: true, counter: globalOnePieceQuoteCounter });
+  });
+
+  // GET /api/onepiece-voice - Stream real voice audio for One Piece farewell quotes
+  app.get('/api/onepiece-voice', async (req, res) => {
+    try {
+      const text = String(req.query.text || '').trim().slice(0, 200);
+      const lang = String(req.query.lang || 'ja').trim();
+      if (!text) {
+        res.status(400).end();
+        return;
+      }
+      const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(
+        lang
+      )}&q=${encodeURIComponent(text)}`;
+      const upstream = await fetch(ttsUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        },
+      });
+      if (!upstream.ok) {
+        res.status(upstream.status).end();
+        return;
+      }
+      const arrayBuf = await upstream.arrayBuffer();
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(Buffer.from(arrayBuf));
+    } catch {
+      res.status(500).end();
+    }
   });
 
   // Vite middleware for development or static serving for production
