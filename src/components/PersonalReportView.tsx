@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, QuizResult } from '../types';
+import { User, QuizResult, JLPTLevel } from '../types';
 import { storageService } from '../services/storageService';
 import { Award, Clock, Calendar, CheckCircle2, User as UserIcon, BookOpen } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
@@ -9,12 +9,16 @@ interface PersonalReportViewProps {
   currentUser: User | null;
   onOpenAuth: () => void;
   onStartQuiz: () => void;
+  activeLevel?: JLPTLevel;
+  onSelectLevelAndNavigate?: (level: JLPTLevel, tab: 'vocab' | 'kanji') => void;
 }
 
 export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
   currentUser,
   onOpenAuth,
   onStartQuiz,
+  activeLevel,
+  onSelectLevelAndNavigate,
 }) => {
   const [scores, setScores] = React.useState<QuizResult[]>(() =>
     currentUser ? storageService.getUserScores(currentUser.email) : []
@@ -157,7 +161,8 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
         {/* Visualisasi Bar Kemajuan Belajar JLPT (N5 - N2) Berdasarkan Kosakata & Kanji */}
         <JLPTStudyProgressSection
           currentUser={currentUser}
-          activeLevel={storageService.getActiveLevel()}
+          activeLevel={activeLevel || storageService.getActiveLevel()}
+          onSelectLevelAndNavigate={onSelectLevelAndNavigate}
         />
 
         {/* Personal Quiz Records Table */}

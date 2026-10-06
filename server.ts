@@ -73,6 +73,8 @@ interface PresenceEntry {
   activeLevel?: string;
   quizProgress?: string;
   lastActionAt?: string;
+  screenshotAttempts?: number;
+  aiTranslateAttempts?: number;
 }
 
 const DEFAULT_LEMBAR_1_QUESTIONS: string[] = [
@@ -483,7 +485,18 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
       const incomingSeen = typeof pVal?.lastSeen === 'number' ? pVal.lastSeen : 0;
       const currentSeen = current ? current.lastSeen || 0 : -1;
 
-      if (!current || incomingSeen >= currentSeen || pVal?.currentActivity !== current.currentActivity) {
+      const incomingScreenshot = typeof pVal?.screenshotAttempts === 'number' ? pVal.screenshotAttempts : 0;
+      const incomingAiTranslate = typeof pVal?.aiTranslateAttempts === 'number' ? pVal.aiTranslateAttempts : 0;
+      const currentScreenshot = current?.screenshotAttempts || 0;
+      const currentAiTranslate = current?.aiTranslateAttempts || 0;
+
+      if (
+        !current ||
+        incomingSeen >= currentSeen ||
+        pVal?.currentActivity !== current.currentActivity ||
+        incomingScreenshot > currentScreenshot ||
+        incomingAiTranslate > currentAiTranslate
+      ) {
         db.onlinePresence[lowerKey] = {
           email: lowerKey,
           name: pVal?.name || current?.name || 'Murid',
@@ -494,6 +507,8 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
           activeLevel: pVal?.activeLevel || current?.activeLevel || 'N5',
           quizProgress: pVal?.quizProgress ?? current?.quizProgress,
           lastActionAt: pVal?.lastActionAt || current?.lastActionAt,
+          screenshotAttempts: Math.max(incomingScreenshot, currentScreenshot),
+          aiTranslateAttempts: Math.max(incomingAiTranslate, currentAiTranslate),
         };
         changed = true;
       }
@@ -544,12 +559,21 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
                 const mergedAnswers = incomingNewer
                   ? { ...(prevC.worksheetAnswers || {}), ...(c.worksheetAnswers || {}) }
                   : { ...(c.worksheetAnswers || {}), ...(prevC.worksheetAnswers || {}) };
+                const mergedLogs = Array.from(
+                  new Set([
+                    ...(Array.isArray(prevC.securityViolationLogs) ? prevC.securityViolationLogs : []),
+                    ...(Array.isArray(c.securityViolationLogs) ? c.securityViolationLogs : []),
+                  ])
+                );
                 const mergedEntry = {
                   ...(incomingNewer ? { ...prevC, ...c } : { ...c, ...prevC }),
                   isCompleted: Boolean(c.isCompleted || prevC.isCompleted),
                   autoSubmittedByTimer: Boolean(c.autoSubmittedByTimer || prevC.autoSubmittedByTimer),
                   worksheetAnswers: mergedAnswers,
                   teacherComment: c.teacherComment || prevC.teacherComment,
+                  screenshotAttempts: Math.max(c.screenshotAttempts || 0, prevC.screenshotAttempts || 0),
+                  aiTranslateAttempts: Math.max(c.aiTranslateAttempts || 0, prevC.aiTranslateAttempts || 0),
+                  securityViolationLogs: mergedLogs,
                 };
                 if (JSON.stringify(mergedEntry) !== JSON.stringify(prevC)) {
                   compModified = true;
@@ -930,12 +954,24 @@ async function startServer() {
 
   // POST /api/presence - Update student online/offline status & live activity
   app.post('/api/presence', (req, res) => {
-    const { email, name, nickname, lastSeen, currentTab, currentActivity, activeLevel, quizProgress, lastActionAt } = req.body || {};
+    const {
+      email,
+      name,
+      nickname,
+      lastSeen,
+      currentTab,
+      currentActivity,
+      activeLevel,
+      quizProgress,
+      lastActionAt,
+      screenshotAttempts,
+      aiTranslateAttempts,
+    } = req.body || {};
     if (email) {
       const emailLower = email.trim().toLowerCase();
       ensureStudentInDb(emailLower, name, nickname || (name ? name.split(/\s+/)[0] : undefined));
       sortDbUsers();
-      const prev = db.onlinePresence[emailLower];
+      const prev = db.onlinePresence[emailLower] as any;
       db.onlinePresence[emailLower] = {
         email: emailLower,
         name: name || prev?.name || 'Murid',
@@ -945,8 +981,18 @@ async function startServer() {
         currentActivity: currentActivity || prev?.currentActivity || 'Membuka Aplikasi',
         activeLevel: activeLevel || prev?.activeLevel || 'N5',
         quizProgress: quizProgress !== undefined ? quizProgress : prev?.quizProgress,
-        lastActionAt: lastActionAt || prev?.lastActionAt || new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      };
+        lastActionAt:
+          lastActionAt ||
+          prev?.lastActionAt ||
+          new Date().toLocaleTimeString('id-ID', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }),
+        screenshotAttempts: Math.max(screenshotAttempts || 0, prev?.screenshotAttempts || 0),
+        aiTranslateAttempts: Math.max(aiTranslateAttempts || 0, prev?.aiTranslateAttempts || 0),
+      } as any;
       saveDatabase(db);
     }
     res.json({ success: true, onlinePresence: db.onlinePresence, users: db.users });
@@ -967,24 +1013,7 @@ async function startServer() {
     }
 
     if (task && task.id) {
-      const idStr = String(task.id).trim();
-      db.deletedTaskIds = db.deletedTaskIds.filter(id => id !== idStr);
-      const idx = db.dailyTasks.findIndex(t => String(t?.id) === idStr);
-      if (idx === -1) {
-        db.dailyTasks.unshift({
-          ...task,
-          completions: Array.isArray(task.completions) ? task.completions : [],
-          updatedAt: task.updatedAt || Date.now(),
-        });
-      } else {
-        db.dailyTasks[idx] = {
-          ...db.dailyTasks[idx],
-          ...task,
-          completions: Array.isArray(task.completions) ? task.completions : db.dailyTasks[idx].completions || [],
-          updatedAt: task.updatedAt || Date.now(),
-        };
-      }
-      db.dailyTasks.sort((a, b) => (b.createdAtTimestamp || 0) - (a.createdAtTimestamp || 0));
+      mergeExternalPayloadIntoDb({ dailyTasks: [task] });
       saveDatabase(db);
     }
     res.json({ success: true, dailyTasks: db.dailyTasks, deletedTaskIds: db.deletedTaskIds });

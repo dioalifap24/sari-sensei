@@ -126,3 +126,29 @@
   box-shadow: 0 4px 14px rgba(234, 88, 12, 0.4);
 }
 
+/* Proteksi Anti-Screenshot & Anti-AI Bawaan HP (Zero-Latency Instant Blur) */
+.anti-screenshot-protected {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.security-instant-blur {
+  filter: blur(32px) brightness(0.28) contrast(0.35) !important;
+  -webkit-filter: blur(32px) brightness(0.28) contrast(0.35) !important;
+  transition: none !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+@media print {
+  .anti-screenshot-modal,
+  .anti-screenshot-protected {
+    filter: blur(40px) brightness(0) !important;
+    -webkit-filter: blur(40px) brightness(0) !important;
+    visibility: hidden !important;
+    display: none !important;
+  }
+}
+
+

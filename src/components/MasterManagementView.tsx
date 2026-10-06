@@ -183,13 +183,25 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setTimeout(() => setNotificationMsg(null), 4500);
   };
 
-  // Helper untuk mendapatkan aktivitas live murid saat ini (menggabungkan data presence & kuis aktif)
+  // Helper untuk mendapatkan aktivitas live murid saat ini (menggabungkan data presence, kuis aktif, & pelanggaran Tugas Harian)
   const getLiveStudentActivity = (student: User) => {
     const emailLower = student.email.toLowerCase();
     const liveQuiz = activeRecords.find(
       r => r.userEmail.toLowerCase() === emailLower && r.status === 'in_progress'
     );
     const pres = presenceMap[emailLower];
+    const allTasks = storageService.getDailyTasks();
+    let maxScreenshot = pres?.screenshotAttempts || 0;
+    let maxAiTranslate = pres?.aiTranslateAttempts || 0;
+    for (const t of allTasks) {
+      const comp = (t.completions || []).find(
+        c => c.studentEmail.toLowerCase() === emailLower
+      );
+      if (comp) {
+        maxScreenshot = Math.max(maxScreenshot, comp.screenshotAttempts || 0);
+        maxAiTranslate = Math.max(maxAiTranslate, comp.aiTranslateAttempts || 0);
+      }
+    }
 
     if (liveQuiz) {
       const qNum = liveQuiz.currentQuestion || 1;
@@ -200,6 +212,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
         subText: `Mulai pukul ${liveQuiz.startedAtTime}${liveQuiz.tabViolationsCount ? ` · ⚠️ ${liveQuiz.tabViolationsCount}x Pindah Tab` : ''}`,
         isTakingQuiz: true,
         violations: liveQuiz.tabViolationsCount || 0,
+        screenshotAttempts: maxScreenshot,
+        aiTranslateAttempts: maxAiTranslate,
       };
     }
 
@@ -209,6 +223,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
         subText: pres.lastActionAt ? `Update terakhir: ${pres.lastActionAt}` : `Level aktif: ${pres.activeLevel || 'N5'}`,
         isTakingQuiz: false,
         violations: 0,
+        screenshotAttempts: maxScreenshot,
+        aiTranslateAttempts: maxAiTranslate,
       };
     }
 
@@ -221,6 +237,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
         subText: `Selesai pukul ${latestCompleted.completedAtTime || '-'}`,
         isTakingQuiz: false,
         violations: latestCompleted.tabViolationsCount || 0,
+        screenshotAttempts: maxScreenshot,
+        aiTranslateAttempts: maxAiTranslate,
       };
     }
 
@@ -231,6 +249,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       subText: `Terdaftar: ${student.registeredAt || '-'}`,
       isTakingQuiz: false,
       violations: 0,
+      screenshotAttempts: maxScreenshot,
+      aiTranslateAttempts: maxAiTranslate,
     };
   };
 
@@ -867,6 +887,18 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                         <span>{activityInfo.violations}x Pindah Tab</span>
                                       </span>
                                     )}
+
+                                    {activityInfo.screenshotAttempts > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-600 text-white rounded-md text-[10px] font-black shadow-2xs">
+                                        <span>📸 Mencoba Screenshot: {activityInfo.screenshotAttempts}x</span>
+                                      </span>
+                                    )}
+
+                                    {activityInfo.aiTranslateAttempts > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-600 text-white rounded-md text-[10px] font-black shadow-2xs">
+                                        <span>🤖 Mencoba Terjemahan Otomatis: {activityInfo.aiTranslateAttempts}x</span>
+                                      </span>
+                                    )}
                                   </div>
 
                                   <div className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
@@ -1042,8 +1074,22 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           </div>
 
                           {/* Aktivitas Live di Mobile */}
-                          <div className="p-2.5 bg-[#fff8ef] border border-[#ebdccb] rounded-xl text-xs">
+                          <div className="p-2.5 bg-[#fff8ef] border border-[#ebdccb] rounded-xl text-xs space-y-1.5">
                             <div className="font-bold text-[#881337]">{activityInfo.badgeText}</div>
+                            {(activityInfo.screenshotAttempts > 0 || activityInfo.aiTranslateAttempts > 0) && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {activityInfo.screenshotAttempts > 0 && (
+                                  <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-extrabold">
+                                    📸 Mencoba Screenshot: {activityInfo.screenshotAttempts}x
+                                  </span>
+                                )}
+                                {activityInfo.aiTranslateAttempts > 0 && (
+                                  <span className="px-2 py-0.5 rounded-md bg-amber-600 text-white text-[10px] font-extrabold">
+                                    🤖 Mencoba Terjemahan Otomatis: {activityInfo.aiTranslateAttempts}x
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             <div className="text-[10px] text-[#735338] mt-0.5">{activityInfo.subText}</div>
                           </div>
 

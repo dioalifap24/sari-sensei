@@ -65,6 +65,8 @@ export interface StudentPresenceInfo {
   activeLevel?: JLPTLevel;
   quizProgress?: string;
   lastActionAt?: string;
+  screenshotAttempts?: number;
+  aiTranslateAttempts?: number;
 }
 
 export interface DailyTaskCompletion {
@@ -80,6 +82,9 @@ export interface DailyTaskCompletion {
   worksheetAnswers?: Record<number, string>;
   answeredCount?: number;
   teacherComment?: string;
+  screenshotAttempts?: number;
+  aiTranslateAttempts?: number;
+  securityViolationLogs?: string[];
 }
 
 export type DailyTaskCategory = 'materi' | 'vocab' | 'kanji' | 'kuis' | 'umum';

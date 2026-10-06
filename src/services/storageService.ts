@@ -465,12 +465,21 @@ function applyIncomingSyncData(serverData: any) {
                 const mergedAnswers = incomingNewer
                   ? { ...(prevC.worksheetAnswers || {}), ...(c.worksheetAnswers || {}) }
                   : { ...(c.worksheetAnswers || {}), ...(prevC.worksheetAnswers || {}) };
+                const mergedLogs = Array.from(
+                  new Set([
+                    ...(Array.isArray(prevC.securityViolationLogs) ? prevC.securityViolationLogs : []),
+                    ...(Array.isArray(c.securityViolationLogs) ? c.securityViolationLogs : []),
+                  ])
+                );
                 compMap.set(em, {
                   ...(incomingNewer ? { ...prevC, ...c } : { ...c, ...prevC }),
                   isCompleted: Boolean(c.isCompleted || prevC.isCompleted),
                   autoSubmittedByTimer: Boolean(c.autoSubmittedByTimer || prevC.autoSubmittedByTimer),
                   worksheetAnswers: mergedAnswers,
                   teacherComment: c.teacherComment || prevC.teacherComment,
+                  screenshotAttempts: Math.max(c.screenshotAttempts || 0, prevC.screenshotAttempts || 0),
+                  aiTranslateAttempts: Math.max(c.aiTranslateAttempts || 0, prevC.aiTranslateAttempts || 0),
+                  securityViolationLogs: mergedLogs,
                 });
               }
             }
@@ -2868,6 +2877,9 @@ export const storageService = {
       worksheetAnswers: answers,
       answeredCount,
       teacherComment: prevEntry?.teacherComment,
+      screenshotAttempts: prevEntry?.screenshotAttempts || 0,
+      aiTranslateAttempts: prevEntry?.aiTranslateAttempts || 0,
+      securityViolationLogs: prevEntry?.securityViolationLogs || [],
     };
 
     if (existingIdx !== -1) {
@@ -2955,6 +2967,137 @@ export const storageService = {
     window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
 
     return updatedTask;
+  },
+
+  recordDailyTaskSecurityViolation: (
+    user: User,
+    violationType: 'screenshot' | 'ai_translate',
+    detailMessage: string
+  ): void => {
+    if (!user || storageService.isMaster(user)) return;
+    const emailLower = user.email.toLowerCase();
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('id-ID', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+
+    const logItem = `[${timeStr}] ${
+      violationType === 'screenshot'
+        ? '📸 Mencoba Screenshot'
+        : '🤖 Mencoba Terjemahan Otomatis / AI'
+    }: ${detailMessage}`;
+
+    const tasks = storageService.getDailyTasks();
+    let updatedAnyTask: DailyTask | null = null;
+
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i];
+      if (!t.isActive) continue;
+      const nextCompletions = [...(t.completions || [])];
+      const existingIdx = nextCompletions.findIndex(
+        c => c.studentEmail.toLowerCase() === emailLower
+      );
+      const prevEntry = existingIdx !== -1 ? nextCompletions[existingIdx] : undefined;
+
+      const prevScreenshot = prevEntry?.screenshotAttempts || 0;
+      const prevAi = prevEntry?.aiTranslateAttempts || 0;
+      const prevLogs = Array.isArray(prevEntry?.securityViolationLogs)
+        ? prevEntry!.securityViolationLogs!
+        : [];
+
+      const nextScreenshot =
+        violationType === 'screenshot' ? prevScreenshot + 1 : prevScreenshot;
+      const nextAi = violationType === 'ai_translate' ? prevAi + 1 : prevAi;
+      const nextLogs = [logItem, ...prevLogs].slice(0, 15);
+
+      const updatedEntry: DailyTaskCompletion = {
+        studentEmail: emailLower,
+        studentName: user.fullName || user.nickname || 'Murid',
+        studentNickname: user.nickname || user.fullName?.split(/\s+/)[0] || 'Murid',
+        completedAt: prevEntry?.completedAt || `${dateStr} ${timeStr.substring(0, 5)}`,
+        completedAtTimestamp: Date.now(),
+        isCompleted: Boolean(prevEntry?.isCompleted),
+        autoSubmittedByTimer: Boolean(prevEntry?.autoSubmittedByTimer),
+        note: prevEntry?.note,
+        studentNameField:
+          prevEntry?.studentNameField || user.fullName || user.nickname || 'Murid',
+        worksheetAnswers: prevEntry?.worksheetAnswers || {},
+        answeredCount: prevEntry?.answeredCount || 0,
+        teacherComment: prevEntry?.teacherComment,
+        screenshotAttempts: nextScreenshot,
+        aiTranslateAttempts: nextAi,
+        securityViolationLogs: nextLogs,
+      };
+
+      if (existingIdx !== -1) {
+        nextCompletions[existingIdx] = updatedEntry;
+      } else {
+        nextCompletions.unshift(updatedEntry);
+      }
+
+      tasks[i] = {
+        ...t,
+        completions: nextCompletions,
+        updatedAt: t.updatedAt || 1000,
+      };
+      updatedAnyTask = tasks[i];
+
+      fetch('/api/daily-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task: tasks[i] }),
+      }).catch(() => {});
+
+      broadcastCloudRealtimeEvent({
+        type: 'daily_task_upserted',
+        task: tasks[i],
+      });
+    }
+
+    if (updatedAnyTask) {
+      localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+    }
+
+    const presenceMap = storageService.getOnlinePresenceMap();
+    const prevPres = presenceMap[emailLower];
+    const nextPresScreenshot =
+      (prevPres?.screenshotAttempts || 0) + (violationType === 'screenshot' ? 1 : 0);
+    const nextPresAi =
+      (prevPres?.aiTranslateAttempts || 0) + (violationType === 'ai_translate' ? 1 : 0);
+
+    presenceMap[emailLower] = {
+      email: emailLower,
+      name: user.fullName || user.nickname || prevPres?.name || 'Murid',
+      nickname: user.nickname || user.fullName?.split(/\s+/)[0] || prevPres?.nickname || 'Murid',
+      lastSeen: Date.now(),
+      currentTab: 'home',
+      currentActivity:
+        violationType === 'screenshot'
+          ? `🚨 Mencoba Screenshot Tugas Harian (${nextPresScreenshot}x)`
+          : `🚨 Mencoba Terjemahan Otomatis / AI pada Tugas Harian (${nextPresAi}x)`,
+      activeLevel: prevPres?.activeLevel || storageService.getActiveLevel(),
+      lastActionAt: timeStr,
+      screenshotAttempts: nextPresScreenshot,
+      aiTranslateAttempts: nextPresAi,
+    };
+    localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
+    fetch('/api/presence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(presenceMap[emailLower]),
+    }).catch(() => {});
+    broadcastCloudRealtimeEvent({
+      type: 'presence_update',
+      presence: presenceMap[emailLower],
+    });
+
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated'));
+    window.dispatchEvent(new CustomEvent('presence_updated'));
   },
 
   autoSubmitExpiredTasksForStudent: (

@@ -414,6 +414,11 @@ export function App() {
             currentUser={currentUser}
             onOpenAuth={() => setCurrentUser(null)}
             onStartQuiz={() => setActiveTab('kuis')}
+            activeLevel={activeLevel}
+            onSelectLevelAndNavigate={(lvl, tab) => {
+              handleSetActiveLevel(lvl);
+              setActiveTab(tab);
+            }}
           />
         )}
 

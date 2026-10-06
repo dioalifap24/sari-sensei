@@ -4,7 +4,6 @@ import { storageService } from '../services/storageService';
 import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown, FolderOpen, CheckCircle2, Clock, Plus } from 'lucide-react';
 import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
 import { DailyTasksFolderModal } from './DailyTasksFolderModal';
-import { JLPTStudyProgressSection } from './JLPTStudyProgressSection';
 
 interface HomeViewProps {
   activeLevel: JLPTLevel;
@@ -66,6 +65,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const latestDeadlineInfo = latestActiveTask
     ? storageService.getTaskDeadlineInfo(latestActiveTask, nowMs)
     : null;
+
+  // Hitung jumlah murid yang tertandai mencoba screenshot / terjemahan otomatis untuk akun Master
+  const flaggedDailyTaskStudentsCount = (() => {
+    if (!isMasterUser) return 0;
+    const presenceMap = storageService.getOnlinePresenceMap();
+    const flaggedEmails = new Set<string>();
+    for (const [em, pres] of Object.entries(presenceMap)) {
+      if ((pres?.screenshotAttempts || 0) > 0 || (pres?.aiTranslateAttempts || 0) > 0) {
+        flaggedEmails.add(em.toLowerCase());
+      }
+    }
+    for (const t of dailyTasks) {
+      for (const c of t.completions || []) {
+        if ((c?.screenshotAttempts || 0) > 0 || (c?.aiTranslateAttempts || 0) > 0) {
+          flaggedEmails.add(c.studentEmail.toLowerCase());
+        }
+      }
+    }
+    return flaggedEmails.size;
+  })();
 
   useEffect(() => {
     if (!currentUser || isMasterUser) return;
@@ -270,6 +289,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </span>
                 </div>
               )}
+              {isMasterUser && flaggedDailyTaskStudentsCount > 0 && (
+                <div className="mt-2 px-2.5 py-1.5 rounded-xl bg-rose-600 text-white text-[11px] font-extrabold flex items-center justify-between gap-2 shadow-2xs">
+                  <span>🚨 {flaggedDailyTaskStudentsCount} Murid Tertandai (Screenshot / AI)</span>
+                  <span className="underline">Periksa</span>
+                </div>
+              )}
             </div>
             <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#881337] group-hover:translate-x-1 transition-transform">
               <span>Buka Folder Tugas Harian</span>
@@ -460,16 +485,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           )}
         </div>
-
-        {/* Visualisasi Bar Kemajuan Belajar JLPT (N5 - N2) Berdasarkan Kosakata & Kanji */}
-        <JLPTStudyProgressSection
-          currentUser={currentUser}
-          activeLevel={activeLevel}
-          onSelectLevelAndNavigate={(lvl, tab) => {
-            setActiveLevel(lvl);
-            onNavigate(tab);
-          }}
-        />
       </div>
 
       {/* Modal Folder Tugas Harian Sensei */}
