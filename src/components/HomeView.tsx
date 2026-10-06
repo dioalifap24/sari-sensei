@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { JLPTLevel, User, QuizControlState, DailyTask } from '../types';
 import { storageService } from '../services/storageService';
 import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown, FolderOpen, CheckCircle2, Clock, Plus } from 'lucide-react';
-import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
+import { senseiSariMascot } from '../assets';
 import { DailyTasksFolderModal } from './DailyTasksFolderModal';
+import { JapaneseShrineSakuraScene } from './JapaneseShrineSakuraScene';
 
 interface HomeViewProps {
   activeLevel: JLPTLevel;
@@ -103,47 +104,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div className="relative overflow-hidden py-4 sm:py-8">
-      {/* Background Decorative Cloud & Sakura Corner Branch */}
-      <div 
-        className="absolute top-0 right-0 w-44 sm:w-64 md:w-80 h-44 sm:h-64 md:h-80 pointer-events-none opacity-25 -mr-8 -mt-8 select-none z-0"
-        aria-hidden="true"
-      >
-        <img 
-          src={sakuraBranchCorner} 
-          alt="Sakura Branch"
-          className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
-          loading="eager"
-          onError={(e) => {
-            const el = e.currentTarget;
-            if (el.src !== '/assets/images/sakura_branch_corner_1790796313743.jpg') {
-              el.src = '/assets/images/sakura_branch_corner_1790796313743.jpg';
-            }
-          }}
-        />
-      </div>
-
-      <div 
-        className="absolute bottom-0 left-0 w-48 sm:w-72 h-32 sm:h-44 pointer-events-none opacity-15 -ml-8 -mb-4 select-none z-0"
-        aria-hidden="true"
-      >
-        <img 
-          src={japaneseCloudsOrnament} 
-          alt="Japanese Cloud Ornament"
-          className="w-full h-full object-cover mix-blend-multiply"
-          loading="eager"
-          onError={(e) => {
-            const el = e.currentTarget;
-            if (el.src !== '/assets/images/japanese_clouds_ornament_1790796324830.jpg') {
-              el.src = '/assets/images/japanese_clouds_ornament_1790796324830.jpg';
-            }
-          }}
-        />
-      </div>
+      {/* Ornamen Latar Kuil-Kuil Jepang yang Megah & Animasi Pohon-Pohon Sakura yang Menggemaskan */}
+      <JapaneseShrineSakuraScene />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4">
         {/* Hero Section */}
         <div className="text-center pt-2 pb-6 sm:pb-8">
-          {/* Sari Sensei Portrait Avatar */}
+          {/* Sari Sensei Portrait Avatar dengan Mahkota Gerbang Torii & Bunga Sakura */}
           <div className="flex justify-center mb-4">
             <div className="relative p-1 bg-gradient-to-tr from-[#d4af37] via-[#fbcfe8] to-[#881337] rounded-full shadow-md">
               <img 
@@ -158,15 +125,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   }
                 }}
               />
-              <span className="absolute bottom-0 right-0 bg-[#881337] text-white p-1 rounded-full text-xs shadow-xs" title="Sari Sensei">
+              <span className="absolute -top-1.5 -left-1.5 bg-[#be123c] text-amber-200 border border-amber-300 p-1 rounded-full text-xs shadow-xs animate-sakura-blossom" title="Kuil Belajar Jepang">
+                ⛩️
+              </span>
+              <span className="absolute bottom-0 right-0 bg-[#881337] text-white p-1 rounded-full text-xs shadow-xs animate-sakura-blossom" style={{ animationDelay: '0.8s' }} title="Sari Sensei">
                 🌸
               </span>
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#faebd7]/70 border border-[#e3ceba] rounded-full text-xs font-semibold text-[#881337] mb-3">
-            <span>🌸</span>
-            <span>Panduan Belajar Bahasa Jepang Hangat</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-[#fffdfa]/90 border border-[#e2c29d] rounded-full text-xs font-bold text-[#881337] mb-3 shadow-2xs">
+            <span>⛩️</span>
+            <span>Nihongo o Manabu Shinden</span>
             <span>🌸</span>
           </div>
 
@@ -175,18 +145,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
             PORTAL KELAS SARI SENSEI
           </h1>
 
-          {/* Encouragement Text */}
-          <div className="max-w-xl mx-auto bg-[#fffdfa]/85 border border-[#ebdccb] rounded-2xl p-4 sm:p-5 shadow-xs mb-6">
-            <p className="text-sm sm:text-base text-[#463325] leading-relaxed">
-              Pilih cara belajarmu! Setiap langkah yang kamu ambil adalah kemajuan berharga. Semangat terus, kamu pasti bisa! ✨🌸
-            </p>
+          {/* Encouragement Text dengan Ornamen Tali Suci Shimenawa Kuil */}
+          <div className="max-w-xl mx-auto bg-[#fffdfa]/92 border-2 border-[#e2c29d] rounded-2xl overflow-hidden shadow-xs mb-6">
+            <div className="h-1.5 bg-gradient-to-r from-[#881337] via-[#f59e0b] to-[#881337]" />
+            <div className="p-4 sm:p-5">
+              <p className="text-sm sm:text-base text-[#463325] leading-relaxed">
+                Pilih cara belajarmu! Setiap langkah yang kamu ambil adalah kemajuan berharga. Semangat terus, kamu pasti bisa! ✨🌸
+              </p>
+            </div>
           </div>
 
           {/* Level Selector */}
-          <div className="bg-[#f7efe3] border border-[#e5d3c0] rounded-2xl p-3 sm:p-4 max-w-xl mx-auto shadow-xs mb-8">
+          <div className="bg-[#f7efe3]/95 backdrop-blur-xs border-2 border-[#e2c29d] rounded-2xl p-3 sm:p-4 max-w-xl mx-auto shadow-xs mb-8">
             <div className="text-xs font-bold text-[#881337] uppercase tracking-wider mb-2.5 flex items-center justify-center gap-1.5">
+              <span>⛩️</span>
               <span>PILIH TINGKATAN JLPT</span>
               <span className="text-[11px] font-normal text-[#755943]">(Disimpan untuk semua fitur)</span>
+              <span>🌸</span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

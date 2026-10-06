@@ -3,6 +3,7 @@ import { Eye, EyeOff, Mail, Lock, User as UserIcon, Smile, KeyRound, CheckCircle
 import { storageService, VERIFICATION_PROVIDER } from '../services/storageService';
 import { User } from '../types';
 import { senseiSariMascot, sakuraBranchCorner, japaneseCloudsOrnament } from '../assets';
+import { JapaneseShrineSakuraScene } from './JapaneseShrineSakuraScene';
 
 interface AuthPageProps {
   onSuccess: (user: User, isNewRegistration: boolean) => void;
@@ -230,9 +231,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] bg-japanese-pattern text-[#2b1d19] flex flex-col justify-between relative overflow-hidden selection:bg-[#fbcfe8] selection:text-[#881337]">
+      {/* Ornamen Kuil Jepang & Animasi Pohon Sakura Menggemaskan */}
+      <JapaneseShrineSakuraScene />
+
       {/* Decorative Corner Sakura Branches */}
       <div 
-        className="absolute top-0 right-0 w-52 sm:w-80 md:w-96 h-52 sm:h-80 md:h-96 pointer-events-none opacity-30 -mr-10 -mt-10 select-none z-0"
+        className="absolute top-0 right-0 w-52 sm:w-80 md:w-96 h-52 sm:h-80 md:h-96 pointer-events-none opacity-25 -mr-10 -mt-10 select-none z-0"
         aria-hidden="true"
       >
         <img 
@@ -250,7 +254,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
       </div>
 
       <div 
-        className="absolute bottom-0 left-0 w-64 sm:w-96 h-40 sm:h-60 pointer-events-none opacity-20 -ml-12 -mb-8 select-none z-0"
+        className="absolute bottom-0 left-0 w-64 sm:w-96 h-40 sm:h-60 pointer-events-none opacity-15 -ml-12 -mb-8 select-none z-0"
         aria-hidden="true"
       >
         <img 
@@ -267,28 +271,94 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
         />
       </div>
 
-      {/* Top Header Bar for Sari Sensei */}
-      <header className="relative z-10 py-5 px-4 text-center border-b border-[#ebdccb]/60 bg-[#fffdfa]/80 backdrop-blur-xs">
-        <div className="flex items-center justify-center gap-2.5">
-          <span className="text-2xl sm:text-3xl" aria-hidden="true">🌸</span>
+      {/* Top Header Bar dengan Ornamen Atap Gerbang Kuil Jepang (Torii & Shimenawa) */}
+      <header className="relative z-20 pt-3 pb-4 px-4 text-center border-b-2 border-[#d4af37]/50 bg-gradient-to-b from-[#fffdfa]/95 via-[#fff9f5]/90 to-[#fffdfa]/85 backdrop-blur-xs shadow-2xs">
+        {/* Garis Ornamen Atap Merah Vermilion & Emas Kuil Jepang */}
+        <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[#881337] via-[#e11d48] to-[#881337]" />
+        <div className="flex items-center justify-center gap-3">
+          <span className="text-2xl sm:text-3xl animate-sakura-blossom inline-block" aria-hidden="true">⛩️</span>
           <div className="flex flex-col items-center">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#881337] tracking-tight font-japanese">
-              Sari Sensei
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#881337] tracking-tight font-japanese flex items-center gap-2">
+              <span>Sari Sensei</span>
             </h1>
-            <span className="text-[11px] sm:text-xs text-[#8c6b4b] font-medium tracking-widest mt-0.5 uppercase">
-              Aplikasi Belajar JLPT N5–N2
+            <span className="text-[11px] sm:text-xs text-[#8c6b4b] font-semibold tracking-widest mt-0.5">
+              ⛩️ Nihongo o Manabu Shinden 🌸
             </span>
           </div>
-          <span className="text-2xl sm:text-3xl" aria-hidden="true">🌸</span>
+          <span className="text-2xl sm:text-3xl animate-sakura-blossom inline-block" style={{ animationDelay: '0.8s' }} aria-hidden="true">🌸</span>
         </div>
       </header>
 
-      {/* Main Authentication Card */}
-      <main className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-6 my-auto">
-        <div className="w-full max-w-md bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-300">
+      {/* Main Authentication Card dengan Mahkota Kuil Jepang (Torii, Shimenawa, Shide & Lonceng Suzu Emas) */}
+      <main className="relative z-20 flex-1 flex items-center justify-center p-4 sm:p-6 my-auto">
+        <div className="w-full max-w-md bg-[#fffdfa]/95 backdrop-blur-xs border-2 border-[#e2c29d] rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 relative">
+          {/* Atap Gerbang Kuil Torii & Tali Suci Shimenawa di Puncak Kartu Login */}
+          <div className="relative bg-gradient-to-b from-[#9f1239] to-[#881337] pt-2 pb-3 px-4 border-b-2 border-[#fbbf24] text-center select-none">
+            <div className="flex items-center justify-center gap-2 text-[11px] font-bold text-amber-200 tracking-widest">
+              <span>🌸</span>
+              <span className="font-japanese">学業成就 · 合格祈願</span>
+              <span>🌸</span>
+            </div>
+
+            {/* Ornamen Tali Suci Shimenawa, Pita Kertas Shide & Lonceng Emas Suzu */}
+            <svg
+              viewBox="0 0 360 32"
+              className="w-full max-w-[310px] h-7 mx-auto -mb-2 overflow-visible"
+              fill="none"
+              aria-hidden="true"
+            >
+              {/* Tali Suci Shimenawa Berpilin */}
+              <path
+                d="M12 8 Q95 22 180 14 Q265 22 348 8"
+                stroke="#d97706"
+                strokeWidth="6"
+                strokeLinecap="round"
+              />
+              <path
+                d="M12 8 Q95 22 180 14 Q265 22 348 8"
+                stroke="#fde68a"
+                strokeWidth="2.2"
+                strokeDasharray="6 6"
+                strokeLinecap="round"
+              />
+
+              {/* Pita Kertas Putih Zig-Zag (Shide 紙垂) yang Bergoyang */}
+              {[68, 124, 236, 292].map((sx, idx) => (
+                <g
+                  key={sx}
+                  transform={`translate(${sx}, 12)`}
+                  className="animate-shrine-shide"
+                  style={{ animationDelay: `${idx * 0.4}s` }}
+                >
+                  <polygon
+                    points="0,0 -5,9 1,9 -4,19 5,19 2,9 7,9"
+                    fill="#fffdfa"
+                    stroke="#e7e5e4"
+                    strokeWidth="0.8"
+                  />
+                </g>
+              ))}
+
+              {/* Lonceng Emas Kuil (Suzu 鈴) di Tengah */}
+              <g transform="translate(180, 16)" className="animate-shrine-lantern">
+                <circle cx="0" cy="4" r="9.5" fill="url(#suzuBellGold)" stroke="#b45309" strokeWidth="1.5" />
+                <line x1="-8" y1="4" x2="8" y2="4" stroke="#92400e" strokeWidth="1.3" />
+                <circle cx="0" cy="8" r="2.2" fill="#78350f" />
+              </g>
+
+              <defs>
+                <radialGradient id="suzuBellGold" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(-2 1) rotate(60) scale(12)">
+                  <stop offset="0%" stopColor="#fef08a" />
+                  <stop offset="55%" stopColor="#fbbf24" />
+                  <stop offset="100%" stopColor="#d97706" />
+                </radialGradient>
+              </defs>
+            </svg>
+          </div>
+
           {/* Card Top Title Banner */}
           <div className="relative bg-gradient-to-r from-[#fae8eb] via-[#fdf2f4] to-[#fbf0df] px-6 py-5 border-b border-[#eedac5] text-center">
-            <div className="inline-block p-1 bg-gradient-to-tr from-[#d4af37] via-[#fbcfe8] to-[#881337] rounded-full shadow-xs mb-2">
+            <div className="inline-block p-1 bg-gradient-to-tr from-[#d4af37] via-[#fbcfe8] to-[#881337] rounded-full shadow-xs mb-2 relative">
               <img 
                 src={senseiSariMascot} 
                 alt="Sari Sensei"
@@ -301,6 +371,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess }) => {
                   }
                 }}
               />
+              <span
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#fffdfa] border border-pink-300 flex items-center justify-center text-xs shadow-2xs"
+                aria-hidden="true"
+              >
+                🌸
+              </span>
             </div>
             <h2 className="text-xl font-bold text-[#881337] font-japanese">
               {authMode === 'login' ? 'Masuk Akun Murid' : 'Pendaftaran Murid Baru'}

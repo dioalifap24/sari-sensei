@@ -151,4 +151,133 @@
   }
 }
 
+/* ================= ANIMASI ORNAMEN KUIL JEPANG & POHON SAKURA MENGGEMASKAN ================= */
+@keyframes sakuraTreeSwayLeft {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(1.8deg) scale(1.015);
+  }
+}
+
+@keyframes sakuraTreeSwayRight {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(-1.8deg) scale(1.015);
+  }
+}
+
+@keyframes sakuraCanopyBreath {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.03);
+  }
+}
+
+@keyframes sakuraBlossomPop {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.16) rotate(12deg);
+  }
+}
+
+@keyframes sakuraPetalFall {
+  0% {
+    transform: translate3d(0, -10px, 0) rotate(0deg) scale(0.85);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  50% {
+    transform: translate3d(var(--petal-mid-x, 28px), 48vh, 0) rotate(180deg) scale(1);
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(var(--petal-end-x, -20px), 96vh, 0) rotate(360deg) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes shrineLanternSwing {
+  0%, 100% {
+    transform: rotate(-3.5deg);
+  }
+  50% {
+    transform: rotate(3.5deg);
+  }
+}
+
+@keyframes shrineShideFlutter {
+  0%, 100% {
+    transform: rotate(-2.5deg) skewX(0deg);
+  }
+  50% {
+    transform: rotate(2.5deg) skewX(2deg);
+  }
+}
+
+@keyframes cuteBirdHop {
+  0%, 80%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  88% {
+    transform: translateY(-5px) rotate(-4deg);
+  }
+  94% {
+    transform: translateY(-2px) rotate(3deg);
+  }
+}
+
+.animate-sakura-tree-left {
+  transform-origin: bottom left;
+  animation: sakuraTreeSwayLeft 5.5s ease-in-out infinite;
+}
+
+.animate-sakura-tree-right {
+  transform-origin: bottom right;
+  animation: sakuraTreeSwayRight 6s ease-in-out infinite;
+}
+
+.animate-sakura-canopy {
+  transform-origin: center;
+  animation: sakuraCanopyBreath 4s ease-in-out infinite;
+}
+
+.animate-sakura-blossom {
+  transform-origin: center;
+  animation: sakuraBlossomPop 3.2s ease-in-out infinite;
+}
+
+.animate-shrine-lantern {
+  transform-origin: top center;
+  animation: shrineLanternSwing 4.2s ease-in-out infinite;
+}
+
+.animate-shrine-shide {
+  transform-origin: top center;
+  animation: shrineShideFlutter 3.4s ease-in-out infinite;
+}
+
+.animate-cute-bird {
+  transform-origin: bottom center;
+  animation: cuteBirdHop 4.5s ease-in-out infinite;
+}
+
+.sakura-falling-petal {
+  animation: sakuraPetalFall var(--petal-duration, 9s) linear infinite;
+  animation-delay: var(--petal-delay, 0s);
+}
+
+
 
