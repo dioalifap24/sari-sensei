@@ -333,6 +333,10 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
       setNowMs(Date.now());
     }, 1000);
 
+    const unsubscribeSync =
+      typeof storageService.subscribeSync === 'function'
+        ? storageService.subscribeSync(refreshFolderData)
+        : () => {};
     window.addEventListener('daily_tasks_updated', refreshFolderData);
     window.addEventListener('student_data_updated', refreshFolderData);
     window.addEventListener('storage', refreshFolderData);
@@ -340,6 +344,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
     return () => {
       clearInterval(interval);
       clearInterval(clockInterval);
+      if (typeof unsubscribeSync === 'function') unsubscribeSync();
       window.removeEventListener('daily_tasks_updated', refreshFolderData);
       window.removeEventListener('student_data_updated', refreshFolderData);
       window.removeEventListener('storage', refreshFolderData);
@@ -695,8 +700,14 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
   };
 
   const handleSelectTaskDuration = (task: DailyTask, mins: number) => {
-    storageService.setTaskDurationMinutes(task.id, mins);
+    // Ketika Master atau Sari Sensei menekan durasi pengerjaan, otomatis mulai waktu hitungan mundur
+    // sehingga murid langsung bisa mengisi kolom jawaban secara real-time!
+    storageService.startTaskCountdown(task.id, mins);
     refreshFolderData();
+    setSyncFeedback(
+      `⏱️ Durasi pengerjaan (${mins === 60 ? '1 Jam' : mins === 90 ? '1.5 Jam' : mins === 120 ? '2 Jam' : `${mins} Menit`}) dipilih & Waktu Hitungan Mundur otomatis DIMULAI! Seluruh murid kini langsung bisa mengisi kolom jawaban secara real-time.`
+    );
+    setTimeout(() => setSyncFeedback(null), 4000);
   };
 
   // Buka mode Edit Soal (Nomor 1 sampai 25) langsung pada kartu tugas
@@ -847,8 +858,9 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
 
   // Handle typing inside the empty right-hand cell of the worksheet table
   const handleWorksheetCellChange = (task: DailyTask, questionIdx: number, value: string) => {
-    // Jika murid sudah mengumpulkan tugas, kunci jawaban dan tidak izinkan perubahan
-    if (!isMasterUser && isCompletedByMe(task)) {
+    const deadlineInfo = storageService.getTaskDeadlineInfo(task, Date.now());
+    // Jika Master / Sari Sensei belum memulai waktu hitungan mundur, atau waktu sudah selesai, kunci jawaban murid
+    if (!isMasterUser && (!deadlineInfo.isTimerRunning || deadlineInfo.isTimerFinished || isCompletedByMe(task))) {
       return;
     }
 
@@ -906,7 +918,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
         );
       } catch {}
 
-      // Debounced auto-sync to server & Master monitor
+      // Real-time live sync (100ms) ke server & pantauan akun Master tanpa delay
       if (autoSaveTimerRef.current[task.id]) {
         window.clearTimeout(autoSaveTimerRef.current[task.id]);
       }
@@ -924,18 +936,35 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
           false,
           studentNotes[task.id]
         );
-      }, 1000);
+      }, 100);
     }
   };
 
   const handleStudentNameFieldChange = (task: DailyTask, value: string) => {
-    if (!isMasterUser && isCompletedByMe(task)) {
+    const deadlineInfo = storageService.getTaskDeadlineInfo(task, Date.now());
+    if (!isMasterUser && (!deadlineInfo.isTimerRunning || deadlineInfo.isTimerFinished || isCompletedByMe(task))) {
       return;
     }
     setStudentNameFieldByTask(prev => ({
       ...prev,
       [task.id]: value,
     }));
+    if (currentUser) {
+      if (autoSaveTimerRef.current[task.id]) {
+        window.clearTimeout(autoSaveTimerRef.current[task.id]);
+      }
+      autoSaveTimerRef.current[task.id] = window.setTimeout(() => {
+        const currentAnswers = worksheetAnswersByTask[task.id] || {};
+        storageService.saveWorksheetAnswers(
+          task.id,
+          currentUser,
+          currentAnswers,
+          value,
+          false,
+          studentNotes[task.id]
+        );
+      }, 100);
+    }
   };
 
   const handleSaveOrSubmitWorksheet = (task: DailyTask, markCompleted: boolean) => {
@@ -1594,7 +1623,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                 const catMeta = getCategoryMeta(task.category);
                 const myComp = getMyCompletion(task);
                 const completedCount = (task.completions || []).length;
-                const isExpandedStudents = !!expandedTaskStudents[task.id];
+                const isExpandedStudents = expandedTaskStudents[task.id] !== false;
                 const hasWorksheet =
                   Array.isArray(task.worksheetQuestions) && task.worksheetQuestions.length > 0;
                 const myAnswers = worksheetAnswersByTask[task.id] || myComp?.worksheetAnswers || {};
@@ -1612,6 +1641,13 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                 const deadlineInfo = storageService.getTaskDeadlineInfo(task, nowMs);
                 const isDoneByStudent = isCompletedByMe(task);
                 const isInlineEditing = isMasterUser && inlineEditingTaskId === task.id;
+                const isTimerNotStartedForStudent =
+                  !isMasterUser && !deadlineInfo.isTimerRunning && !deadlineInfo.isTimerFinished;
+                const isTimerFinishedForStudent =
+                  !isMasterUser && deadlineInfo.isTimerFinished;
+                const isStudentAnswerLocked =
+                  !isMasterUser &&
+                  (isDoneByStudent || !deadlineInfo.isTimerRunning || deadlineInfo.isTimerFinished);
 
                 return (
                   <div
@@ -1770,7 +1806,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                         <div className="pt-3 border-t border-[#e5d3c0] flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[11px] font-extrabold text-[#735338] mr-1">
-                              Atur Durasi Pengerjaan:
+                              Klik Durasi (Otomatis Mulai & Buka Kolom Murid):
                             </span>
                             {DAILY_TASK_DURATION_OPTIONS.map(opt => {
                               const currentMins = task.durationMinutes || 60;
@@ -1781,7 +1817,9 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                   type="button"
                                   onClick={() => handleSelectTaskDuration(task, opt.minutes)}
                                   className={`px-2.5 py-1 rounded-lg text-xs font-extrabold border transition-all cursor-pointer ${
-                                    isSelected
+                                    isSelected && deadlineInfo.isTimerRunning
+                                      ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs ring-2 ring-emerald-300'
+                                      : isSelected
                                       ? 'bg-[#881337] text-white border-[#881337] shadow-2xs'
                                       : 'bg-white hover:bg-amber-50 text-[#553b26] border-[#d6c0aa]'
                                   }`}
@@ -1895,12 +1933,44 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                     {/* ================= INTERACTIVE WORKSHEET TABLE (LEMBAR 1: 25 SOAL) ================= */}
                     {(hasWorksheet || isInlineEditing) && (
                       <div className="my-4 bg-white border-2 border-stone-400 rounded-xl p-4 sm:p-6 shadow-xs">
-                        {/* Banner Kunci Jawaban bagi Murid yang Sudah Mengumpulkan */}
-                        {!isMasterUser && isDoneByStudent && (
+                        {/* Banner Kunci Jawaban bagi Murid jika Master Belum Memulai Hitungan Mundur */}
+                        {!isMasterUser && !isDoneByStudent && isTimerNotStartedForStudent && (
+                          <div className="mb-4 p-3.5 rounded-xl bg-amber-50 border-2 border-amber-400 text-amber-950 text-xs font-bold flex items-center gap-2.5 shadow-2xs">
+                            <Lock className="w-5 h-5 shrink-0 text-amber-700" />
+                            <div>
+                              <div className="font-extrabold text-amber-900">
+                                ⏳ Menunggu Master / Sari Sensei Memulai Waktu Hitungan Mundur
+                              </div>
+                              <div className="text-[11px] font-semibold text-amber-800 mt-0.5">
+                                Kolom jawaban saat ini masih terkunci. Begitu Master menekan durasi pengerjaan atau memulai hitungan mundur, kolom jawaban akan otomatis terbuka secara real-time dan progres Anda langsung terhubung live ke akun Master!
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Banner Status Live Real-time Saat Hitungan Mundur Sedang Berjalan */}
+                        {!isMasterUser && !isDoneByStudent && deadlineInfo.isTimerRunning && (
+                          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-400 text-emerald-950 text-xs font-bold flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping" />
+                              <span>
+                                🟢 Waktu Pengerjaan Aktif! Silakan isi kolom jawaban — progres Anda terhubung secara LIVE & Real-Time ke akun Master Sensei.
+                              </span>
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-extrabold font-mono">
+                              LIVE SYNC AKTIF ({myAnsweredCount}/{totalWorksheetQuestions} Soal)
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Banner Kunci Jawaban bagi Murid yang Sudah Mengumpulkan atau Waktu Habis */}
+                        {!isMasterUser && (isDoneByStudent || isTimerFinishedForStudent) && (
                           <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2">
                             <Lock className="w-4 h-4 shrink-0 text-emerald-700" />
                             <span>
-                              🔒 Tugas ini telah Anda kumpulkan dan ditandai selesai. Jawaban tabel telah dikunci secara permanen dan tidak dapat diubah lagi.
+                              🔒 {isTimerFinishedForStudent
+                                ? 'Waktu hitungan mundur telah habis. Jawaban tabel telah dikumpulkan dan dikunci secara otomatis.'
+                                : 'Tugas ini telah Anda kumpulkan dan ditandai selesai. Jawaban tabel telah dikunci secara permanen dan tidak dapat diubah lagi.'}
                             </span>
                           </div>
                         )}
@@ -1931,12 +2001,16 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                             <input
                               type="text"
                               value={myNameValue}
-                              disabled={!isMasterUser && isDoneByStudent}
-                              readOnly={!isMasterUser && isDoneByStudent}
+                              disabled={isStudentAnswerLocked}
+                              readOnly={isStudentAnswerLocked}
                               onChange={e => handleStudentNameFieldChange(task, e.target.value)}
-                              placeholder="Ketik nama lengkap Anda di sini..."
+                              placeholder={
+                                isTimerNotStartedForStudent
+                                  ? '🔒 Menunggu Master memulai hitungan mundur...'
+                                  : 'Ketik nama lengkap Anda di sini...'
+                              }
                               className={`w-full max-w-sm px-3 py-1.5 border-b-2 text-sm sm:text-base font-semibold focus:outline-none ${
-                                !isMasterUser && isDoneByStudent
+                                isStudentAnswerLocked
                                   ? 'border-stone-300 bg-stone-100 text-stone-600 cursor-not-allowed'
                                   : 'border-stone-400 focus:border-[#881337] bg-[#fffdfa] text-stone-900'
                               }`}
@@ -1989,7 +2063,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                               ).map((questionText, qIdx) => {
                                 const qNum = qIdx + 1;
                                 const answerVal = myAnswers[qNum] || '';
-                                const isStudentLocked = !isMasterUser && isDoneByStudent;
+                                const isStudentLocked = isStudentAnswerLocked;
                                 return (
                                   <tr
                                     key={qNum}
@@ -2114,8 +2188,10 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                           handleWorksheetCellChange(task, qNum, e.target.value)
                                         }
                                         placeholder={
-                                          isStudentLocked
-                                            ? '(Tidak diisi — tugas sudah dikumpulkan)'
+                                          isTimerNotStartedForStudent
+                                            ? '🔒 Menunggu Master / Sari Sensei memulai hitungan mundur...'
+                                            : isStudentLocked
+                                            ? '(Tidak diisi — tugas sudah dikumpulkan / waktu habis)'
                                             : `Ketik manual jawaban nomor ${qNum} di sini (tanpa AI/Paste)...`
                                         }
                                         className={`w-full h-full min-h-[40px] px-3 py-2 bg-transparent text-xs sm:text-sm font-japanese placeholder:font-sans focus:outline-none resize-y notranslate ${
@@ -2171,27 +2247,52 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
 
                           <input
                             type="text"
-                            disabled={!isMasterUser && isDoneByStudent}
-                            readOnly={!isMasterUser && isDoneByStudent}
+                            disabled={isStudentAnswerLocked}
+                            readOnly={isStudentAnswerLocked}
                             value={
                               studentNotes[task.id] !== undefined
                                 ? studentNotes[task.id]
                                 : myComp?.note || ''
                             }
                             onChange={e => {
-                              if (!isMasterUser && isDoneByStudent) return;
+                              if (isStudentAnswerLocked) return;
+                              const nextNote = e.target.value;
                               setStudentNotes(prev => ({
                                 ...prev,
-                                [task.id]: e.target.value,
+                                [task.id]: nextNote,
                               }));
+                              if (currentUser) {
+                                if (autoSaveTimerRef.current[task.id]) {
+                                  window.clearTimeout(autoSaveTimerRef.current[task.id]);
+                                }
+                                autoSaveTimerRef.current[task.id] = window.setTimeout(() => {
+                                  const currentTaskDraft = worksheetAnswersByTask[task.id] || {};
+                                  const nameVal =
+                                    studentNameFieldByTask[task.id] ||
+                                    currentUser.fullName ||
+                                    currentUser.nickname ||
+                                    'Murid';
+                                  storageService.saveWorksheetAnswers(
+                                    task.id,
+                                    currentUser,
+                                    currentTaskDraft,
+                                    nameVal,
+                                    false,
+                                    nextNote
+                                  );
+                                  refreshFolderData();
+                                }, 120);
+                              }
                             }}
                             placeholder={
-                              !isMasterUser && isDoneByStudent
+                              isTimerNotStartedForStudent
+                                ? '🔒 Menunggu Master / Sari Sensei memulai waktu hitungan mundur...'
+                                : isStudentAnswerLocked
                                 ? 'Tugas sudah dikumpulkan (catatan terkunci)'
                                 : 'Tambahkan catatan atau komentar murid pada Lembar 1 (opsional)...'
                             }
                             className={`w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm focus:outline-none ${
-                              !isMasterUser && isDoneByStudent
+                              isStudentAnswerLocked
                                 ? 'border-stone-200 bg-stone-100 text-stone-600 cursor-not-allowed'
                                 : 'border-stone-300 bg-[#fdfbf7] text-stone-900 focus:border-[#881337]'
                             }`}
@@ -2216,27 +2317,31 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                           </div>
                         )}
 
-                        {/* Hanya 1 Tombol untuk Murid: Kumpulkan & Tandai Selesai (Terkunci setelah dikumpulkan) */}
+                        {/* Hanya 1 Tombol untuk Murid: Kumpulkan & Tandai Selesai (Terkunci sebelum timer dimulai atau setelah dikumpulkan) */}
                         {!isMasterUser && (
                           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-stone-200">
                             <span className="text-[11px] text-[#735338]">
                               {isDoneByStudent
                                 ? '🔒 Tugas telah dikumpulkan. Jawaban Anda sudah terkunci dan tidak dapat diubah lagi.'
-                                : '💡 Ketika kamu menekan tombol kumpulkan atau saat timer habis, tugas otomatis terkumpul & terkunci.'}
+                                : isTimerNotStartedForStudent
+                                ? '⏳ Menunggu Master / Sari Sensei memulai waktu hitungan mundur untuk membuka pengisian & pengumpulan tugas.'
+                                : '💡 Progres jawaban Anda tersimpan secara live ke akun Master. Klik kumpulkan jika sudah selesai.'}
                             </span>
 
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
-                                disabled={isDoneByStudent}
+                                disabled={isStudentAnswerLocked}
                                 onClick={() => handleSaveOrSubmitWorksheet(task, true)}
                                 className={`px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-xs transition-all ${
                                   isDoneByStudent
                                     ? 'bg-emerald-700 opacity-90 cursor-not-allowed'
+                                    : isStudentAnswerLocked
+                                    ? 'bg-stone-400 opacity-85 cursor-not-allowed'
                                     : 'bg-[#881337] hover:bg-[#9f1239] cursor-pointer'
                                 }`}
                               >
-                                {isDoneByStudent ? (
+                                {isStudentAnswerLocked ? (
                                   <Lock className="w-4 h-4" />
                                 ) : (
                                   <CheckSquare className="w-4 h-4" />
@@ -2244,6 +2349,8 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                 <span>
                                   {isDoneByStudent
                                     ? `Sudah Dikumpulkan & Terkunci (${myAnsweredCount}/${totalWorksheetQuestions})`
+                                    : isTimerNotStartedForStudent
+                                    ? 'Menunggu Master Memulai Timer'
                                     : `Kumpulkan & Tandai Selesai (${myAnsweredCount}/${totalWorksheetQuestions})`}
                                 </span>
                               </button>
@@ -2256,30 +2363,40 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                     {/* Action Row for Non-Worksheet Tasks for Students */}
                     {!isMasterUser && !hasWorksheet && (
                       <div className="pt-3 border-t border-[#ebdccb] space-y-3">
+                        {isTimerNotStartedForStudent && !isDoneByStudent && (
+                          <div className="p-3 rounded-xl bg-amber-50 border border-amber-400 text-amber-950 text-xs font-bold flex items-center gap-2">
+                            <Lock className="w-4 h-4 shrink-0 text-amber-700" />
+                            <span>
+                              ⏳ Menunggu Master / Sari Sensei memulai waktu hitungan mundur untuk mengerjakan dan mengumpulkan tugas ini.
+                            </span>
+                          </div>
+                        )}
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                           <input
                             type="text"
-                            disabled={isDoneByStudent}
-                            readOnly={isDoneByStudent}
+                            disabled={isStudentAnswerLocked}
+                            readOnly={isStudentAnswerLocked}
                             value={
                               studentNotes[task.id] !== undefined
                                 ? studentNotes[task.id]
                                 : myComp?.note || ''
                             }
                             onChange={e => {
-                              if (isDoneByStudent) return;
+                              if (isStudentAnswerLocked) return;
                               setStudentNotes(prev => ({
                                 ...prev,
                                 [task.id]: e.target.value,
                               }));
                             }}
                             placeholder={
-                              isDoneByStudent
+                              isTimerNotStartedForStudent
+                                ? '🔒 Menunggu Master / Sari Sensei memulai waktu hitungan mundur...'
+                                : isDoneByStudent
                                 ? 'Tugas sudah dikumpulkan (catatan terkunci)'
                                 : 'Tulis catatan laporan untuk Master Sensei (opsional)...'
                             }
                             className={`flex-1 px-3 py-2 rounded-xl border text-xs focus:outline-none ${
-                              isDoneByStudent
+                              isStudentAnswerLocked
                                 ? 'border-stone-200 bg-stone-100 text-stone-600 cursor-not-allowed'
                                 : 'border-[#d6c0aa] bg-white text-[#2b1d19] focus:border-[#881337]'
                             }`}
@@ -2303,15 +2420,17 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
 
                             <button
                               type="button"
-                              disabled={isDoneByStudent}
+                              disabled={isStudentAnswerLocked}
                               onClick={() => handleStudentToggleComplete(task, false)}
                               className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shrink-0 ${
                                 isDoneByStudent
                                   ? 'bg-emerald-700 text-white opacity-90 cursor-not-allowed'
+                                  : isStudentAnswerLocked
+                                  ? 'bg-stone-400 text-white opacity-85 cursor-not-allowed'
                                   : 'bg-[#881337] hover:bg-[#9f1239] text-white shadow-xs cursor-pointer'
                               }`}
                             >
-                              {isDoneByStudent ? (
+                              {isStudentAnswerLocked ? (
                                 <Lock className="w-4 h-4" />
                               ) : (
                                 <CheckSquare className="w-4 h-4" />
@@ -2319,6 +2438,8 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                               <span>
                                 {isDoneByStudent
                                   ? 'Sudah Dikumpulkan & Terkunci'
+                                  : isTimerNotStartedForStudent
+                                  ? 'Menunggu Master Memulai Timer'
                                   : 'Kumpulkan & Tandai Selesai'}
                               </span>
                             </button>
@@ -2468,13 +2589,19 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Master Student Completion & Worksheet Answer Monitor */}
+                        {/* Master Student Completion & Worksheet Answer Monitor (LIVE REAL-TIME) */}
                         {isExpandedStudents && (
-                          <div className="bg-[#fdfaf5] border border-[#e5d3c0] rounded-xl p-3.5 space-y-3">
-                            <div className="text-xs font-extrabold text-[#881337] flex items-center justify-between">
-                              <span>📋 Pantauan Pengerjaan & Lembar Jawaban Murid ({allStudents.length} Murid)</span>
+                          <div className="bg-[#fdfaf5] border-2 border-[#d6b99b] rounded-xl p-3.5 space-y-3 shadow-2xs">
+                            <div className="text-xs font-extrabold text-[#881337] flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <span>📋 Pantauan Live Pengerjaan & Lembar Jawaban Murid ({allStudents.length} Murid)</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                  <span>LIVE REAL-TIME</span>
+                                </span>
+                              </div>
                               <span className="text-[11px] font-semibold text-[#6e533d]">
-                                Mengisi / Selesai: {completedCount} · Belum: {Math.max(0, allStudents.length - completedCount)}
+                                Sedang Mengisi / Selesai: {completedCount} · Belum: {Math.max(0, allStudents.length - completedCount)}
                               </span>
                             </div>
 
@@ -2503,7 +2630,21 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                     ? Object.values(comp.worksheetAnswers).filter(
                                         v => String(v || '').trim().length > 0
                                       ).length
-                                    : 0;
+                                    : comp?.answeredCount || 0;
+                                  const progressPercent =
+                                    totalWorksheetQuestions > 0
+                                      ? Math.min(
+                                          100,
+                                          Math.round(
+                                            (stuAnsweredCount / totalWorksheetQuestions) * 100
+                                          )
+                                        )
+                                      : comp
+                                      ? 100
+                                      : 0;
+                                  const isSubmittedFinal = Boolean(comp?.isSubmitted);
+                                  const isActivelyWorking =
+                                    Boolean(comp) && !isSubmittedFinal && stuAnsweredCount > 0;
                                   const isInspectingThis =
                                     inspectingStudentTask?.taskId === task.id &&
                                     inspectingStudentTask?.studentEmail.toLowerCase() ===
@@ -2512,9 +2653,13 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                   return (
                                     <div
                                       key={stu.email}
-                                      className={`p-3 rounded-xl border text-xs flex flex-col justify-between ${
+                                      className={`p-3 rounded-xl border text-xs flex flex-col justify-between transition-all ${
                                         hasSecurityViolation
                                           ? 'bg-rose-50/90 border-2 border-rose-500 text-rose-950 shadow-2xs'
+                                          : isSubmittedFinal
+                                          ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                                          : isActivelyWorking
+                                          ? 'bg-amber-50/80 border-amber-400 text-amber-950 shadow-2xs'
                                           : comp
                                           ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
                                           : 'bg-white border-stone-200 text-stone-700'
@@ -2533,18 +2678,50 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                         </div>
                                         <span
                                           className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
-                                            comp
+                                            isSubmittedFinal
+                                              ? 'bg-emerald-600 text-white'
+                                              : isActivelyWorking
+                                              ? 'bg-amber-500 text-white animate-pulse'
+                                              : comp
                                               ? 'bg-emerald-200 text-emerald-900'
-                                              : 'bg-amber-100 text-amber-900'
+                                              : 'bg-stone-200 text-stone-700'
                                           }`}
                                         >
                                           {comp
                                             ? hasWorksheet
-                                              ? `✅ ${stuAnsweredCount}/${totalWorksheetQuestions} Soal`
+                                              ? isSubmittedFinal
+                                                ? `✅ Dikumpulkan (${stuAnsweredCount}/${totalWorksheetQuestions})`
+                                                : `✍️ Live Mengisi (${stuAnsweredCount}/${totalWorksheetQuestions})`
                                               : '✅ Selesai'
-                                            : '⏳ Belum Mengisi'}
+                                            : '⏳ Belum Mengisi (0/' + totalWorksheetQuestions + ')'}
                                         </span>
                                       </div>
+
+                                      {/* Live Progress Bar Pengerjaan Murid */}
+                                      {hasWorksheet && (
+                                        <div className="mt-2 space-y-1">
+                                          <div className="flex items-center justify-between text-[10px] font-bold">
+                                            <span className="text-[#6e533d]">
+                                              Progres Jawaban Live:
+                                            </span>
+                                            <span className="font-mono text-[#881337]">
+                                              {stuAnsweredCount}/{totalWorksheetQuestions} Soal ({progressPercent}%)
+                                            </span>
+                                          </div>
+                                          <div className="w-full h-2 rounded-full bg-stone-200 overflow-hidden">
+                                            <div
+                                              className={`h-full transition-all duration-300 ${
+                                                isSubmittedFinal
+                                                  ? 'bg-emerald-600'
+                                                  : isActivelyWorking
+                                                  ? 'bg-amber-500'
+                                                  : 'bg-[#881337]'
+                                              }`}
+                                              style={{ width: `${progressPercent}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
 
                                       {/* Badge Penanda Murid Mencoba Screenshot & Terjemahan Otomatis */}
                                       {hasSecurityViolation && (

@@ -559,6 +559,9 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
                 const mergedAnswers = incomingNewer
                   ? { ...(prevC.worksheetAnswers || {}), ...(c.worksheetAnswers || {}) }
                   : { ...(c.worksheetAnswers || {}), ...(prevC.worksheetAnswers || {}) };
+                const computedAnsweredCount = Object.values(mergedAnswers).filter(
+                  v => String(v || '').trim().length > 0
+                ).length;
                 const mergedLogs = Array.from(
                   new Set([
                     ...(Array.isArray(prevC.securityViolationLogs) ? prevC.securityViolationLogs : []),
@@ -567,9 +570,11 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
                 );
                 const mergedEntry = {
                   ...(incomingNewer ? { ...prevC, ...c } : { ...c, ...prevC }),
+                  completedAtTimestamp: Math.max(c.completedAtTimestamp || 0, prevC.completedAtTimestamp || 0),
                   isCompleted: Boolean(c.isCompleted || prevC.isCompleted),
                   autoSubmittedByTimer: Boolean(c.autoSubmittedByTimer || prevC.autoSubmittedByTimer),
                   worksheetAnswers: mergedAnswers,
+                  answeredCount: Math.max(computedAnsweredCount, c.answeredCount || 0, prevC.answeredCount || 0),
                   teacherComment: c.teacherComment || prevC.teacherComment,
                   screenshotAttempts: Math.max(c.screenshotAttempts || 0, prevC.screenshotAttempts || 0),
                   aiTranslateAttempts: Math.max(c.aiTranslateAttempts || 0, prevC.aiTranslateAttempts || 0),
@@ -593,15 +598,18 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
           mergedCompletions.length !== (existing.completions || []).length
         ) {
           const winner = incomingUpdated >= existingUpdated ? { ...existing, ...incomingTask } : existing;
+          const isIdleTimer = winner.timerStatus === 'idle';
           db.dailyTasks[idx] = {
             ...winner,
+            timerStartedAt: isIdleTimer ? undefined : winner.timerStartedAt,
+            timerEndTimestamp: isIdleTimer ? undefined : winner.timerEndTimestamp,
             worksheetQuestions:
               incomingUpdated >= existingUpdated
                 ? incomingTask.worksheetQuestions || existing.worksheetQuestions
                 : existing.worksheetQuestions || incomingTask.worksheetQuestions,
             completions: mergedCompletions,
             createdAtTimestamp: normalizeTaskTimestamp(winner.createdAtTimestamp) || 1000,
-            updatedAt: Math.max(incomingUpdated, existingUpdated),
+            updatedAt: Math.max(incomingUpdated, existingUpdated, compModified ? Date.now() : 0),
           };
           changed = true;
         }
@@ -709,9 +717,37 @@ async function pullDatabaseFromCloud() {
   }
 }
 
+// Daftar koneksi SSE aktif untuk broadcast real-time (< 10ms) antara Akun Murid & Akun Master
+const sseClients = new Set<express.Response>();
+
+function broadcastRealtimeStateToClients() {
+  if (sseClients.size === 0) return;
+  const payload = JSON.stringify({
+    type: 'server_realtime_state',
+    users: db.users,
+    scores: db.scores,
+    activeQuizzes: db.activeQuizzes,
+    quizControl: db.quizControl,
+    onlinePresence: db.onlinePresence,
+    dailyTasks: db.dailyTasks,
+    deletedTaskIds: db.deletedTaskIds,
+    deletedEmails: db.deletedEmails,
+    rankingResetAt: db.rankingResetAt,
+    updatedAt: db.updatedAt,
+  });
+  for (const clientRes of sseClients) {
+    try {
+      clientRes.write(`data: ${payload}\n\n`);
+    } catch {
+      sseClients.delete(clientRes);
+    }
+  }
+}
+
 function saveDatabase(targetDb: ServerDatabase, skipCloudPush = true) {
   targetDb.updatedAt = Date.now();
   saveDatabaseLocalOnly(targetDb);
+  broadcastRealtimeStateToClients();
   if (!skipCloudPush) {
     pushDatabaseToCloud();
   }
@@ -739,6 +775,49 @@ async function startServer() {
   setInterval(() => {
     pullDatabaseFromCloud();
   }, 25000);
+
+  // GET /api/realtime-stream - Server-Sent Events (SSE) stream untuk sinkronisasi langsung tanpa delay
+  app.get('/api/realtime-stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    sseClients.add(res);
+
+    // Kirim state awal begitu terkoneksi
+    try {
+      const initPayload = JSON.stringify({
+        type: 'server_realtime_state',
+        users: db.users,
+        scores: db.scores,
+        activeQuizzes: db.activeQuizzes,
+        quizControl: db.quizControl,
+        onlinePresence: db.onlinePresence,
+        dailyTasks: db.dailyTasks,
+        deletedTaskIds: db.deletedTaskIds,
+        deletedEmails: db.deletedEmails,
+        rankingResetAt: db.rankingResetAt,
+        updatedAt: db.updatedAt,
+      });
+      res.write(`data: ${initPayload}\n\n`);
+    } catch {}
+
+    const keepAliveTimer = setInterval(() => {
+      try {
+        res.write(': keep-alive\n\n');
+      } catch {
+        clearInterval(keepAliveTimer);
+        sseClients.delete(res);
+      }
+    }, 15000);
+
+    req.on('close', () => {
+      clearInterval(keepAliveTimer);
+      sseClients.delete(res);
+    });
+  });
 
   // GET /api/state - Return full synchronized state
   app.get('/api/state', (_req, res) => {

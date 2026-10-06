@@ -465,6 +465,9 @@ function applyIncomingSyncData(serverData: any) {
                 const mergedAnswers = incomingNewer
                   ? { ...(prevC.worksheetAnswers || {}), ...(c.worksheetAnswers || {}) }
                   : { ...(c.worksheetAnswers || {}), ...(prevC.worksheetAnswers || {}) };
+                const computedAnsweredCount = Object.values(mergedAnswers).filter(
+                  v => String(v || '').trim().length > 0
+                ).length;
                 const mergedLogs = Array.from(
                   new Set([
                     ...(Array.isArray(prevC.securityViolationLogs) ? prevC.securityViolationLogs : []),
@@ -473,9 +476,11 @@ function applyIncomingSyncData(serverData: any) {
                 );
                 compMap.set(em, {
                   ...(incomingNewer ? { ...prevC, ...c } : { ...c, ...prevC }),
+                  completedAtTimestamp: Math.max(c.completedAtTimestamp || 0, prevC.completedAtTimestamp || 0),
                   isCompleted: Boolean(c.isCompleted || prevC.isCompleted),
                   autoSubmittedByTimer: Boolean(c.autoSubmittedByTimer || prevC.autoSubmittedByTimer),
                   worksheetAnswers: mergedAnswers,
+                  answeredCount: Math.max(computedAnsweredCount, c.answeredCount || 0, prevC.answeredCount || 0),
                   teacherComment: c.teacherComment || prevC.teacherComment,
                   screenshotAttempts: Math.max(c.screenshotAttempts || 0, prevC.screenshotAttempts || 0),
                   aiTranslateAttempts: Math.max(c.aiTranslateAttempts || 0, prevC.aiTranslateAttempts || 0),
@@ -489,9 +494,12 @@ function applyIncomingSyncData(serverData: any) {
         const incomingUpdated = normalizeTaskTimestamp(incoming.updatedAt);
         const existingUpdated = normalizeTaskTimestamp(existing.updatedAt);
         const winner = incomingUpdated >= existingUpdated ? { ...existing, ...incoming } : existing;
+        const isIdleTimer = winner.timerStatus === 'idle';
 
         taskMap.set(tId, {
           ...winner,
+          timerStartedAt: isIdleTimer ? undefined : winner.timerStartedAt,
+          timerEndTimestamp: isIdleTimer ? undefined : winner.timerEndTimestamp,
           worksheetQuestions:
             incomingUpdated >= existingUpdated
               ? incoming.worksheetQuestions || existing.worksheetQuestions
@@ -583,8 +591,22 @@ function handleRealtimeCloudPacket(packet: any) {
       onlinePresence: { [packet.presence.email.toLowerCase()]: packet.presence },
     });
   }
-  if (packet.type === 'cloud_state_sync') {
+  if (packet.type === 'cloud_state_sync' || packet.type === 'server_realtime_state') {
     applyIncomingSyncData(packet);
+  }
+  if (packet.type === 'daily_task_completion_upserted' && packet.taskId && packet.completion) {
+    const localTasks = storageService.getDailyTasks();
+    const target = localTasks.find(t => String(t.id) === String(packet.taskId));
+    if (target) {
+      applyIncomingSyncData({
+        dailyTasks: [
+          {
+            ...target,
+            completions: [packet.completion],
+          },
+        ],
+      });
+    }
   }
 }
 
@@ -612,6 +634,24 @@ async function pushStateToCloudObject() {
 function startRealtimeCloudSSE() {
   if (sseConnectionStarted || typeof window === 'undefined' || typeof EventSource === 'undefined') return;
   sseConnectionStarted = true;
+
+  // 1. Koneksi SSE Lokal Langsung (/api/realtime-stream) untuk sinkronisasi instan 0-delay (< 15ms) antara Murid & Master
+  try {
+    const localEs = new EventSource('/api/realtime-stream');
+    localEs.onmessage = (ev) => {
+      try {
+        if (ev.data && ev.data.startsWith('{')) {
+          const parsed = JSON.parse(ev.data);
+          applyIncomingSyncData(parsed);
+        }
+      } catch {}
+    };
+    localEs.onerror = () => {
+      // Browser EventSource otomatis melakukan reconnect
+    };
+  } catch {}
+
+  // 2. Koneksi SSE Cloud Cadangan
   try {
     const es = new EventSource(`${NTFY_SYNC_URL}/sse`);
     es.onmessage = (ev) => {
@@ -774,6 +814,18 @@ const INITIAL_SCORES: QuizResult[] = [];
 const INITIAL_ACTIVE_QUIZZES: ActiveQuizRecord[] = [];
 
 export const storageService = {
+  // Berlangganan event sinkronisasi real-time (SSE & Server Sync)
+  subscribeSync: (callback: () => void): (() => void) => {
+    startRealtimeCloudSSE();
+    if (typeof window === 'undefined') return () => {};
+    window.addEventListener('daily_tasks_updated', callback);
+    window.addEventListener('student_data_updated', callback);
+    return () => {
+      window.removeEventListener('daily_tasks_updated', callback);
+      window.removeEventListener('student_data_updated', callback);
+    };
+  },
+
   // Initialize default data if needed
   init: () => {
     try {
@@ -2547,41 +2599,8 @@ export const storageService = {
   },
 
   setTaskDurationMinutes: (taskId: string, durationMinutes: number): DailyTask | null => {
-    const tasks = storageService.getDailyTasks();
-    const idx = tasks.findIndex(t => t.id === taskId);
-    if (idx === -1) return null;
-
-    const now = Date.now();
-    const isRunning = tasks[idx].timerStatus === 'running';
-    const nextEndTs = isRunning ? now + durationMinutes * 60 * 1000 : tasks[idx].timerEndTimestamp;
-
-    const updatedTask: DailyTask = {
-      ...tasks[idx],
-      durationMinutes,
-      timerStartedAt: isRunning ? now : tasks[idx].timerStartedAt,
-      timerEndTimestamp: nextEndTs,
-      deadlineTimestamp: nextEndTs || tasks[idx].deadlineTimestamp,
-      updatedAt: now,
-    };
-
-    tasks[idx] = updatedTask;
-    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
-
-    fetch('/api/daily-tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: updatedTask }),
-    }).catch(() => {});
-
-    broadcastCloudRealtimeEvent({
-      type: 'daily_task_upserted',
-      task: updatedTask,
-    });
-    pushStateToCloudObject();
-    syncChannel?.postMessage({ type: 'sync_trigger' });
-    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
-
-    return updatedTask;
+    // Saat Master menekan durasi pengerjaan, otomatis langsung mulai hitungan mundur secara real-time
+    return storageService.startTaskCountdown(taskId, durationMinutes);
   },
 
   createDailyTask: (
@@ -2891,7 +2910,7 @@ export const storageService = {
     const updatedTask: DailyTask = {
       ...targetTask,
       completions: nextCompletions,
-      updatedAt: storageService.isMaster(user) ? now.getTime() : (targetTask.updatedAt || 1000),
+      updatedAt: now.getTime(),
     };
     tasks[idx] = updatedTask;
     localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
@@ -2913,10 +2932,10 @@ export const storageService = {
     }).catch(() => {});
 
     broadcastCloudRealtimeEvent({
-      type: 'daily_task_upserted',
-      task: updatedTask,
+      type: 'daily_task_completion_upserted',
+      taskId: updatedTask.id,
+      completion: updatedEntry,
     });
-    pushStateToCloudObject();
     syncChannel?.postMessage({ type: 'sync_trigger' });
     window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
 
