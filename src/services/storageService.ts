@@ -19,8 +19,8 @@ const STORAGE_DAILY_TASKS_KEY = 'sensei_sari_daily_tasks_v1';
 const STORAGE_DELETED_TASK_IDS_KEY = 'sensei_sari_deleted_task_ids_v1';
 
 // Cloud Sync Relay Endpoints (Menjamin sinkronisasi real-time antar ais-dev, ais-pre, HP murid, dan laptop Master)
-const CLOUD_OBJECT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a106331a7571ef';
-const NTFY_SYNC_URL = 'https://ntfy.sh/sari_sensei_sync_8890ebbf_v2';
+const NTFY_SYNC_URL = 'https://ntfy.sh/sari_sensei_live_8890ebbf_v4';
+let announcedSessionEmail = '';
 
 // BroadcastChannel untuk sinkronisasi instan antar tab di browser yang sama
 const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
@@ -227,6 +227,12 @@ function broadcastCloudRealtimeEvent(eventPayload: Record<string, any>) {
       }),
     }).catch(() => {});
   } catch {}
+}
+
+function normalizeTaskTimestamp(ts?: number): number {
+  if (!ts || typeof ts !== 'number') return 0;
+  if (ts === 1791187200000) return 1000;
+  return ts;
 }
 
 // Terapkan data masuk (dari Server lokal, Cloud Object, atau SSE ntfy.sh) ke LocalStorage
@@ -452,19 +458,37 @@ function applyIncomingSyncData(serverData: any) {
             const em = String(c.studentEmail).toLowerCase();
             if (!SAMPLE_STUDENT_EMAIL_SET.has(em) && !deletedEmails.has(em)) {
               const prevC = compMap.get(em);
-              if (!prevC || (c.completedAtTimestamp || 0) >= (prevC.completedAtTimestamp || 0)) {
+              if (!prevC) {
                 compMap.set(em, c);
+              } else {
+                const incomingNewer = (c.completedAtTimestamp || 0) >= (prevC.completedAtTimestamp || 0);
+                const mergedAnswers = incomingNewer
+                  ? { ...(prevC.worksheetAnswers || {}), ...(c.worksheetAnswers || {}) }
+                  : { ...(c.worksheetAnswers || {}), ...(prevC.worksheetAnswers || {}) };
+                compMap.set(em, {
+                  ...(incomingNewer ? { ...prevC, ...c } : { ...c, ...prevC }),
+                  isCompleted: Boolean(c.isCompleted || prevC.isCompleted),
+                  autoSubmittedByTimer: Boolean(c.autoSubmittedByTimer || prevC.autoSubmittedByTimer),
+                  worksheetAnswers: mergedAnswers,
+                  teacherComment: c.teacherComment || prevC.teacherComment,
+                });
               }
             }
           }
         }
         const mergedCompletions = Array.from(compMap.values());
-        const incomingUpdated = incoming.updatedAt || 0;
-        const existingUpdated = existing.updatedAt || 0;
+        const incomingUpdated = normalizeTaskTimestamp(incoming.updatedAt);
+        const existingUpdated = normalizeTaskTimestamp(existing.updatedAt);
+        const winner = incomingUpdated >= existingUpdated ? { ...existing, ...incoming } : existing;
 
         taskMap.set(tId, {
-          ...(incomingUpdated >= existingUpdated ? { ...existing, ...incoming } : existing),
+          ...winner,
+          worksheetQuestions:
+            incomingUpdated >= existingUpdated
+              ? incoming.worksheetQuestions || existing.worksheetQuestions
+              : existing.worksheetQuestions || incoming.worksheetQuestions,
           completions: mergedCompletions,
+          createdAtTimestamp: normalizeTaskTimestamp(winner.createdAtTimestamp) || 1000,
           updatedAt: Math.max(incomingUpdated, existingUpdated),
         });
       }
@@ -551,43 +575,27 @@ function handleRealtimeCloudPacket(packet: any) {
     });
   }
   if (packet.type === 'cloud_state_sync') {
-    // Trigger pull from Cloud Object if needed
-    pullStateFromCloudObject();
+    applyIncomingSyncData(packet);
   }
 }
 
 async function pullStateFromCloudObject() {
-  try {
-    const res = await fetch(CLOUD_OBJECT_URL);
-    if (!res.ok) return;
-    const json = await res.json();
-    if (json?.data && typeof json.data === 'object') {
-      applyIncomingSyncData(json.data);
-    }
-  } catch {}
+  // Handled directly via NTFY_SYNC_URL event log and SSE
 }
 
+let lastCloudStateBroadcastAt = 0;
 async function pushStateToCloudObject() {
+  const now = Date.now();
+  if (now - lastCloudStateBroadcastAt < 12000) return;
+  lastCloudStateBroadcastAt = now;
   try {
-    const snapshot = {
+    broadcastCloudRealtimeEvent({
+      type: 'cloud_state_sync',
       users: storageService.getUsers(),
-      scores: storageService.getScores(),
-      activeQuizzes: storageService.getActiveQuizRecords(),
       quizControl: storageService.getQuizControlState(),
-      onlinePresence: storageService.getOnlinePresenceMap(),
-      dailyTasks: storageService.getDailyTasks(),
-      deletedTaskIds: Array.from(getDeletedTaskIdsSet()),
       deletedEmails: Array.from(getDeletedEmailsSet()),
-      rankingResetAt: getRankingResetAt(),
-      updatedAt: Date.now(),
-    };
-    await fetch(CLOUD_OBJECT_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'sari_sensei_db',
-        data: snapshot,
-      }),
+      deletedTaskIds: Array.from(getDeletedTaskIdsSet()),
+      updatedAt: now,
     });
   } catch {}
 }
@@ -629,6 +637,100 @@ export const MASTER_CONFIG = {
   password: '96',
   fullName: 'GLOSTER GLADIATOR',
   nickname: 'skywalker',
+};
+
+export const DEFAULT_LEMBAR_1_QUESTIONS: string[] = [
+  'Saya adalah Bagas',
+  'Dia (perempuan) adalah selvia tri haryani',
+  'Rianti adalah seorang dokter',
+  'Bagas bukan orang china',
+  'Jimmy adalah orang jerman',
+  'Dia (laki-laki) bukan seorang peneliti',
+  'Rizki adalah seorang pelajar, Rani juga seorang pelajar',
+  'Ini adalah majalah sepeda',
+  'Disini adalah ruang kelas amakusa',
+  '89.901',
+  '9.087',
+  '673.567',
+  'Mobil ini adalah mobil buatan Jerman',
+  'Hasan membaca majalah bola',
+  'Saya tadi pagi minum kopi',
+  'Kemarin malam Arin membeli kamera di toko kamera',
+  'Saya bermain bola, setelah itu minum jus',
+  'Guputa tidak makan daging sapi dan daging babi',
+  'Sekarang jam 04.47 pagi',
+  'Besok saya pergi ke selolah jam 05.58 pagi',
+  'Setiap hari Putra istirahat siang dari jam 12.00 sampai jam 14.00',
+  'Setiap malam Saya menonton film dari jam 19.39 sampai jam 20.57',
+  'Kemarin adik laki-laki tidak makan apapun',
+  'Bima pergi ke Jepang tanggal 19 Oktober 2026',
+  '2 hari lalu Saya dan Rama belajar bahasa jerman di perpustakaan',
+];
+
+export function getLocalTodayDateStr(offsetDays = 0): string {
+  const d = new Date(Date.now() + offsetDays * 86400000);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function computeDeadlineTimestamp(
+  dueDate?: string,
+  dueTime?: string,
+  explicitTimestamp?: number
+): number {
+  if (typeof explicitTimestamp === 'number' && explicitTimestamp > 0) {
+    return explicitTimestamp;
+  }
+  const datePart = (dueDate || getLocalTodayDateStr()).trim();
+  const timePart = (dueTime || '23:59').trim();
+  const parsed = new Date(`${datePart}T${timePart}:00`).getTime();
+  if (!Number.isNaN(parsed) && parsed > 0) {
+    return parsed;
+  }
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  return endOfToday.getTime();
+}
+
+export const DAILY_TASK_DURATION_OPTIONS: { minutes: number; label: string; shortLabel: string }[] = [
+  { minutes: 30, label: '30 Menit', shortLabel: '30 Menit' },
+  { minutes: 45, label: '45 Menit', shortLabel: '45 Menit' },
+  { minutes: 60, label: '1 Jam (60 Menit)', shortLabel: '1 Jam' },
+  { minutes: 90, label: '1.5 Jam (90 Menit)', shortLabel: '1.5 Jam' },
+  { minutes: 120, label: '2 Jam (120 Menit)', shortLabel: '2 Jam' },
+];
+
+export function formatDurationMinutesLabel(mins?: number): string {
+  const m = Number(mins) || 60;
+  if (m === 30) return '30 Menit';
+  if (m === 45) return '45 Menit';
+  if (m === 60) return '1 Jam';
+  if (m === 90) return '1.5 Jam';
+  if (m === 120) return '2 Jam';
+  return `${m} Menit`;
+}
+
+export const DEFAULT_WORKSHEET_TASK: DailyTask = {
+  id: 'task-lembar-1-sensei',
+  title: 'Lembar 1: Tabel Latihan Soal Terjemahan & Kalimat Bahasa Jepang (25 Soal)',
+  description:
+    'Isi kolom 名前 (Nama) di atas tabel, lalu ketik jawaban terjemahan bahasa Jepang pada kolom tabel kosong di sebelah kanan setiap pertanyaan (Nomor 1 sampai 25). Klik Kumpulkan & Tandai Selesai setelah selesai.',
+  level: 'N5',
+  category: 'materi',
+  dueDate: getLocalTodayDateStr(),
+  dueTime: '23:59',
+  deadlineTimestamp: computeDeadlineTimestamp(getLocalTodayDateStr(), '23:59'),
+  durationMinutes: 60,
+  timerStatus: 'idle',
+  createdAt: '2026-10-05 08:00',
+  createdAtTimestamp: 1000,
+  createdBy: 'skywalker',
+  isActive: true,
+  worksheetQuestions: DEFAULT_LEMBAR_1_QUESTIONS,
+  completions: [],
+  updatedAt: 1000,
 };
 
 // Hanya Akun Master dan Akun Murid Asli yang sudah mendaftar (tanpa akun murid contoh)
@@ -736,12 +838,27 @@ export const storageService = {
         })
         .catch(() => {});
 
-      // 2. Sinkronisasi langsung dengan Cloud Object & Ntfy Poll setiap 3 detik (menjembatani ais-dev & ais-pre)
+      // 2. Sinkronisasi riwayat Cloud Ntfy secara bijak (setiap 25 detik, tanpa memicu rate limit 429)
       const now = Date.now();
-      if (now - lastCloudPollAt > 2500) {
+      if (
+        currentUser &&
+        !storageService.isMaster(currentUser) &&
+        announcedSessionEmail !== currentUser.email.toLowerCase()
+      ) {
+        announcedSessionEmail = currentUser.email.toLowerCase();
+        const foundEntry = localUsers.find(
+          u => u.user.email.toLowerCase() === announcedSessionEmail
+        ) || { user: currentUser, password: 'password123' };
+        broadcastCloudRealtimeEvent({
+          type: 'user_registered',
+          entry: foundEntry,
+          presence: localPresence[announcedSessionEmail],
+        });
+      }
+
+      if (now - lastCloudPollAt > 25000) {
         lastCloudPollAt = now;
-        pullStateFromCloudObject();
-        fetch(`${NTFY_SYNC_URL}/json?poll=1&since=15m`)
+        fetch(`${NTFY_SYNC_URL}/json?poll=1&since=12h`)
           .then(r => (r.ok ? r.text() : ''))
           .then(text => {
             if (!text) return;
@@ -2182,18 +2299,280 @@ export const storageService = {
     try {
       const delTaskSet = getDeletedTaskIdsSet();
       const raw = localStorage.getItem(STORAGE_DAILY_TASKS_KEY);
-      if (!raw) return [];
-      const parsed: DailyTask[] = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      const filtered = parsed.filter(t => t && t.id && !delTaskSet.has(String(t.id)));
+      const parsed: DailyTask[] = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(parsed) ? parsed : [];
+      const filtered = list
+        .filter(t => t && t.id && !delTaskSet.has(String(t.id)))
+        .map(t => ({
+          ...t,
+          createdAtTimestamp: normalizeTaskTimestamp(t.createdAtTimestamp) || 1000,
+          updatedAt: normalizeTaskTimestamp(t.updatedAt) || 1000,
+        }));
+
+      // Pastikan Tugas Lembar 1 (25 Soal Tabel Latihan) selalu tersedia secara default kecuali jika dihapus oleh Master
+      if (
+        !delTaskSet.has(DEFAULT_WORKSHEET_TASK.id) &&
+        !filtered.some(t => String(t.id) === DEFAULT_WORKSHEET_TASK.id)
+      ) {
+        filtered.unshift({
+          ...DEFAULT_WORKSHEET_TASK,
+          dueDate: getLocalTodayDateStr(),
+          dueTime: '23:59',
+          deadlineTimestamp: computeDeadlineTimestamp(getLocalTodayDateStr(), '23:59'),
+          completions: [],
+        });
+        localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(filtered));
+      } else {
+        // Pastikan worksheetQuestions pada Lembar 1 selalu lengkap jika kosong
+        const lembarIdx = filtered.findIndex(t => String(t.id) === DEFAULT_WORKSHEET_TASK.id);
+        if (lembarIdx !== -1) {
+          if (
+            !Array.isArray(filtered[lembarIdx].worksheetQuestions) ||
+            filtered[lembarIdx].worksheetQuestions!.length === 0
+          ) {
+            filtered[lembarIdx].worksheetQuestions = DEFAULT_LEMBAR_1_QUESTIONS;
+          }
+          if ((filtered[lembarIdx].updatedAt || 0) <= 1000) {
+            filtered[lembarIdx].dueDate = getLocalTodayDateStr();
+            filtered[lembarIdx].dueTime = filtered[lembarIdx].dueTime || '23:59';
+            filtered[lembarIdx].deadlineTimestamp = computeDeadlineTimestamp(
+              filtered[lembarIdx].dueDate,
+              filtered[lembarIdx].dueTime
+            );
+          }
+        }
+      }
+
       return filtered.sort((a, b) => (b.createdAtTimestamp || 0) - (a.createdAtTimestamp || 0));
     } catch {
-      return [];
+      return [{ ...DEFAULT_WORKSHEET_TASK, completions: [] }];
     }
   },
 
   getActiveDailyTasks: (): DailyTask[] => {
     return storageService.getDailyTasks().filter(t => t.isActive);
+  },
+
+  getTaskDeadlineInfo: (
+    task: DailyTask,
+    nowMs: number = Date.now()
+  ): {
+    deadlineMs: number;
+    remainingMs: number;
+    durationMinutes: number;
+    durationLabel: string;
+    timerStatus: 'idle' | 'running' | 'ended';
+    isTimerRunning: boolean;
+    isTimerFinished: boolean;
+    isExpired: boolean;
+    isUrgent: boolean;
+    formattedCountdown: string;
+    formattedDeadlineDate: string;
+  } => {
+    const durationMinutes = Number(task.durationMinutes) || 60;
+    const durationLabel = formatDurationMinutesLabel(durationMinutes);
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    const rawStatus = task.timerStatus || 'idle';
+    const hasTimerEnd = typeof task.timerEndTimestamp === 'number' && task.timerEndTimestamp > 0;
+
+    if (rawStatus === 'running' && hasTimerEnd) {
+      const deadlineMs = task.timerEndTimestamp!;
+      const diff = deadlineMs - nowMs;
+      const isTimerFinished = diff <= 0;
+      const isTimerRunning = !isTimerFinished;
+      const isExpired = isTimerFinished;
+      const isUrgent = !isExpired && diff <= 10 * 60 * 1000; // <= 10 menit tersisa
+
+      const safeSec = Math.max(0, Math.ceil(diff / 1000));
+      const hours = Math.floor(safeSec / 3600);
+      const minutes = Math.floor((safeSec % 3600) / 60);
+      const seconds = safeSec % 60;
+      const formattedCountdown = `${pad(hours)}j : ${pad(minutes)}m : ${pad(seconds)}d`;
+
+      let formattedDeadlineDate = `Durasi ${durationLabel}`;
+      try {
+        const dt = new Date(deadlineMs);
+        if (!Number.isNaN(dt.getTime())) {
+          const timeStr = dt.toLocaleTimeString('id-ID', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+          formattedDeadlineDate = `Berakhir Pukul ${timeStr} WIB (${durationLabel})`;
+        }
+      } catch {}
+
+      return {
+        deadlineMs,
+        remainingMs: Math.max(0, diff),
+        durationMinutes,
+        durationLabel,
+        timerStatus: isTimerFinished ? 'ended' : 'running',
+        isTimerRunning,
+        isTimerFinished,
+        isExpired,
+        isUrgent,
+        formattedCountdown,
+        formattedDeadlineDate,
+      };
+    }
+
+    if (rawStatus === 'ended') {
+      const deadlineMs = task.timerEndTimestamp || computeDeadlineTimestamp(task.dueDate, task.dueTime, task.deadlineTimestamp);
+      return {
+        deadlineMs,
+        remainingMs: 0,
+        durationMinutes,
+        durationLabel,
+        timerStatus: 'ended',
+        isTimerRunning: false,
+        isTimerFinished: true,
+        isExpired: true,
+        isUrgent: false,
+        formattedCountdown: '00j : 00m : 00d',
+        formattedDeadlineDate: `Waktu Habis (${durationLabel})`,
+      };
+    }
+
+    // Idle mode (Menunggu Master menekan tombol Mulai Waktu Hitungan Mundur)
+    const totalSec = durationMinutes * 60;
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+    const formattedCountdown = `${pad(hours)}j : ${pad(minutes)}m : ${pad(seconds)}d`;
+    const deadlineMs = computeDeadlineTimestamp(task.dueDate, task.dueTime, task.deadlineTimestamp);
+
+    return {
+      deadlineMs,
+      remainingMs: totalSec * 1000,
+      durationMinutes,
+      durationLabel,
+      timerStatus: 'idle',
+      isTimerRunning: false,
+      isTimerFinished: false,
+      isExpired: false,
+      isUrgent: false,
+      formattedCountdown,
+      formattedDeadlineDate: `Durasi Pengerjaan: ${durationLabel}`,
+    };
+  },
+
+  startTaskCountdown: (taskId: string, durationMinutes?: number): DailyTask | null => {
+    const tasks = storageService.getDailyTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return null;
+
+    const now = Date.now();
+    const mins = durationMinutes || tasks[idx].durationMinutes || 60;
+    const endTs = now + mins * 60 * 1000;
+    const endDt = new Date(endTs);
+    const dueDate = `${endDt.getFullYear()}-${String(endDt.getMonth() + 1).padStart(2, '0')}-${String(endDt.getDate()).padStart(2, '0')}`;
+    const dueTime = `${String(endDt.getHours()).padStart(2, '0')}:${String(endDt.getMinutes()).padStart(2, '0')}`;
+
+    const updatedTask: DailyTask = {
+      ...tasks[idx],
+      durationMinutes: mins,
+      timerStatus: 'running',
+      timerStartedAt: now,
+      timerEndTimestamp: endTs,
+      dueDate,
+      dueTime,
+      deadlineTimestamp: endTs,
+      updatedAt: now,
+    };
+
+    tasks[idx] = updatedTask;
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: updatedTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: updatedTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
+
+    return updatedTask;
+  },
+
+  stopTaskCountdown: (taskId: string): DailyTask | null => {
+    const tasks = storageService.getDailyTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return null;
+
+    const now = Date.now();
+    const updatedTask: DailyTask = {
+      ...tasks[idx],
+      timerStatus: 'idle',
+      timerStartedAt: undefined,
+      timerEndTimestamp: undefined,
+      updatedAt: now,
+    };
+
+    tasks[idx] = updatedTask;
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: updatedTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: updatedTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
+
+    return updatedTask;
+  },
+
+  setTaskDurationMinutes: (taskId: string, durationMinutes: number): DailyTask | null => {
+    const tasks = storageService.getDailyTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return null;
+
+    const now = Date.now();
+    const isRunning = tasks[idx].timerStatus === 'running';
+    const nextEndTs = isRunning ? now + durationMinutes * 60 * 1000 : tasks[idx].timerEndTimestamp;
+
+    const updatedTask: DailyTask = {
+      ...tasks[idx],
+      durationMinutes,
+      timerStartedAt: isRunning ? now : tasks[idx].timerStartedAt,
+      timerEndTimestamp: nextEndTs,
+      deadlineTimestamp: nextEndTs || tasks[idx].deadlineTimestamp,
+      updatedAt: now,
+    };
+
+    tasks[idx] = updatedTask;
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: updatedTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: updatedTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
+
+    return updatedTask;
   },
 
   createDailyTask: (
@@ -2204,26 +2583,43 @@ export const storageService = {
       category: DailyTaskCategory;
       dueDate?: string;
       dueTime?: string;
+      deadlineTimestamp?: number;
+      durationMinutes?: number;
+      startTimerImmediately?: boolean;
+      worksheetQuestions?: string[];
     },
     masterUser?: User | null
   ): DailyTask => {
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
+    const nowMs = now.getTime();
+    const dateStr = getLocalTodayDateStr();
     const timeStr = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    const targetDueDate = input.dueDate || dateStr;
+    const targetDueTime = input.dueTime || '23:59';
+    const durationMinutes = Number(input.durationMinutes) || 60;
+    const startImmediately = Boolean(input.startTimerImmediately);
+    const endTs = startImmediately ? nowMs + durationMinutes * 60 * 1000 : undefined;
+
     const newTask: DailyTask = {
-      id: 'task-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      id: 'task-' + nowMs + '-' + Math.random().toString(36).substring(2, 6),
       title: input.title.trim(),
       description: input.description.trim(),
       level: input.level || 'ALL',
       category: input.category || 'umum',
-      dueDate: input.dueDate || dateStr,
-      dueTime: input.dueTime || '21:00',
+      dueDate: targetDueDate,
+      dueTime: targetDueTime,
+      deadlineTimestamp: endTs || computeDeadlineTimestamp(targetDueDate, targetDueTime, input.deadlineTimestamp),
+      durationMinutes,
+      timerStatus: startImmediately ? 'running' : 'idle',
+      timerStartedAt: startImmediately ? nowMs : undefined,
+      timerEndTimestamp: endTs,
       createdAt: `${dateStr} ${timeStr}`,
-      createdAtTimestamp: now.getTime(),
+      createdAtTimestamp: nowMs,
       createdBy: masterUser?.nickname || MASTER_CONFIG.nickname || 'Sensei Sari',
       isActive: true,
+      worksheetQuestions: input.worksheetQuestions,
       completions: [],
-      updatedAt: now.getTime(),
+      updatedAt: nowMs,
     };
 
     const tasks = storageService.getDailyTasks();
@@ -2249,15 +2645,44 @@ export const storageService = {
 
   updateDailyTask: (
     taskId: string,
-    updates: Partial<Pick<DailyTask, 'title' | 'description' | 'level' | 'category' | 'dueDate' | 'dueTime' | 'isActive'>>
+    updates: Partial<
+      Pick<
+        DailyTask,
+        | 'title'
+        | 'description'
+        | 'level'
+        | 'category'
+        | 'dueDate'
+        | 'dueTime'
+        | 'deadlineTimestamp'
+        | 'durationMinutes'
+        | 'timerStatus'
+        | 'timerStartedAt'
+        | 'timerEndTimestamp'
+        | 'isActive'
+        | 'worksheetQuestions'
+      >
+    >
   ): DailyTask | null => {
     const tasks = storageService.getDailyTasks();
     const idx = tasks.findIndex(t => t.id === taskId);
     if (idx === -1) return null;
 
+    const nextDueDate = updates.dueDate !== undefined ? updates.dueDate : tasks[idx].dueDate;
+    const nextDueTime = updates.dueTime !== undefined ? updates.dueTime : tasks[idx].dueTime;
+    const nextDeadlineTs =
+      updates.deadlineTimestamp !== undefined
+        ? updates.deadlineTimestamp
+        : updates.dueDate !== undefined || updates.dueTime !== undefined
+        ? computeDeadlineTimestamp(nextDueDate, nextDueTime)
+        : tasks[idx].deadlineTimestamp;
+
     const updatedTask: DailyTask = {
       ...tasks[idx],
       ...updates,
+      dueDate: nextDueDate,
+      dueTime: nextDueTime,
+      deadlineTimestamp: nextDeadlineTs,
       updatedAt: Date.now(),
     };
     tasks[idx] = updatedTask;
@@ -2312,7 +2737,8 @@ export const storageService = {
   toggleDailyTaskCompletion: (
     taskId: string,
     user: User,
-    note?: string
+    note?: string,
+    autoSubmittedByTimer: boolean = false
   ): { completed: boolean; task: DailyTask | null } => {
     const tasks = storageService.getDailyTasks();
     const idx = tasks.findIndex(t => t.id === taskId);
@@ -2331,7 +2757,16 @@ export const storageService = {
     let isNowCompleted = false;
     const nextCompletions = [...(targetTask.completions || [])];
 
-    if (existingCompIdx !== -1 && note === undefined) {
+    // Ketika murid sudah mengumpulkan tugas, murid tidak bisa lagi membatalkan atau mengubahnya
+    if (
+      existingCompIdx !== -1 &&
+      nextCompletions[existingCompIdx]?.isCompleted !== false &&
+      !storageService.isMaster(user)
+    ) {
+      return { completed: true, task: targetTask };
+    }
+
+    if (existingCompIdx !== -1 && note === undefined && !autoSubmittedByTimer) {
       // Unmark completion if toggled without note update
       nextCompletions.splice(existingCompIdx, 1);
       isNowCompleted = false;
@@ -2342,6 +2777,10 @@ export const storageService = {
         studentNickname: user.nickname || user.fullName?.split(/\s+/)[0] || 'Murid',
         completedAt: `${dateStr} ${timeStr}`,
         completedAtTimestamp: now.getTime(),
+        isCompleted: true,
+        autoSubmittedByTimer:
+          autoSubmittedByTimer ||
+          (existingCompIdx !== -1 ? nextCompletions[existingCompIdx].autoSubmittedByTimer : false),
         note: note?.trim() || (existingCompIdx !== -1 ? nextCompletions[existingCompIdx].note : undefined),
       };
       if (existingCompIdx !== -1) {
@@ -2355,7 +2794,7 @@ export const storageService = {
     const updatedTask: DailyTask = {
       ...targetTask,
       completions: nextCompletions,
-      updatedAt: Date.now(),
+      updatedAt: storageService.isMaster(user) ? Date.now() : (targetTask.updatedAt || 1000),
     };
     tasks[idx] = updatedTask;
     localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
@@ -2384,5 +2823,221 @@ export const storageService = {
     window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
 
     return { completed: isNowCompleted, task: updatedTask };
+  },
+
+  saveWorksheetAnswers: (
+    taskId: string,
+    user: User,
+    answers: Record<number, string>,
+    studentNameField: string,
+    markCompleted: boolean = false,
+    note?: string,
+    autoSubmittedByTimer: boolean = false
+  ): DailyTask | null => {
+    const tasks = storageService.getDailyTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return null;
+
+    const targetTask = tasks[idx];
+    const emailLower = user.email.toLowerCase();
+    const nextCompletions = [...(targetTask.completions || [])];
+    const existingIdx = nextCompletions.findIndex(c => c.studentEmail.toLowerCase() === emailLower);
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+    const answeredCount = Object.values(answers).filter(v => String(v || '').trim().length > 0).length;
+    const prevEntry = existingIdx !== -1 ? nextCompletions[existingIdx] : undefined;
+
+    // Ketika murid sudah mengumpulkan tugas (isCompleted === true), kunci jawaban agar tidak bisa diubah lagi oleh akun murid
+    if (prevEntry?.isCompleted === true && !storageService.isMaster(user)) {
+      return targetTask;
+    }
+
+    const updatedEntry: DailyTaskCompletion = {
+      studentEmail: emailLower,
+      studentName: user.fullName || user.nickname || 'Murid',
+      studentNickname: user.nickname || user.fullName?.split(/\s+/)[0] || 'Murid',
+      completedAt: `${dateStr} ${timeStr}`,
+      completedAtTimestamp: now.getTime(),
+      isCompleted: markCompleted ? true : Boolean(prevEntry?.isCompleted),
+      autoSubmittedByTimer: autoSubmittedByTimer || Boolean(prevEntry?.autoSubmittedByTimer),
+      note: note !== undefined ? note.trim() : prevEntry?.note,
+      studentNameField: studentNameField.trim() || user.fullName || user.nickname || 'Murid',
+      worksheetAnswers: answers,
+      answeredCount,
+      teacherComment: prevEntry?.teacherComment,
+    };
+
+    if (existingIdx !== -1) {
+      nextCompletions[existingIdx] = updatedEntry;
+    } else {
+      nextCompletions.unshift(updatedEntry);
+    }
+
+    const updatedTask: DailyTask = {
+      ...targetTask,
+      completions: nextCompletions,
+      updatedAt: storageService.isMaster(user) ? now.getTime() : (targetTask.updatedAt || 1000),
+    };
+    tasks[idx] = updatedTask;
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    if (!storageService.isMaster(user)) {
+      const totalQ = targetTask.worksheetQuestions?.length || 25;
+      storageService.heartbeatPresence(user, {
+        currentTab: 'home',
+        currentActivity: markCompleted
+          ? `✅ Mengumpulkan Tugas Tabel Lembar 1 (${answeredCount}/${totalQ} terjawab)`
+          : `✏️ Mengerjakan Tabel Tugas Harian Sensei (${answeredCount}/${totalQ} terjawab)`,
+      });
+    }
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: updatedTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: updatedTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
+
+    return updatedTask;
+  },
+
+  saveTeacherWorksheetComment: (
+    taskId: string,
+    studentEmail: string,
+    teacherComment: string
+  ): DailyTask | null => {
+    const tasks = storageService.getDailyTasks();
+    const idx = tasks.findIndex(t => t.id === taskId);
+    if (idx === -1) return null;
+
+    const targetTask = tasks[idx];
+    const emailLower = studentEmail.toLowerCase();
+    const nextCompletions = [...(targetTask.completions || [])];
+    const compIdx = nextCompletions.findIndex(c => c.studentEmail.toLowerCase() === emailLower);
+    if (compIdx === -1) return null;
+
+    nextCompletions[compIdx] = {
+      ...nextCompletions[compIdx],
+      teacherComment: teacherComment.trim(),
+      completedAtTimestamp: Date.now(),
+    };
+
+    const updatedTask: DailyTask = {
+      ...targetTask,
+      completions: nextCompletions,
+      updatedAt: Date.now(),
+    };
+    tasks[idx] = updatedTask;
+    localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
+
+    fetch('/api/daily-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: updatedTask }),
+    }).catch(() => {});
+
+    broadcastCloudRealtimeEvent({
+      type: 'daily_task_upserted',
+      task: updatedTask,
+    });
+    pushStateToCloudObject();
+    syncChannel?.postMessage({ type: 'sync_trigger' });
+    window.dispatchEvent(new CustomEvent('daily_tasks_updated', { detail: { task: updatedTask } }));
+
+    return updatedTask;
+  },
+
+  autoSubmitExpiredTasksForStudent: (
+    user?: User | null,
+    nowMs: number = Date.now(),
+    liveAnswersByTask?: Record<string, Record<number, string>>,
+    liveNameByTask?: Record<string, string>,
+    liveNotesByTask?: Record<string, string>
+  ): DailyTask[] => {
+    if (!user || storageService.isMaster(user)) return [];
+    const emailLower = user.email.toLowerCase();
+    const tasks = storageService.getDailyTasks();
+    const autoSubmittedTasks: DailyTask[] = [];
+
+    for (const task of tasks) {
+      if (!task.isActive) continue;
+      const isRunningTimerExpired =
+        task.timerStatus === 'running' &&
+        typeof task.timerEndTimestamp === 'number' &&
+        task.timerEndTimestamp > 0 &&
+        nowMs >= task.timerEndTimestamp;
+
+      if (!isRunningTimerExpired) continue;
+
+      const existingComp = (task.completions || []).find(
+        c => c.studentEmail.toLowerCase() === emailLower
+      );
+
+      // Skip if student already completed it after timerStartedAt
+      const alreadyCompletedForCurrentTimer =
+        existingComp?.isCompleted === true &&
+        (existingComp.completedAtTimestamp || 0) >= (task.timerStartedAt || 0);
+
+      if (alreadyCompletedForCurrentTimer) continue;
+
+      const hasWorksheet =
+        Array.isArray(task.worksheetQuestions) && task.worksheetQuestions.length > 0;
+
+      if (hasWorksheet) {
+        let localDraft: Record<number, string> = {};
+        try {
+          const rawDraft = localStorage.getItem(`sensei_sari_ws_draft_${task.id}_${emailLower}`);
+          if (rawDraft) localDraft = JSON.parse(rawDraft);
+        } catch {}
+
+        const mergedAnswers: Record<number, string> = {
+          ...(existingComp?.worksheetAnswers || {}),
+          ...localDraft,
+          ...(liveAnswersByTask?.[task.id] || {}),
+        };
+
+        const nameField =
+          liveNameByTask?.[task.id] ||
+          existingComp?.studentNameField ||
+          user.fullName ||
+          user.nickname ||
+          'Murid';
+
+        const noteField =
+          liveNotesByTask?.[task.id] !== undefined
+            ? liveNotesByTask[task.id]
+            : existingComp?.note;
+
+        const updated = storageService.saveWorksheetAnswers(
+          task.id,
+          user,
+          mergedAnswers,
+          nameField,
+          true,
+          noteField,
+          true
+        );
+        if (updated) autoSubmittedTasks.push(updated);
+      } else {
+        const noteField =
+          liveNotesByTask?.[task.id] !== undefined
+            ? liveNotesByTask[task.id]
+            : existingComp?.note || 'Dikumpulkan otomatis saat waktu hitungan mundur habis';
+        const res = storageService.toggleDailyTaskCompletion(task.id, user, noteField, true);
+        if (res.task) autoSubmittedTasks.push(res.task);
+      }
+    }
+
+    return autoSubmittedTasks;
   },
 };

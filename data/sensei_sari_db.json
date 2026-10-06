@@ -28,9 +28,112 @@
   "scores": [],
   "activeQuizzes": [],
   "quizControl": {
-    "isActive": false
+    "isActive": false,
+    "updatedAt": 1791109403307
   },
-  "onlinePresence": {},
+  "onlinePresence": {
+    "kingugik@gmail.com": {
+      "email": "kingugik@gmail.com",
+      "name": "king ugik",
+      "nickname": "king ugik",
+      "lastSeen": 1791252402086,
+      "currentTab": "laporan",
+      "currentActivity": "📊 Melihat Rapor & Riwayat Nilai Pribadi",
+      "activeLevel": "N5",
+      "lastActionAt": "09.02.22"
+    }
+  },
+  "dailyTasks": [
+    {
+      "id": "task-lembar-1-sensei",
+      "title": "Lembar 1: Tabel Latihan Soal Terjemahan & Kalimat Bahasa Jepang (25 Soal)",
+      "description": "Isi kolom名前 (Nama) di atas tabel, lalu ketik terjemahan bahasa Jepang pada kolom tabel kosong di sebelah kanan setiap pertanyaan (Nomor 1 sampai 25). Klik Simpan / Kumpulkan setelah selesai.",
+      "level": "N5",
+      "category": "materi",
+      "dueDate": "2026-10-06",
+      "dueTime": "00:17",
+      "durationMinutes": 60,
+      "timerStatus": "running",
+      "createdAt": "2026-10-05 08:00",
+      "createdAtTimestamp": 1000,
+      "createdBy": "skywalker",
+      "isActive": true,
+      "worksheetQuestions": [
+        "Saya adalah Bagas",
+        "Dia (perempuan) adalah selvia tri haryani",
+        "Rianti adalah seorang dokter",
+        "Bagas bukan orang china",
+        "Jimmy adalah orang jerman",
+        "Dia (laki-laki) bukan seorang peneliti",
+        "Rizki adalah seorang pelajar, Rani juga seorang pelajar",
+        "Ini adalah majalah sepeda",
+        "Disini adalah ruang kelas amakusa",
+        "89.901",
+        "9.087",
+        "673.567",
+        "Mobil ini adalah mobil buatan Jerman",
+        "Hasan membaca majalah bola",
+        "Saya tadi pagi minum kopi",
+        "Kemarin malam Arin membeli kamera di toko kamera",
+        "Saya bermain bola, setelah itu minum jus",
+        "Guputa tidak makan daging sapi dan daging babi",
+        "Sekarang jam 04.47 pagi",
+        "Besok saya pergi ke selolah jam 05.58 pagi",
+        "Setiap hari Putra istirahat siang dari jam 12.00 sampai jam 14.00",
+        "Setiap malam Saya menonton film dari jam 19.39 sampai jam 20.57",
+        "Kemarin adik laki-laki tidak makan apapun",
+        "Bima pergi ke Jepang tanggal 19 Oktober 2026",
+        "2 hari lalu Saya dan Rama belajar bahasa jerman di perpustakaan"
+      ],
+      "completions": [
+        {
+          "studentEmail": "kingugik@gmail.com",
+          "studentName": "king ugik",
+          "studentNickname": "king ugik",
+          "completedAt": "2026-10-05 23.20",
+          "completedAtTimestamp": 1791217339414,
+          "isCompleted": true,
+          "autoSubmittedByTimer": false,
+          "studentNameField": "king ugik",
+          "worksheetAnswers": {
+            "1": "s",
+            "2": "s",
+            "3": "x",
+            "4": "z",
+            "5": "z",
+            "6": "s",
+            "7": "s",
+            "8": "dudus",
+            "9": "sjsusu",
+            "10": "aususu",
+            "11": "ajajsu",
+            "12": "sjsjsusj",
+            "13": "ajajsus",
+            "14": "sjsjsjsj",
+            "15": "shsjsjs",
+            "16": "shshsj",
+            "17": "z",
+            "18": "z",
+            "19": "s",
+            "20": "z",
+            "21": "z",
+            "22": "w",
+            "23": "s",
+            "24": "s",
+            "25": "dio"
+          },
+          "answeredCount": 25,
+          "note": "selesai sensei",
+          "teacherComment": "selamat"
+        }
+      ],
+      "updatedAt": 1791217339414,
+      "deadlineTimestamp": 1791220624369,
+      "timerStartedAt": 1791217024369,
+      "timerEndTimestamp": 1791220624369
+    }
+  ],
+  "deletedTaskIds": [],
   "deletedEmails": [
     "budi.santoso@gmail.com",
     "anisa.dewi@gmail.com",
@@ -38,5 +141,5 @@
     "putri.ayu@gmail.com"
   ],
   "rankingResetAt": 0,
-  "updatedAt": 1791044000000
+  "updatedAt": 1791252408370
 }

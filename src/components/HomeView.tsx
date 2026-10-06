@@ -24,6 +24,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>(() => storageService.getDailyTasks());
   const [isDailyTasksFolderOpen, setIsDailyTasksFolderOpen] = useState<boolean>(false);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
   useEffect(() => {
     const refreshHomeData = () => {
@@ -33,11 +34,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
     refreshHomeData();
     storageService.syncWithServer().then(refreshHomeData);
 
+    const clockInterval = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
     window.addEventListener('quiz_control_changed', refreshHomeData);
     window.addEventListener('daily_tasks_updated', refreshHomeData);
     window.addEventListener('storage', refreshHomeData);
 
     return () => {
+      clearInterval(clockInterval);
       window.removeEventListener('quiz_control_changed', refreshHomeData);
       window.removeEventListener('daily_tasks_updated', refreshHomeData);
       window.removeEventListener('storage', refreshHomeData);
@@ -47,11 +53,27 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const isMasterUser = storageService.isMaster(currentUser);
   const activeDailyTasks = dailyTasks.filter(t => t.isActive);
   const myEmail = (currentUser?.email || '').toLowerCase();
-  const myCompletedCount = activeDailyTasks.filter(t =>
-    (t.completions || []).some(c => c.studentEmail.toLowerCase() === myEmail)
-  ).length;
+  const myCompletedCount = activeDailyTasks.filter(t => {
+    const comp = (t.completions || []).find(c => c.studentEmail.toLowerCase() === myEmail);
+    if (!comp) return false;
+    if (t.worksheetQuestions && t.worksheetQuestions.length > 0) {
+      return comp.isCompleted === true;
+    }
+    return comp.isCompleted !== false;
+  }).length;
   const myPendingCount = Math.max(0, activeDailyTasks.length - myCompletedCount);
   const latestActiveTask = activeDailyTasks[0] || null;
+  const latestDeadlineInfo = latestActiveTask
+    ? storageService.getTaskDeadlineInfo(latestActiveTask, nowMs)
+    : null;
+
+  useEffect(() => {
+    if (!currentUser || isMasterUser) return;
+    const autoSubmitted = storageService.autoSubmitExpiredTasksForStudent(currentUser, nowMs);
+    if (autoSubmitted.length > 0) {
+      setDailyTasks(storageService.getDailyTasks());
+    }
+  }, [nowMs, currentUser, isMasterUser]);
 
   const levels: { id: JLPTLevel; label: string; desc: string }[] = [
     { id: 'N5', label: 'N5', desc: 'Pemula Dasar (Hiragana, Katakana & 100 Kanji)' },
@@ -219,6 +241,35 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     : `Ada ${activeDailyTasks.length} tugas harian dari Master Sensei! (${myCompletedCount} selesai, ${myPendingCount} belum).`
                   : 'Buka setiap saat untuk memantau apakah ada tugas harian dari Master Sensei atau belum.'}
               </p>
+              {latestDeadlineInfo && (
+                <div
+                  className={`mt-2.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center justify-between gap-2 ${
+                    latestDeadlineInfo.isTimerFinished
+                      ? 'bg-rose-50 text-rose-800 border-rose-200'
+                      : latestDeadlineInfo.isTimerRunning
+                      ? latestDeadlineInfo.isUrgent
+                        ? 'bg-amber-50 text-amber-900 border-amber-300'
+                        : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                      : 'bg-[#fdf8f0] text-[#881337] border-[#e5d3c0]'
+                  }`}
+                >
+                  <span className="flex items-center gap-1 truncate">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">
+                      {latestDeadlineInfo.isTimerRunning
+                        ? `🟢 Hitung Mundur (${latestDeadlineInfo.durationLabel})`
+                        : latestDeadlineInfo.isTimerFinished
+                        ? `⏰ Waktu Selesai (${latestDeadlineInfo.durationLabel})`
+                        : `⏱️ Durasi: ${latestDeadlineInfo.durationLabel}`}
+                    </span>
+                  </span>
+                  <span className="font-mono tabular-nums font-extrabold shrink-0">
+                    {latestDeadlineInfo.isTimerFinished
+                      ? 'Otomatis Kumpul'
+                      : `⏳ ${latestDeadlineInfo.formattedCountdown}`}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#881337] group-hover:translate-x-1 transition-transform">
               <span>Buka Folder Tugas Harian</span>

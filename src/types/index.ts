@@ -73,10 +73,18 @@ export interface DailyTaskCompletion {
   studentNickname: string;
   completedAt: string;
   completedAtTimestamp: number;
+  isCompleted?: boolean;
+  autoSubmittedByTimer?: boolean;
   note?: string;
+  studentNameField?: string;
+  worksheetAnswers?: Record<number, string>;
+  answeredCount?: number;
+  teacherComment?: string;
 }
 
 export type DailyTaskCategory = 'materi' | 'vocab' | 'kanji' | 'kuis' | 'umum';
+
+export type DailyTaskDurationMinutes = 30 | 45 | 60 | 90 | 120;
 
 export interface DailyTask {
   id: string;
@@ -86,10 +94,16 @@ export interface DailyTask {
   category: DailyTaskCategory;
   dueDate: string;
   dueTime?: string;
+  deadlineTimestamp?: number;
+  durationMinutes?: number;
+  timerStatus?: 'idle' | 'running' | 'ended';
+  timerStartedAt?: number;
+  timerEndTimestamp?: number;
   createdAt: string;
   createdAtTimestamp: number;
   createdBy: string;
   isActive: boolean;
+  worksheetQuestions?: string[];
   completions: DailyTaskCompletion[];
   updatedAt: number;
 }

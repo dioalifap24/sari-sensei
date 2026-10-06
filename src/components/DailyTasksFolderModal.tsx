@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   DailyTask,
   DailyTaskCategory,
+  DailyTaskCompletion,
   JLPTLevel,
   User,
 } from '../types';
-import { storageService } from '../services/storageService';
+import {
+  storageService,
+  DEFAULT_LEMBAR_1_QUESTIONS,
+  DAILY_TASK_DURATION_OPTIONS,
+} from '../services/storageService';
 import {
   FolderOpen,
   Plus,
   CheckCircle2,
-  Clock,
   RefreshCw,
   Trash2,
   Edit3,
-  BookOpen,
-  Layers,
-  FileQuestion,
   Sparkles,
   CheckSquare,
   Users,
@@ -26,6 +27,15 @@ import {
   Send,
   ChevronRight,
   Archive,
+  FileSpreadsheet,
+  Eye,
+  MessageSquare,
+  Clock,
+  Timer,
+  Play,
+  Square,
+  Lock,
+  Save,
 } from 'lucide-react';
 
 interface DailyTasksFolderModalProps {
@@ -44,32 +54,106 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
   onNavigateToFeature,
 }) => {
   const isMasterUser = storageService.isMaster(currentUser);
+  const myEmail = (currentUser?.email || '').toLowerCase();
 
   const [tasks, setTasks] = useState<DailyTask[]>(() => storageService.getDailyTasks());
   const [allStudents, setAllStudents] = useState<User[]>(() => storageService.getAllStudents());
-  const [filterLevel, setFilterLevel] = useState<JLPTLevel | 'ALL'>('ALL');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  // Master Form State
+  // Master Form State (untuk Buat Tugas Baru)
   const [showMasterForm, setShowMasterForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [taskLevel, setTaskLevel] = useState<JLPTLevel | 'ALL'>('ALL');
-  const [category, setCategory] = useState<DailyTaskCategory>('vocab');
+  const [category, setCategory] = useState<DailyTaskCategory>('materi');
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [dueTime, setDueTime] = useState('21:00');
+  const [dueTime, setDueTime] = useState('23:59');
+  const [durationMinutes, setDurationMinutes] = useState<number>(60);
+  const [customDeadlineTs, setCustomDeadlineTs] = useState<number | undefined>(undefined);
+  const [includeWorksheetTable, setIncludeWorksheetTable] = useState<boolean>(true);
+  const [formQuestionsList, setFormQuestionsList] = useState<string[]>(() => [
+    ...DEFAULT_LEMBAR_1_QUESTIONS,
+  ]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Student Completion Note State per Task
+  // Master Inline Edit Soal (Nomor 1 sampai 25) langsung pada kartu/tabel tugas
+  const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
+  const [inlineTitleDraft, setInlineTitleDraft] = useState<string>('');
+  const [inlineDescDraft, setInlineDescDraft] = useState<string>('');
+  const [inlineQuestionsDraft, setInlineQuestionsDraft] = useState<string[]>(() => [
+    ...DEFAULT_LEMBAR_1_QUESTIONS,
+  ]);
+
+  // Student Completion Note & Worksheet Table Answers State per Task
   const [studentNotes, setStudentNotes] = useState<Record<string, string>>({});
+  const [worksheetAnswersByTask, setWorksheetAnswersByTask] = useState<
+    Record<string, Record<number, string>>
+  >({});
+  const [studentNameFieldByTask, setStudentNameFieldByTask] = useState<Record<string, string>>({});
+  const [saveToastByTask, setSaveToastByTask] = useState<Record<string, string>>({});
+
+  // Master Monitoring State
   const [expandedTaskStudents, setExpandedTaskStudents] = useState<Record<string, boolean>>({});
+  const [inspectingStudentTask, setInspectingStudentTask] = useState<{
+    taskId: string;
+    studentEmail: string;
+  } | null>(null);
+  const [teacherCommentDraft, setTeacherCommentDraft] = useState<string>('');
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  const autoSaveTimerRef = useRef<Record<string, number>>({});
 
   const refreshFolderData = () => {
-    setTasks(storageService.getDailyTasks());
+    const latestTasks = storageService.getDailyTasks();
+    setTasks(latestTasks);
     setAllStudents(storageService.getAllStudents());
+
+    if (currentUser) {
+      const emailLower = currentUser.email.toLowerCase();
+      setWorksheetAnswersByTask(prev => {
+        const next = { ...prev };
+        for (const t of latestTasks) {
+          if (t.worksheetQuestions && t.worksheetQuestions.length > 0) {
+            const comp = (t.completions || []).find(
+              c => c.studentEmail.toLowerCase() === emailLower
+            );
+            // Load from local draft or saved completion if not already edited in current session
+            if (!next[t.id]) {
+              const draftKey = `sensei_sari_ws_draft_${t.id}_${emailLower}`;
+              let localDraft: Record<number, string> | null = null;
+              try {
+                const rawDraft = localStorage.getItem(draftKey);
+                if (rawDraft) localDraft = JSON.parse(rawDraft);
+              } catch {}
+              next[t.id] = {
+                ...(comp?.worksheetAnswers || {}),
+                ...(localDraft || {}),
+              };
+            }
+          }
+        }
+        return next;
+      });
+
+      setStudentNameFieldByTask(prev => {
+        const next = { ...prev };
+        for (const t of latestTasks) {
+          if (!next[t.id]) {
+            const comp = (t.completions || []).find(
+              c => c.studentEmail.toLowerCase() === emailLower
+            );
+            next[t.id] =
+              comp?.studentNameField ||
+              currentUser.fullName ||
+              currentUser.nickname ||
+              '';
+          }
+        }
+        return next;
+      });
+    }
   };
 
   useEffect(() => {
@@ -77,7 +161,6 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
     refreshFolderData();
     storageService.syncWithServer().then(refreshFolderData);
 
-    // Report student activity to Master monitor when opening Daily Tasks Folder
     if (currentUser && !isMasterUser) {
       storageService.heartbeatPresence(currentUser, {
         currentTab: 'home',
@@ -88,7 +171,11 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
 
     const interval = window.setInterval(() => {
       storageService.syncWithServer().then(refreshFolderData);
-    }, 2000);
+    }, 2500);
+
+    const clockInterval = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
 
     window.addEventListener('daily_tasks_updated', refreshFolderData);
     window.addEventListener('student_data_updated', refreshFolderData);
@@ -96,11 +183,35 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
 
     return () => {
       clearInterval(interval);
+      clearInterval(clockInterval);
       window.removeEventListener('daily_tasks_updated', refreshFolderData);
       window.removeEventListener('student_data_updated', refreshFolderData);
       window.removeEventListener('storage', refreshFolderData);
     };
   }, [isOpen, currentUser, isMasterUser, activeLevel]);
+
+  // Otomatis kumpulkan tugas & tandai selesai bagi murid ketika timer hitungan mundur selesai (00:00:00)
+  useEffect(() => {
+    if (!isOpen || !currentUser || isMasterUser) return;
+    const autoSubmitted = storageService.autoSubmitExpiredTasksForStudent(
+      currentUser,
+      nowMs,
+      worksheetAnswersByTask,
+      studentNameFieldByTask,
+      studentNotes
+    );
+    if (autoSubmitted.length > 0) {
+      refreshFolderData();
+      setSaveToastByTask(prev => {
+        const next = { ...prev };
+        for (const t of autoSubmitted) {
+          next[t.id] =
+            '⏰ Waktu hitungan mundur selesai! Tugas & jawaban tabel kamu telah otomatis dikumpulkan dan ditandai selesai.';
+        }
+        return next;
+      });
+    }
+  }, [nowMs, isOpen, currentUser, isMasterUser]);
 
   if (!isOpen) return null;
 
@@ -119,54 +230,126 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
     setTimeout(() => setSyncFeedback(null), 4000);
   };
 
+  const build25QuestionsArray = (source?: string[]): string[] => {
+    const base = Array.isArray(source) && source.length > 0 ? source : DEFAULT_LEMBAR_1_QUESTIONS;
+    return Array.from({ length: 25 }, (_, i) =>
+      base[i] !== undefined ? String(base[i]) : DEFAULT_LEMBAR_1_QUESTIONS[i] || ''
+    );
+  };
+
   const resetMasterForm = () => {
     setEditingTaskId(null);
     setTitle('');
     setDescription('');
-    setTaskLevel('ALL');
-    setCategory('vocab');
+    setCategory('materi');
     setDueDate(new Date().toISOString().split('T')[0]);
-    setDueTime('21:00');
+    setDueTime('23:59');
+    setDurationMinutes(60);
+    setCustomDeadlineTs(undefined);
+    setIncludeWorksheetTable(true);
+    setFormQuestionsList(build25QuestionsArray(DEFAULT_LEMBAR_1_QUESTIONS));
     setFormError(null);
   };
 
+  const handleStartCountdownForTask = (task: DailyTask, customMins?: number) => {
+    const mins = customMins || task.durationMinutes || 60;
+    storageService.startTaskCountdown(task.id, mins);
+    refreshFolderData();
+    setSyncFeedback(
+      `⏱️ Waktu hitungan mundur (${mins === 60 ? '1 Jam' : mins === 90 ? '1.5 Jam' : mins === 120 ? '2 Jam' : `${mins} Menit`}) telah dimulai untuk seluruh murid!`
+    );
+    setTimeout(() => setSyncFeedback(null), 4000);
+  };
+
+  const handleStopCountdownForTask = (task: DailyTask) => {
+    storageService.stopTaskCountdown(task.id);
+    refreshFolderData();
+    setSyncFeedback(`⏹️ Timer hitungan mundur untuk "${task.title}" dihentikan sementara.`);
+    setTimeout(() => setSyncFeedback(null), 4000);
+  };
+
+  const handleSelectTaskDuration = (task: DailyTask, mins: number) => {
+    storageService.setTaskDurationMinutes(task.id, mins);
+    refreshFolderData();
+  };
+
+  // Buka mode Edit Soal (Nomor 1 sampai 25) langsung pada kartu tugas
   const handleOpenEdit = (task: DailyTask) => {
-    setEditingTaskId(task.id);
-    setTitle(task.title);
-    setDescription(task.description);
-    setTaskLevel(task.level);
-    setCategory(task.category);
-    setDueDate(task.dueDate || new Date().toISOString().split('T')[0]);
-    setDueTime(task.dueTime || '21:00');
-    setFormError(null);
-    setShowMasterForm(true);
+    if (inlineEditingTaskId === task.id) {
+      setInlineEditingTaskId(null);
+      return;
+    }
+    setInlineEditingTaskId(task.id);
+    setInlineTitleDraft(task.title || '');
+    setInlineDescDraft(task.description || '');
+    setInlineQuestionsDraft(build25QuestionsArray(task.worksheetQuestions));
   };
 
-  const handleApplyQuickTemplate = (tpl: 'vocab' | 'kanji' | 'materi' | 'kuis') => {
-    const targetLvl = taskLevel === 'ALL' ? activeLevel : taskLevel;
-    if (tpl === 'vocab') {
-      setCategory('vocab');
-      setTitle(`Hafalan 25 Kosakata Harian JLPT ${targetLvl}`);
+  const handleInlineQuestionChange = (index: number, value: string) => {
+    setInlineQuestionsDraft(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleSaveInlineEdit = (task: DailyTask) => {
+    const cleanedTitle = inlineTitleDraft.trim() || task.title;
+    const cleanedDesc = inlineDescDraft.trim() || task.description;
+    const cleanedQuestions = inlineQuestionsDraft.map(
+      (q, idx) => q.trim() || `Pertanyaan Nomor ${idx + 1}`
+    );
+
+    storageService.updateDailyTask(task.id, {
+      title: cleanedTitle,
+      description: cleanedDesc,
+      worksheetQuestions: cleanedQuestions,
+    });
+
+    setInlineEditingTaskId(null);
+    refreshFolderData();
+    setSyncFeedback(
+      `✅ Berhasil menyimpan perubahan soal Nomor 1 sampai 25 pada "${cleanedTitle}"!`
+    );
+    setTimeout(() => setSyncFeedback(null), 4000);
+  };
+
+  const handleApplyQuickTemplate = (tpl: 'lembar1' | 'vocab' | 'kanji' | 'materi' | 'kuis') => {
+    if (tpl === 'lembar1') {
+      setCategory('materi');
+      setTitle('Lembar 1: Tabel Latihan Soal Terjemahan & Kalimat Bahasa Jepang (25 Soal)');
       setDescription(
-        `Silakan buka menu Kartu Hafalan Kosakata level ${targetLvl}, pelajari dan hafalkan minimal 25 kosakata beserta cara baca Hiragana dan artinya. Setelah selesai, tandai tugas ini selesai dan tulis kosakata favoritmu di kolom catatan!`
+        'Isi kolom 名前 (Nama) di atas tabel, lalu ketik jawaban terjemahan bahasa Jepang pada kolom tabel kosong di sebelah kanan setiap pertanyaan (Nomor 1 sampai 25). Klik Kumpulkan & Tandai Selesai setelah selesai.'
+      );
+      setIncludeWorksheetTable(true);
+      setFormQuestionsList(build25QuestionsArray(DEFAULT_LEMBAR_1_QUESTIONS));
+    } else if (tpl === 'vocab') {
+      setCategory('vocab');
+      setIncludeWorksheetTable(false);
+      setTitle(`Hafalan 25 Kosakata Harian Kelas Sensei`);
+      setDescription(
+        `Silakan buka menu Kartu Hafalan Kosakata, pelajari dan hafalkan minimal 25 kosakata beserta cara baca Hiragana dan artinya. Setelah selesai, tandai tugas ini selesai dan tulis kosakata favoritmu di kolom catatan!`
       );
     } else if (tpl === 'kanji') {
       setCategory('kanji');
-      setTitle(`Hafalan 10 Huruf Kanji Resmi JLPT ${targetLvl}`);
+      setIncludeWorksheetTable(false);
+      setTitle(`Hafalan 10 Huruf Kanji Kelas Sensei`);
       setDescription(
-        `Buka menu Kartu Hafalan Kanji level ${targetLvl}, hafalkan 10 huruf Kanji baru beserta bacaan Onyomi, Kunyomi, dan contoh katanya. Tandai selesai jika sudah menguasainya.`
+        `Buka menu Kartu Hafalan Kanji, hafalkan 10 huruf Kanji baru beserta bacaan Onyomi, Kunyomi, dan contoh katanya. Tandai selesai jika sudah menguasainya.`
       );
     } else if (tpl === 'materi') {
       setCategory('materi');
-      setTitle(`Pelajari Materi Tata Bahasa (Bunpou) JLPT ${targetLvl}`);
+      setIncludeWorksheetTable(false);
+      setTitle(`Pelajari Materi Tata Bahasa (Bunpou) Kelas Sensei`);
       setDescription(
-        `Buka menu Materi level ${targetLvl}, baca dan catat rumus pola kalimat tata bahasa hari ini beserta contoh kalimatnya. Tuliskan 1 contoh kalimat buatanmu di kolom catatan penyelesaian tugas!`
+        `Buka menu Materi, baca dan catat rumus pola kalimat tata bahasa hari ini beserta contoh kalimatnya. Tuliskan 1 contoh kalimat buatanmu di kolom catatan penyelesaian tugas!`
       );
     } else if (tpl === 'kuis') {
       setCategory('kuis');
-      setTitle(`Latihan Evaluasi Kuis Simulasi JLPT ${targetLvl}`);
+      setIncludeWorksheetTable(false);
+      setTitle(`Latihan Evaluasi Kuis Simulasi Kelas Sensei`);
       setDescription(
-        `Persiapkan diri dan kerjakan latihan soal kuis simulasi JLPT ${targetLvl}. Pastikan mencapai nilai terbaik dan catat hasil skormu pada laporan tugas harian ini.`
+        `Persiapkan diri dan kerjakan latihan soal kuis simulasi. Pastikan mencapai nilai terbaik dan catat hasil skormu pada laporan tugas harian ini.`
       );
     }
   };
@@ -182,24 +365,40 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
       return;
     }
 
+    const parsedQuestions = includeWorksheetTable
+      ? formQuestionsList.map((q, idx) => q.trim() || `Pertanyaan Nomor ${idx + 1}`)
+      : undefined;
+
     if (editingTaskId) {
-      storageService.updateDailyTask(editingTaskId, {
-        title: title.trim(),
-        description: description.trim(),
-        level: taskLevel,
-        category,
-        dueDate,
-        dueTime,
-      });
+      const existing = tasks.find(t => t.id === editingTaskId);
+      if (existing) {
+        const updated: DailyTask = {
+          ...existing,
+          title: title.trim(),
+          description: description.trim(),
+          level: 'ALL',
+          category,
+          dueDate,
+          dueTime,
+          durationMinutes,
+          deadlineTimestamp: customDeadlineTs,
+          worksheetQuestions: parsedQuestions,
+          updatedAt: Date.now(),
+        };
+        storageService.updateDailyTask(editingTaskId, updated as any);
+      }
     } else {
       storageService.createDailyTask(
         {
           title: title.trim(),
           description: description.trim(),
-          level: taskLevel,
+          level: 'ALL',
           category,
           dueDate,
           dueTime,
+          durationMinutes,
+          deadlineTimestamp: customDeadlineTs,
+          worksheetQuestions: parsedQuestions,
         },
         currentUser
       );
@@ -220,8 +419,115 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
     refreshFolderData();
   };
 
+  // Handle typing inside the empty right-hand cell of the worksheet table
+  const handleWorksheetCellChange = (task: DailyTask, questionIdx: number, value: string) => {
+    // Jika murid sudah mengumpulkan tugas, kunci jawaban dan tidak izinkan perubahan
+    if (!isMasterUser && isCompletedByMe(task)) {
+      return;
+    }
+
+    const currentAnswers = worksheetAnswersByTask[task.id] || {};
+    const nextAnswers = {
+      ...currentAnswers,
+      [questionIdx]: value,
+    };
+
+    setWorksheetAnswersByTask(prev => ({
+      ...prev,
+      [task.id]: nextAnswers,
+    }));
+
+    if (currentUser) {
+      const emailLower = currentUser.email.toLowerCase();
+      try {
+        localStorage.setItem(
+          `sensei_sari_ws_draft_${task.id}_${emailLower}`,
+          JSON.stringify(nextAnswers)
+        );
+      } catch {}
+
+      // Debounced auto-sync to server & Master monitor
+      if (autoSaveTimerRef.current[task.id]) {
+        window.clearTimeout(autoSaveTimerRef.current[task.id]);
+      }
+      autoSaveTimerRef.current[task.id] = window.setTimeout(() => {
+        const nameField =
+          studentNameFieldByTask[task.id] ||
+          currentUser.fullName ||
+          currentUser.nickname ||
+          'Murid';
+        storageService.saveWorksheetAnswers(
+          task.id,
+          currentUser,
+          nextAnswers,
+          nameField,
+          false,
+          studentNotes[task.id]
+        );
+      }, 1000);
+    }
+  };
+
+  const handleStudentNameFieldChange = (task: DailyTask, value: string) => {
+    if (!isMasterUser && isCompletedByMe(task)) {
+      return;
+    }
+    setStudentNameFieldByTask(prev => ({
+      ...prev,
+      [task.id]: value,
+    }));
+  };
+
+  const handleSaveOrSubmitWorksheet = (task: DailyTask, markCompleted: boolean) => {
+    if (!currentUser) return;
+    if (!isMasterUser && isCompletedByMe(task)) {
+      return;
+    }
+    if (autoSaveTimerRef.current[task.id]) {
+      window.clearTimeout(autoSaveTimerRef.current[task.id]);
+    }
+    const answers = worksheetAnswersByTask[task.id] || {};
+    const nameField =
+      studentNameFieldByTask[task.id] ||
+      currentUser.fullName ||
+      currentUser.nickname ||
+      'Murid';
+    const note = studentNotes[task.id];
+
+    storageService.saveWorksheetAnswers(
+      task.id,
+      currentUser,
+      answers,
+      nameField,
+      markCompleted,
+      note
+    );
+    refreshFolderData();
+
+    const answeredCount = Object.values(answers).filter(v => String(v || '').trim().length > 0).length;
+    const totalQ = task.worksheetQuestions?.length || 25;
+    setSaveToastByTask(prev => ({
+      ...prev,
+      [task.id]: `✅ Lembar jawaban berhasil dikumpulkan ke Master Sensei & dikunci! (${answeredCount}/${totalQ} soal terisi)`,
+    }));
+    setTimeout(() => {
+      setSaveToastByTask(prev => {
+        const copy = { ...prev };
+        delete copy[task.id];
+        return copy;
+      });
+    }, 4000);
+  };
+
   const handleStudentToggleComplete = (task: DailyTask, forceNoteUpdate = false) => {
     if (!currentUser) return;
+    if (!isMasterUser && isCompletedByMe(task)) {
+      return;
+    }
+    if (task.worksheetQuestions && task.worksheetQuestions.length > 0) {
+      handleSaveOrSubmitWorksheet(task, true);
+      return;
+    }
     const noteVal = studentNotes[task.id];
     storageService.toggleDailyTaskCompletion(
       task.id,
@@ -231,11 +537,16 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
     refreshFolderData();
   };
 
+  const handleSaveTeacherComment = (taskId: string, studentEmail: string) => {
+    storageService.saveTeacherWorksheetComment(taskId, studentEmail, teacherCommentDraft);
+    refreshFolderData();
+  };
+
   const getCategoryMeta = (cat: DailyTaskCategory) => {
     switch (cat) {
       case 'materi':
         return {
-          label: '📖 Materi & Tata Bahasa',
+          label: '📖 Materi & Latihan Kalimat',
           actionLabel: 'Buka Materi',
           tab: 'materi',
           color: 'bg-rose-50 text-[#881337] border-rose-200',
@@ -272,24 +583,24 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
   };
 
   const activeTasks = tasks.filter(t => t.isActive);
-  const myEmail = (currentUser?.email || '').toLowerCase();
 
   const isCompletedByMe = (task: DailyTask): boolean => {
     if (!myEmail) return false;
-    return (task.completions || []).some(c => c.studentEmail.toLowerCase() === myEmail);
+    const comp = (task.completions || []).find(c => c.studentEmail.toLowerCase() === myEmail);
+    if (!comp) return false;
+    if (task.worksheetQuestions && task.worksheetQuestions.length > 0) {
+      return comp.isCompleted === true;
+    }
+    return comp.isCompleted !== false;
   };
 
-  const getMyCompletion = (task: DailyTask) => {
+  const getMyCompletion = (task: DailyTask): DailyTaskCompletion | null => {
     if (!myEmail) return null;
     return (task.completions || []).find(c => c.studentEmail.toLowerCase() === myEmail) || null;
   };
 
-  // Tasks visible in list (Master sees all tasks including archived; students see active tasks + any tasks they completed)
   const visibleTasks = tasks.filter(task => {
     if (!isMasterUser && !task.isActive && !isCompletedByMe(task)) {
-      return false;
-    }
-    if (filterLevel !== 'ALL' && task.level !== 'ALL' && task.level !== filterLevel) {
       return false;
     }
     if (!isMasterUser) {
@@ -305,9 +616,9 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-[#fffdfa] border-2 border-[#d9c3b0] rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-[#fffdfa] border-2 border-[#d9c3b0] rounded-3xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden">
         {/* Top Folder Tab Header */}
-        <div className="bg-gradient-to-r from-[#881337] via-[#9f1239] to-[#701a32] text-white px-5 py-4 sm:px-6 sm:py-5 flex items-center justify-between border-b border-[#fbcfe8]/30">
+        <div className="bg-gradient-to-r from-[#881337] via-[#9f1239] to-[#701a32] text-white px-5 py-4 sm:px-6 sm:py-4 flex items-center justify-between border-b border-[#fbcfe8]/30">
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 bg-amber-400/20 border border-amber-300/40 rounded-2xl text-amber-300 shadow-inner">
               <FolderOpen className="w-7 h-7" />
@@ -323,15 +634,15 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
               </div>
               <p className="text-xs text-rose-100/90 mt-0.5">
                 {isMasterUser
-                  ? 'Panel Master: Kelola tugas harian untuk murid & pantau siapa saja yang sudah menyelesaikan tugas.'
-                  : 'Pantau apakah ada tugas harian dari Master Sensei dan tandai tugas yang sudah kamu kerjakan.'}
+                  ? 'Panel Master: Kelola tabel latihan soal harian & pantau jawaban tabel setiap murid secara langsung.'
+                  : 'Kerjakan langsung tabel latihan soal dari Master Sensei dengan mengetik jawaban di kolom sebelah kanan pertanyaan.'}
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
             title="Tutup Folder"
           >
             <X className="w-5 h-5" />
@@ -339,7 +650,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
         </div>
 
         {/* Live Status Banner Inside Folder */}
-        <div className="px-5 py-3.5 bg-[#f7efe3] border-b border-[#e5d3c0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="px-5 py-3 bg-[#f7efe3] border-b border-[#e5d3c0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
               className={`w-3.5 h-3.5 rounded-full shrink-0 ring-4 ${
@@ -367,7 +678,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                   </span>
                 ) : activeTasks.length > 0 ? (
                   <span>
-                    Progres kamu: <strong className="text-emerald-700">{myCompletedActiveTasksCount} selesai</strong> ·{' '}
+                    Progres kamu: <strong className="text-emerald-700">{myCompletedActiveTasksCount} dikerjakan</strong> ·{' '}
                     <strong className={myPendingActiveTasksCount > 0 ? 'text-rose-700' : 'text-emerald-700'}>
                       {myPendingActiveTasksCount} belum dikerjakan
                     </strong>
@@ -388,7 +699,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
               className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#fff9f3] text-[#881337] border border-[#dec7b0] text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Memeriksa...' : 'Cek Tugas Baru'}</span>
+              <span>{isSyncing ? 'Memeriksa...' : 'Segarkan Tugas'}</span>
             </button>
 
             {isMasterUser && (
@@ -405,7 +716,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                 className="px-3.5 py-1.5 rounded-xl bg-[#881337] hover:bg-[#9f1239] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>{showMasterForm ? 'Tutup Form' : 'Buat Tugas Harian'}</span>
+                <span>{showMasterForm ? 'Tutup Form' : 'Buat Tugas Baru'}</span>
               </button>
             )}
           </div>
@@ -438,7 +749,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                     </span>
                   </h3>
                   <p className="text-xs text-[#6e533d] mt-0.5">
-                    Tugas yang disimpan akan langsung tampil secara real-time di Folder Tugas Harian seluruh akun murid.
+                    Gunakan template tabel soal atau buat tugas harian baru yang langsung tampil di akun seluruh murid.
                   </p>
                 </div>
               </div>
@@ -449,6 +760,13 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                   ⚡ Isi Cepat dengan Template Tugas Sensei:
                 </div>
                 <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyQuickTemplate('lembar1')}
+                    className="px-2.5 py-1 rounded-lg bg-[#881337] text-white text-[11px] font-bold transition-colors cursor-pointer"
+                  >
+                    📄 Template Tabel Latihan 25 Soal (Lembar 1)
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleApplyQuickTemplate('vocab')}
@@ -470,13 +788,6 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                   >
                     📖 Template Catatan Tata Bahasa
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyQuickTemplate('kuis')}
-                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-amber-50 border border-[#dec7b0] text-[11px] font-semibold text-[#553b26] transition-colors cursor-pointer"
-                  >
-                    📝 Template Latihan Kuis Simulasi
-                  </button>
                 </div>
               </div>
 
@@ -487,36 +798,17 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-[#463325] mb-1">
-                    Judul Tugas Harian *
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                    placeholder="Contoh: Hafalkan 25 Kosakata Bab 1 & Catat 10 Kanji N5"
-                    className="w-full px-3.5 py-2 rounded-xl border border-[#d6c0aa] bg-white text-sm text-[#2b1d19] focus:outline-none focus:border-[#881337]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#463325] mb-1">
-                    Target Tingkatan JLPT
-                  </label>
-                  <select
-                    value={taskLevel}
-                    onChange={e => setTaskLevel(e.target.value as JLPTLevel | 'ALL')}
-                    className="w-full px-3 py-2 rounded-xl border border-[#d6c0aa] bg-white text-sm font-semibold text-[#2b1d19] focus:outline-none focus:border-[#881337]"
-                  >
-                    <option value="ALL">Semua Level (N5 - N2)</option>
-                    <option value="N5">Khusus JLPT N5</option>
-                    <option value="N4">Khusus JLPT N4</option>
-                    <option value="N3">Khusus JLPT N3</option>
-                    <option value="N2">Khusus JLPT N2</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-[#463325] mb-1">
+                  Judul Tugas Harian *
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Contoh: Lembar 1: Tabel Latihan Soal Terjemahan (25 Soal)"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#d6c0aa] bg-white text-sm text-[#2b1d19] focus:outline-none focus:border-[#881337]"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -529,9 +821,9 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                     onChange={e => setCategory(e.target.value as DailyTaskCategory)}
                     className="w-full px-3 py-2 rounded-xl border border-[#d6c0aa] bg-white text-sm font-semibold text-[#2b1d19] focus:outline-none focus:border-[#881337]"
                   >
+                    <option value="materi">📖 Materi & Latihan Kalimat</option>
                     <option value="vocab">🃏 Kartu Hafalan Kosakata</option>
                     <option value="kanji">漢字 Kartu Hafalan Kanji</option>
-                    <option value="materi">📖 Materi & Tata Bahasa</option>
                     <option value="kuis">📝 Evaluasi Kuis</option>
                     <option value="umum">📌 Tugas Catatan / Umum</option>
                   </select>
@@ -539,27 +831,64 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-[#463325] mb-1">
-                    Tanggal Tugas / Tenggat
+                    Tanggal Tenggat (Deadline)
                   </label>
                   <input
                     type="date"
                     value={dueDate}
-                    onChange={e => setDueDate(e.target.value)}
+                    onChange={e => {
+                      setDueDate(e.target.value);
+                      setCustomDeadlineTs(undefined);
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-[#d6c0aa] bg-white text-sm text-[#2b1d19] focus:outline-none focus:border-[#881337]"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#463325] mb-1">
-                    Batas Jam Pengumpulan
+                    Batas Jam Pengumpulan (WIB)
                   </label>
                   <input
                     type="time"
                     value={dueTime}
-                    onChange={e => setDueTime(e.target.value)}
+                    onChange={e => {
+                      setDueTime(e.target.value);
+                      setCustomDeadlineTs(undefined);
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-[#d6c0aa] bg-white text-sm text-[#2b1d19] focus:outline-none focus:border-[#881337]"
                   />
                 </div>
+              </div>
+
+              {/* Pilihan Durasi Pengerjaan Tugas untuk Master (30 Menit, 45 Menit, 1 Jam, 1.5 Jam, 2 Jam) */}
+              <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-300 space-y-2">
+                <div className="text-xs font-extrabold text-[#881337] flex items-center gap-1.5">
+                  <Timer className="w-4 h-4" />
+                  <span>⏱️ Pilih Durasi Waktu Pengerjaan Tugas Harian:</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {DAILY_TASK_DURATION_OPTIONS.map(opt => {
+                    const isSelected = durationMinutes === opt.minutes;
+                    return (
+                      <button
+                        key={opt.minutes}
+                        type="button"
+                        onClick={() => setDurationMinutes(opt.minutes)}
+                        className={`py-2 px-3 rounded-xl text-xs font-extrabold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-[#881337] text-white border-[#881337] shadow-xs'
+                            : 'bg-white hover:bg-[#fae8eb] text-[#553b26] border-amber-300'
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{opt.shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-[#6e533d]">
+                  Setelah tugas dibuat, klik tombol <strong>"Mulai Waktu Hitungan Mundur"</strong> pada kartu tugas untuk memulai timer bagi seluruh murid. Ketika waktu habis, tugas murid otomatis terkumpul dan ditandai selesai.
+                </p>
               </div>
 
               <div>
@@ -567,12 +896,57 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                   Instruksi / Detail Tugas dari Master Sensei *
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Tuliskan rincian tugas harian yang harus dikerjakan oleh murid hari ini..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d6c0aa] bg-white text-sm text-[#2b1d19] focus:outline-none focus:border-[#881337]"
+                  className="w-full px-3.5 py-2 rounded-xl border border-[#d6c0aa] bg-white text-sm text-[#2b1d19] focus:outline-none focus:border-[#881337]"
                 />
+              </div>
+
+              {/* Checkbox to include interactive worksheet table */}
+              <div className="p-3 bg-white rounded-xl border border-[#d6c0aa] space-y-2.5">
+                <label className="flex items-center gap-2 text-xs font-extrabold text-[#881337] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeWorksheetTable}
+                    onChange={e => setIncludeWorksheetTable(e.target.checked)}
+                    className="rounded border-[#881337] text-[#881337]"
+                  />
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Sertakan Tabel Latihan Soal Interaktif (Murid Mengetik di Kolom Sebelah Pertanyaan)</span>
+                </label>
+
+                {includeWorksheetTable && (
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-[#6e533d]">
+                      Daftar Pertanyaan Tabel Nomor 1 sampai 25 (Ketik untuk mengganti pertanyaan):
+                    </label>
+                    <div className="max-h-64 overflow-y-auto pr-1 space-y-1.5">
+                      {formQuestionsList.map((qVal, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="w-8 text-xs font-extrabold text-[#881337] text-right shrink-0">
+                            {idx + 1}.
+                          </span>
+                          <input
+                            type="text"
+                            value={qVal}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setFormQuestionsList(prev => {
+                                const next = [...prev];
+                                next[idx] = val;
+                                return next;
+                              });
+                            }}
+                            placeholder={`Ketik pertanyaan nomor ${idx + 1}...`}
+                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#d6c0aa] bg-[#fdfbf7] text-xs text-[#2b1d19] focus:outline-none focus:border-[#881337]"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -597,23 +971,10 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
             </form>
           )}
 
-          {/* Filter Bar */}
+          {/* Header Info Kelas Sensei & Filter Status Murid (Tanpa Filter Level) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#ebdccb]">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-bold text-[#735338] mr-1">Filter Level:</span>
-              {(['ALL', 'N5', 'N4', 'N3', 'N2'] as const).map(lvl => (
-                <button
-                  key={lvl}
-                  onClick={() => setFilterLevel(lvl)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                    filterLevel === lvl
-                      ? 'bg-[#881337] text-white'
-                      : 'bg-[#f5ede1] text-[#5e4735] hover:bg-[#eadbc8]'
-                  }`}
-                >
-                  {lvl === 'ALL' ? 'Semua Level' : lvl}
-                </button>
-              ))}
+            <div className="text-xs font-bold text-[#735338] flex items-center gap-1.5">
+              <span>🌸 Daftar Tugas Harian Kelas Aktif Sensei Sari</span>
             </div>
 
             {!isMasterUser && (
@@ -646,124 +1007,634 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
             )}
           </div>
 
-          {/* Tasks List or Empty State */}
+          {/* Tasks List */}
           {visibleTasks.length === 0 ? (
             <div className="text-center py-12 px-4 bg-[#fdfaf5] border border-dashed border-[#dec7b0] rounded-2xl">
               <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-[#fae8eb] text-[#881337] flex items-center justify-center">
                 <FolderOpen className="w-7 h-7" />
               </div>
               <h3 className="text-base sm:text-lg font-extrabold text-[#881337] font-japanese">
-                {activeTasks.length === 0
-                  ? 'Belum Ada Tugas Harian dari Master Sensei'
-                  : 'Tidak Ada Tugas pada Filter Ini'}
+                Tidak Ada Tugas pada Tab Ini
               </h3>
               <p className="text-xs sm:text-sm text-[#6e533d] max-w-md mx-auto mt-1.5 leading-relaxed">
-                {isMasterUser
-                  ? 'Folder Tugas Harian masih kosong. Klik tombol "Buat Tugas Harian" di atas untuk memberikan tugas baru yang langsung dapat dipantau oleh seluruh murid.'
-                  : activeTasks.length === 0
-                  ? 'Saat ini Master Sensei belum menambahkan tugas harian baru. Kamu tetap bisa berlatih mandiri di menu Materi, Kosakata, atau Kanji, dan membuka folder ini setiap saat!'
-                  : 'Coba ubah filter level atau status di atas untuk melihat daftar tugas harian lainnya.'}
+                Silakan pilih tab "Semua" untuk melihat lembar latihan soal dari Master Sensei.
               </p>
-              {isMasterUser && !showMasterForm && (
-                <button
-                  onClick={() => {
-                    resetMasterForm();
-                    setShowMasterForm(true);
-                  }}
-                  className="mt-4 px-4 py-2 rounded-xl bg-[#881337] hover:bg-[#9f1239] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Buat Tugas Harian Pertama</span>
-                </button>
-              )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {visibleTasks.map(task => {
                 const catMeta = getCategoryMeta(task.category);
                 const myComp = getMyCompletion(task);
                 const completedCount = (task.completions || []).length;
                 const isExpandedStudents = !!expandedTaskStudents[task.id];
+                const hasWorksheet =
+                  Array.isArray(task.worksheetQuestions) && task.worksheetQuestions.length > 0;
+                const myAnswers = worksheetAnswersByTask[task.id] || myComp?.worksheetAnswers || {};
+                const myAnsweredCount = Object.values(myAnswers).filter(
+                  v => String(v || '').trim().length > 0
+                ).length;
+                const totalWorksheetQuestions = task.worksheetQuestions?.length || 0;
+                const myNameValue =
+                  studentNameFieldByTask[task.id] !== undefined
+                    ? studentNameFieldByTask[task.id]
+                    : myComp?.studentNameField ||
+                      currentUser?.fullName ||
+                      currentUser?.nickname ||
+                      '';
+                const deadlineInfo = storageService.getTaskDeadlineInfo(task, nowMs);
+                const isDoneByStudent = isCompletedByMe(task);
+                const isInlineEditing = isMasterUser && inlineEditingTaskId === task.id;
 
                 return (
                   <div
                     key={task.id}
-                    className={`rounded-2xl border p-4 sm:p-5 transition-all ${
+                    className={`rounded-2xl border p-4 sm:p-6 transition-all ${
                       !task.isActive
-                        ? 'bg-stone-100/80 border-stone-300 opacity-80'
-                        : myComp
-                        ? 'bg-emerald-50/40 border-emerald-300 shadow-xs'
-                        : 'bg-white border-[#e5d3c0] shadow-xs hover:border-[#881337]/50'
+                        ? 'bg-stone-100/80 border-stone-300 opacity-85'
+                        : isDoneByStudent
+                        ? 'bg-emerald-50/30 border-emerald-300 shadow-xs'
+                        : deadlineInfo.isExpired
+                        ? 'bg-rose-50/40 border-rose-300 shadow-xs'
+                        : 'bg-white border-[#e5d3c0] shadow-xs'
                     }`}
                   >
                     {/* Top Metadata Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                       <div className="flex flex-wrap items-center gap-2 text-xs">
                         <span className={`px-2.5 py-0.5 rounded-lg font-bold border ${catMeta.color}`}>
                           {catMeta.label}
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-lg font-extrabold bg-[#881337] text-white">
-                          {task.level === 'ALL' ? 'Semua Level (N5-N2)' : `JLPT ${task.level}`}
-                        </span>
+                        {hasWorksheet && (
+                          <span className="px-2.5 py-0.5 rounded-lg font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            📄 Lembar Tabel {totalWorksheetQuestions} Soal
+                          </span>
+                        )}
                         {!task.isActive && (
                           <span className="px-2 py-0.5 rounded-lg font-bold bg-stone-300 text-stone-800">
-                            Diarsipkan / Ditutup
+                            Diarsipkan
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 text-[11px] text-[#735338]">
-                        <span className="flex items-center gap-1">
+                      <div className="flex items-center gap-2 text-[11px] font-semibold text-[#735338]">
+                        {isMasterUser && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(task)}
+                            className={`px-3 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                              isInlineEditing
+                                ? 'bg-amber-600 text-white border-amber-700'
+                                : 'bg-[#881337] hover:bg-[#9f1239] text-white border-[#881337]'
+                            }`}
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>
+                              {isInlineEditing
+                                ? 'Tutup Mode Edit Soal'
+                                : '✏️ Edit Soal (Nomor 1–25)'}
+                            </span>
+                          </button>
+                        )}
+                        <span className="flex items-center gap-1 bg-[#f7efe3] px-2.5 py-1 rounded-lg border border-[#e5d3c0]">
                           <Calendar className="w-3.5 h-3.5 text-[#881337]" />
-                          <span>Tenggat: {task.dueDate}</span>
-                          {task.dueTime && <span>· {task.dueTime} WIB</span>}
+                          <span>{deadlineInfo.formattedDeadlineDate}</span>
                         </span>
                       </div>
                     </div>
 
-                    {/* Task Title & Description */}
-                    <div className="mb-3">
-                      <h4 className="text-base sm:text-lg font-extrabold text-[#2b1d19] flex items-center gap-2">
-                        <span>{task.title}</span>
-                        {myComp && !isMasterUser && (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Sudah Dikerjakan</span>
-                          </span>
+                    {/* ================= LIVE COUNTDOWN TIMER & MASTER DURATION CONTROLS ================= */}
+                    <div
+                      className={`mb-4 p-3.5 sm:p-4 rounded-xl border space-y-3 ${
+                        isDoneByStudent && !isMasterUser
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                          : deadlineInfo.isTimerFinished
+                          ? 'bg-rose-50 border-rose-300 text-rose-950'
+                          : deadlineInfo.isTimerRunning
+                          ? deadlineInfo.isUrgent
+                            ? 'bg-amber-50 border-amber-400 text-amber-950'
+                            : 'bg-emerald-50/70 border-emerald-300 text-[#2b1d19]'
+                          : 'bg-[#fdf8f0] border-[#dec7b0] text-[#463325]'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-start sm:items-center gap-3">
+                          <div
+                            className={`p-2.5 rounded-xl shrink-0 ${
+                              isDoneByStudent && !isMasterUser
+                                ? 'bg-emerald-600 text-white'
+                                : deadlineInfo.isTimerFinished
+                                ? 'bg-rose-600 text-white'
+                                : deadlineInfo.isTimerRunning
+                                ? 'bg-emerald-600 text-white animate-pulse'
+                                : 'bg-[#881337] text-white'
+                            }`}
+                          >
+                            <Timer className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
+                              <span>⏱️ Waktu Hitungan Mundur Pengerjaan</span>
+                              <span className="px-2 py-0.5 rounded-full bg-white/90 border border-[#d6c0aa] text-[#881337] text-[10px] font-extrabold">
+                                Durasi: {deadlineInfo.durationLabel}
+                              </span>
+                              {deadlineInfo.isTimerRunning && (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-extrabold">
+                                  🟢 Sedang Berjalan
+                                </span>
+                              )}
+                              {deadlineInfo.isTimerFinished && (
+                                <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 text-[10px] font-extrabold">
+                                  ⏰ Waktu Habis (Otomatis Kumpul & Selesai)
+                                </span>
+                              )}
+                              {deadlineInfo.timerStatus === 'idle' && (
+                                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-extrabold">
+                                  ⏸️ Menunggu Sensei Memulai Timer
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs sm:text-sm font-bold mt-1">
+                              {deadlineInfo.isTimerRunning ? (
+                                <span>
+                                  Timer sedang berjalan! Saat waktu habis, tugas otomatis terkumpul & ditandai selesai ({deadlineInfo.formattedDeadlineDate}).
+                                </span>
+                              ) : deadlineInfo.isTimerFinished ? (
+                                <span>
+                                  Waktu pengerjaan ({deadlineInfo.durationLabel}) telah selesai. Tugas murid otomatis dikumpulkan & ditandai selesai.
+                                </span>
+                              ) : (
+                                <span>
+                                  Durasi disiapkan: <strong>{deadlineInfo.durationLabel}</strong>.{' '}
+                                  {isMasterUser
+                                    ? 'Pilih durasi di bawah lalu klik "Mulai Waktu Hitungan Mundur".'
+                                    : 'Saat timer dimulai oleh Sensei dan selesai, tugas akan otomatis terkumpul & ditandai selesai.'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Digital Countdown Box */}
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                          <div
+                            className={`px-3.5 py-2 rounded-xl border font-mono tabular-nums text-sm sm:text-base font-extrabold flex items-center gap-2 shadow-2xs ${
+                              deadlineInfo.isTimerFinished
+                                ? 'bg-rose-600 text-white border-rose-700'
+                                : deadlineInfo.isTimerRunning
+                                ? deadlineInfo.isUrgent
+                                  ? 'bg-amber-500 text-white border-amber-600 animate-pulse'
+                                  : 'bg-emerald-700 text-white border-emerald-800'
+                                : 'bg-white text-[#881337] border-[#d6c0aa]'
+                            }`}
+                          >
+                            <Clock className="w-4 h-4 shrink-0" />
+                            <span>
+                              {deadlineInfo.isTimerFinished
+                                ? '00j : 00m : 00d (Selesai)'
+                                : deadlineInfo.formattedCountdown}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* MASTER CONTROLS: Pilih Durasi (30m, 45m, 1j, 1.5j, 2j) & Tombol Mulai Waktu Hitungan Mundur */}
+                      {isMasterUser && (
+                        <div className="pt-3 border-t border-[#e5d3c0] flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-extrabold text-[#735338] mr-1">
+                              Atur Durasi Pengerjaan:
+                            </span>
+                            {DAILY_TASK_DURATION_OPTIONS.map(opt => {
+                              const currentMins = task.durationMinutes || 60;
+                              const isSelected = currentMins === opt.minutes;
+                              return (
+                                <button
+                                  key={opt.minutes}
+                                  type="button"
+                                  onClick={() => handleSelectTaskDuration(task, opt.minutes)}
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-extrabold border transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-[#881337] text-white border-[#881337] shadow-2xs'
+                                      : 'bg-white hover:bg-amber-50 text-[#553b26] border-[#d6c0aa]'
+                                  }`}
+                                >
+                                  {opt.shortLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleStartCountdownForTask(task, task.durationMinutes || 60)
+                              }
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>
+                                {deadlineInfo.isTimerRunning
+                                  ? `Mulai Ulang Waktu Hitungan Mundur (${deadlineInfo.durationLabel})`
+                                  : `Mulai Waktu Hitungan Mundur (${deadlineInfo.durationLabel})`}
+                              </span>
+                            </button>
+
+                            {deadlineInfo.isTimerRunning && (
+                              <button
+                                type="button"
+                                onClick={() => handleStopCountdownForTask(task)}
+                                className="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <Square className="w-3.5 h-3.5 fill-current" />
+                                <span>Hentikan Timer</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Task Title & Description (or Master Inline Edit Header) */}
+                    <div className="mb-4">
+                      {isInlineEditing ? (
+                        <div className="p-3.5 bg-amber-50 border-2 border-amber-400 rounded-xl space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-extrabold text-[#881337]">
+                              ✏️ Mode Edit Judul, Instruksi & Pertanyaan Nomor 1 sampai 25
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setInlineEditingTaskId(null)}
+                                className="px-3 py-1 rounded-lg bg-white border border-stone-300 text-xs font-bold text-stone-700 cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveInlineEdit(task)}
+                                className="px-3.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1 cursor-pointer shadow-2xs"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                                <span>Simpan Perubahan Soal (1–25)</span>
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#463325] mb-1">
+                              Judul Tugas Harian:
+                            </label>
+                            <input
+                              type="text"
+                              value={inlineTitleDraft}
+                              onChange={e => setInlineTitleDraft(e.target.value)}
+                              className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-sm font-bold text-[#2b1d19]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-[#463325] mb-1">
+                              Instruksi Tugas Harian:
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={inlineDescDraft}
+                              onChange={e => setInlineDescDraft(e.target.value)}
+                              className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-white text-xs text-[#2b1d19]"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <h4 className="text-base sm:text-lg font-extrabold text-[#2b1d19] flex items-center gap-2 flex-wrap">
+                            <span>{task.title}</span>
+                            {isDoneByStudent && !isMasterUser && (
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>
+                                  Sudah Dikumpulkan & Terkunci ({myAnsweredCount}/{totalWorksheetQuestions} Soal)
+                                </span>
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-xs sm:text-sm text-[#463325] mt-1.5 whitespace-pre-line leading-relaxed bg-[#fdfaf5] p-3 rounded-xl border border-[#f0e4d4]">
+                            {task.description}
+                          </p>
+                        </>
+                      )}
+                    </div>
+
+                    {/* ================= INTERACTIVE WORKSHEET TABLE (LEMBAR 1: 25 SOAL) ================= */}
+                    {(hasWorksheet || isInlineEditing) && (
+                      <div className="my-4 bg-white border-2 border-stone-400 rounded-xl p-4 sm:p-6 shadow-xs">
+                        {/* Banner Kunci Jawaban bagi Murid yang Sudah Mengumpulkan */}
+                        {!isMasterUser && isDoneByStudent && (
+                          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2">
+                            <Lock className="w-4 h-4 shrink-0 text-emerald-700" />
+                            <span>
+                              🔒 Tugas ini telah Anda kumpulkan dan ditandai selesai. Jawaban tabel telah dikunci secara permanen dan tidak dapat diubah lagi.
+                            </span>
+                          </div>
                         )}
-                      </h4>
-                      <p className="text-xs sm:text-sm text-[#463325] mt-1.5 whitespace-pre-line leading-relaxed bg-[#fdfaf5] p-3 rounded-xl border border-[#f0e4d4]">
-                        {task.description}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#755943]">
-                        <span>
-                          Diterbitkan oleh <strong className="text-[#881337]">{task.createdBy}</strong> pada {task.createdAt}
-                        </span>
-                        <span>
-                          ✅ Diselesaikan oleh <strong>{completedCount}</strong> murid
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Action Row for Students */}
-                    {!isMasterUser && (
-                      <div className="pt-3 border-t border-[#ebdccb] space-y-3">
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        {/* Banner Panduan Edit Soal bagi Master ketika Mode Edit Aktif */}
+                        {isInlineEditing && (
+                          <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-400 text-amber-950 text-xs font-bold flex items-center justify-between gap-2 flex-wrap">
+                            <span>
+                              ✏️ Silakan ketik atau ganti pertanyaan dari <strong>Nomor 1 sampai 25</strong> langsung pada kolom <strong>Pertanyaan</strong> di bawah ini, lalu klik <strong>Simpan Perubahan Soal</strong>.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveInlineEdit(task)}
+                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 cursor-pointer shrink-0"
+                            >
+                              <Save className="w-3.5 h-3.5" />
+                              <span>Simpan Perubahan Soal (1–25)</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Header 名前 (Nama) sesuai Lembar 1 PDF */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-stone-300">
+                          <div className="flex items-center gap-3 flex-1">
+                            <label className="text-xl sm:text-2xl font-bold text-stone-900 font-japanese shrink-0">
+                              名前 :
+                            </label>
+                            <input
+                              type="text"
+                              value={myNameValue}
+                              disabled={!isMasterUser && isDoneByStudent}
+                              readOnly={!isMasterUser && isDoneByStudent}
+                              onChange={e => handleStudentNameFieldChange(task, e.target.value)}
+                              placeholder="Ketik nama lengkap Anda di sini..."
+                              className={`w-full max-w-sm px-3 py-1.5 border-b-2 text-sm sm:text-base font-semibold focus:outline-none ${
+                                !isMasterUser && isDoneByStudent
+                                  ? 'border-stone-300 bg-stone-100 text-stone-600 cursor-not-allowed'
+                                  : 'border-stone-400 focus:border-[#881337] bg-[#fffdfa] text-stone-900'
+                              }`}
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isMasterUser && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(task)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                                  isInlineEditing
+                                    ? 'bg-amber-600 text-white border-amber-700'
+                                    : 'bg-white hover:bg-amber-50 text-[#881337] border-[#881337]'
+                                }`}
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>
+                                  {isInlineEditing ? 'Batal Edit Soal' : 'Edit Soal (1–25)'}
+                                </span>
+                              </button>
+                            )}
+                            <div className="text-xs font-bold text-[#881337] bg-[#fae8eb] px-3 py-1.5 rounded-xl border border-[#fbcfe8] font-mono tabular-nums">
+                              Terisi: {myAnsweredCount} / {totalWorksheetQuestions} Soal
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tabel Latihan Soal (3 Kolom Persis Lembar 1 PDF: No | Pertanyaan | Kolom Kosong Tempat Mengetik) */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse border border-stone-400 bg-white text-stone-900">
+                            <thead>
+                              <tr className="bg-stone-100 text-left text-xs font-bold text-stone-700">
+                                <th className="border border-stone-400 py-2 px-2 w-10 text-center">No.</th>
+                                <th className="border border-stone-400 py-2 px-3 w-64 sm:w-80">
+                                  {isInlineEditing
+                                    ? '✏️ Edit Pertanyaan (Nomor 1 sampai 25)'
+                                    : 'Pertanyaan'}
+                                </th>
+                                <th className="border border-stone-400 py-2 px-3">
+                                  Jawaban Bahasa Jepang (Ketik di kolom kosong sebelah pertanyaan)
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(isInlineEditing
+                                ? inlineQuestionsDraft
+                                : task.worksheetQuestions!
+                              ).map((questionText, qIdx) => {
+                                const qNum = qIdx + 1;
+                                const answerVal = myAnswers[qNum] || '';
+                                const isStudentLocked = !isMasterUser && isDoneByStudent;
+                                return (
+                                  <tr
+                                    key={qNum}
+                                    className="hover:bg-amber-50/30 transition-colors"
+                                  >
+                                    {/* Kolom 1: Nomor Urut */}
+                                    <td className="border border-stone-400 py-2 px-2 text-xs sm:text-sm font-serif align-top text-center select-none w-10">
+                                      {qNum}.
+                                    </td>
+
+                                    {/* Kolom 2: Pertanyaan Bahasa Indonesia (Editable oleh Master saat klik Edit Soal) */}
+                                    <td className="border border-stone-400 py-1.5 px-2.5 text-xs sm:text-sm font-serif align-top leading-snug w-64 sm:w-80">
+                                      {isInlineEditing ? (
+                                        <input
+                                          type="text"
+                                          value={inlineQuestionsDraft[qIdx] ?? ''}
+                                          onChange={e =>
+                                            handleInlineQuestionChange(qIdx, e.target.value)
+                                          }
+                                          placeholder={`Ketik pertanyaan nomor ${qNum}...`}
+                                          className="w-full px-2.5 py-1.5 rounded-lg border-2 border-amber-400 bg-amber-50/40 font-sans text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:border-[#881337] focus:bg-white"
+                                        />
+                                      ) : (
+                                        questionText
+                                      )}
+                                    </td>
+
+                                    {/* Kolom 3: Tabel Kosong Sebelah Pertanyaan (Murid Bisa Mengetik Sebelum Dikumpulkan) */}
+                                    <td
+                                      className={`border border-stone-400 p-0 align-stretch ${
+                                        isStudentLocked
+                                          ? 'bg-stone-100/90'
+                                          : 'bg-white focus-within:bg-[#fff9f3] focus-within:ring-2 focus-within:ring-[#881337]/50'
+                                      }`}
+                                    >
+                                      <textarea
+                                        rows={questionText.length > 36 ? 2 : 1}
+                                        value={answerVal}
+                                        disabled={isStudentLocked}
+                                        readOnly={isStudentLocked}
+                                        onChange={e =>
+                                          handleWorksheetCellChange(task, qNum, e.target.value)
+                                        }
+                                        placeholder={
+                                          isStudentLocked
+                                            ? '(Tidak diisi — tugas sudah dikumpulkan)'
+                                            : `Ketik jawaban nomor ${qNum} di sini...`
+                                        }
+                                        className={`w-full h-full min-h-[40px] px-3 py-2 bg-transparent text-xs sm:text-sm font-japanese placeholder:font-sans focus:outline-none resize-y ${
+                                          isStudentLocked
+                                            ? 'text-stone-700 cursor-not-allowed placeholder:text-stone-400'
+                                            : 'text-stone-900 placeholder:text-stone-400'
+                                        }`}
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Tombol Simpan Perubahan Soal di Bawah Tabel Saat Master Sedang Mengedit Soal 1-25 */}
+                        {isInlineEditing && (
+                          <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-[#881337]">
+                              Sudah selesai mengganti pertanyaan Nomor 1 sampai 25?
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setInlineEditingTaskId(null)}
+                                className="px-3.5 py-2 rounded-xl bg-white border border-stone-300 text-xs font-bold text-stone-700 cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveInlineEdit(task)}
+                                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                              >
+                                <Save className="w-4 h-4" />
+                                <span>Simpan Perubahan Soal (Nomor 1–25)</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Bagian Halaman 2 PDF: Komentar / Lembar 1 */}
+                        <div className="mt-6 pt-4 border-t-2 border-stone-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="text-sm sm:text-base font-bold text-stone-900">
+                              Komentar
+                            </h5>
+                            <span className="text-xs font-semibold text-stone-600">
+                              Lembar 1
+                            </span>
+                          </div>
+
                           <input
                             type="text"
+                            disabled={!isMasterUser && isDoneByStudent}
+                            readOnly={!isMasterUser && isDoneByStudent}
                             value={
                               studentNotes[task.id] !== undefined
                                 ? studentNotes[task.id]
                                 : myComp?.note || ''
                             }
-                            onChange={e =>
+                            onChange={e => {
+                              if (!isMasterUser && isDoneByStudent) return;
                               setStudentNotes(prev => ({
                                 ...prev,
                                 [task.id]: e.target.value,
-                              }))
+                              }));
+                            }}
+                            placeholder={
+                              !isMasterUser && isDoneByStudent
+                                ? 'Tugas sudah dikumpulkan (catatan terkunci)'
+                                : 'Tambahkan catatan atau komentar murid pada Lembar 1 (opsional)...'
                             }
-                            placeholder="Tulis catatan laporan untuk Master Sensei (opsional, misal: Sudah hafal 25 kata Sensei!)"
-                            className="flex-1 px-3 py-2 rounded-xl border border-[#d6c0aa] bg-white text-xs text-[#2b1d19] focus:outline-none focus:border-[#881337]"
+                            className={`w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm focus:outline-none ${
+                              !isMasterUser && isDoneByStudent
+                                ? 'border-stone-200 bg-stone-100 text-stone-600 cursor-not-allowed'
+                                : 'border-stone-300 bg-[#fdfbf7] text-stone-900 focus:border-[#881337]'
+                            }`}
+                          />
+
+                          {myComp?.teacherComment && (
+                            <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-950">
+                              <div className="font-extrabold text-[#881337] mb-0.5 flex items-center gap-1.5">
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Komentar Master Sensei (Lembar 1):</span>
+                              </div>
+                              <p className="whitespace-pre-line">{myComp.teacherComment}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Save Feedback Toast */}
+                        {saveToastByTask[task.id] && (
+                          <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                            <span>{saveToastByTask[task.id]}</span>
+                          </div>
+                        )}
+
+                        {/* Hanya 1 Tombol untuk Murid: Kumpulkan & Tandai Selesai (Terkunci setelah dikumpulkan) */}
+                        {!isMasterUser && (
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-stone-200">
+                            <span className="text-[11px] text-[#735338]">
+                              {isDoneByStudent
+                                ? '🔒 Tugas telah dikumpulkan. Jawaban Anda sudah terkunci dan tidak dapat diubah lagi.'
+                                : '💡 Ketika kamu menekan tombol kumpulkan atau saat timer habis, tugas otomatis terkumpul & terkunci.'}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                disabled={isDoneByStudent}
+                                onClick={() => handleSaveOrSubmitWorksheet(task, true)}
+                                className={`px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-xs transition-all ${
+                                  isDoneByStudent
+                                    ? 'bg-emerald-700 opacity-90 cursor-not-allowed'
+                                    : 'bg-[#881337] hover:bg-[#9f1239] cursor-pointer'
+                                }`}
+                              >
+                                {isDoneByStudent ? (
+                                  <Lock className="w-4 h-4" />
+                                ) : (
+                                  <CheckSquare className="w-4 h-4" />
+                                )}
+                                <span>
+                                  {isDoneByStudent
+                                    ? `Sudah Dikumpulkan & Terkunci (${myAnsweredCount}/${totalWorksheetQuestions})`
+                                    : `Kumpulkan & Tandai Selesai (${myAnsweredCount}/${totalWorksheetQuestions})`}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action Row for Non-Worksheet Tasks for Students */}
+                    {!isMasterUser && !hasWorksheet && (
+                      <div className="pt-3 border-t border-[#ebdccb] space-y-3">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <input
+                            type="text"
+                            disabled={isDoneByStudent}
+                            readOnly={isDoneByStudent}
+                            value={
+                              studentNotes[task.id] !== undefined
+                                ? studentNotes[task.id]
+                                : myComp?.note || ''
+                            }
+                            onChange={e => {
+                              if (isDoneByStudent) return;
+                              setStudentNotes(prev => ({
+                                ...prev,
+                                [task.id]: e.target.value,
+                              }));
+                            }}
+                            placeholder={
+                              isDoneByStudent
+                                ? 'Tugas sudah dikumpulkan (catatan terkunci)'
+                                : 'Tulis catatan laporan untuk Master Sensei (opsional)...'
+                            }
+                            className={`flex-1 px-3 py-2 rounded-xl border text-xs focus:outline-none ${
+                              isDoneByStudent
+                                ? 'border-stone-200 bg-stone-100 text-stone-600 cursor-not-allowed'
+                                : 'border-[#d6c0aa] bg-white text-[#2b1d19] focus:border-[#881337]'
+                            }`}
                           />
 
                           <div className="flex items-center gap-2">
@@ -782,39 +1653,29 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                               </button>
                             )}
 
-                            {myComp && studentNotes[task.id] !== undefined && studentNotes[task.id] !== (myComp.note || '') && (
-                              <button
-                                type="button"
-                                onClick={() => handleStudentToggleComplete(task, true)}
-                                className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
-                              >
-                                Simpan Catatan
-                              </button>
-                            )}
-
                             <button
                               type="button"
+                              disabled={isDoneByStudent}
                               onClick={() => handleStudentToggleComplete(task, false)}
-                              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-                                myComp
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                                  : 'bg-[#881337] hover:bg-[#9f1239] text-white shadow-xs'
+                              className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shrink-0 ${
+                                isDoneByStudent
+                                  ? 'bg-emerald-700 text-white opacity-90 cursor-not-allowed'
+                                  : 'bg-[#881337] hover:bg-[#9f1239] text-white shadow-xs cursor-pointer'
                               }`}
                             >
-                              <CheckSquare className="w-4 h-4" />
-                              <span>{myComp ? 'Sudah Selesai (Klik untuk Batal)' : 'Tandai Sudah Selesai'}</span>
+                              {isDoneByStudent ? (
+                                <Lock className="w-4 h-4" />
+                              ) : (
+                                <CheckSquare className="w-4 h-4" />
+                              )}
+                              <span>
+                                {isDoneByStudent
+                                  ? 'Sudah Dikumpulkan & Terkunci'
+                                  : 'Kumpulkan & Tandai Selesai'}
+                              </span>
                             </button>
                           </div>
                         </div>
-
-                        {myComp && (
-                          <div className="text-[11px] text-emerald-800 bg-emerald-100/70 px-3 py-1.5 rounded-lg flex items-center justify-between">
-                            <span>
-                              🌸 Kamu telah menyelesaikan tugas ini pada <strong>{myComp.completedAt}</strong>
-                              {myComp.note ? ` · Catatan: "${myComp.note}"` : ''}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     )}
 
@@ -830,13 +1691,13 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                 [task.id]: !prev[task.id],
                               }))
                             }
-                            className="px-3 py-1.5 rounded-xl bg-[#f5ede1] hover:bg-[#eadbc8] text-[#553b26] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                            className="px-3.5 py-2 rounded-xl bg-[#881337] hover:bg-[#9f1239] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
                           >
-                            <Users className="w-3.5 h-3.5 text-[#881337]" />
+                            <Users className="w-3.5 h-3.5" />
                             <span>
                               {isExpandedStudents
-                                ? 'Sembunyikan Daftar Pantauan Murid'
-                                : `Lihat Pantauan Murid (${completedCount}/${allStudents.length} Selesai)`}
+                                ? 'Sembunyikan Jawaban & Pantauan Murid'
+                                : `Lihat Jawaban Tabel & Pantauan Murid (${completedCount}/${allStudents.length} Murid)`}
                             </span>
                           </button>
 
@@ -851,16 +1712,20 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                               }`}
                             >
                               <Archive className="w-3.5 h-3.5" />
-                              <span>{task.isActive ? 'Tutup / Arsipkan' : 'Aktifkan Kembali'}</span>
+                              <span>{task.isActive ? 'Arsipkan' : 'Aktifkan'}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(task)}
-                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 text-[#553b26] border border-[#d6c0aa] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer border ${
+                                isInlineEditing
+                                  ? 'bg-amber-600 text-white border-amber-700'
+                                  : 'bg-white hover:bg-stone-50 text-[#553b26] border border-[#d6c0aa]'
+                              }`}
                             >
                               <Edit3 className="w-3.5 h-3.5" />
-                              <span>Edit</span>
+                              <span>{isInlineEditing ? 'Tutup Edit Soal' : 'Edit Soal (1–25)'}</span>
                             </button>
 
                             <button
@@ -874,28 +1739,38 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Master Student Completion Monitor Table */}
+                        {/* Master Student Completion & Worksheet Answer Monitor */}
                         {isExpandedStudents && (
-                          <div className="bg-[#fdfaf5] border border-[#e5d3c0] rounded-xl p-3 space-y-2.5">
+                          <div className="bg-[#fdfaf5] border border-[#e5d3c0] rounded-xl p-3.5 space-y-3">
                             <div className="text-xs font-extrabold text-[#881337] flex items-center justify-between">
-                              <span>📋 Status Pengerjaan Murid Terdaftar ({allStudents.length} Murid)</span>
+                              <span>📋 Pantauan Pengerjaan & Lembar Jawaban Murid ({allStudents.length} Murid)</span>
                               <span className="text-[11px] font-semibold text-[#6e533d]">
-                                Selesai: {completedCount} · Belum: {Math.max(0, allStudents.length - completedCount)}
+                                Mengisi / Selesai: {completedCount} · Belum: {Math.max(0, allStudents.length - completedCount)}
                               </span>
                             </div>
 
                             {allStudents.length === 0 ? (
                               <p className="text-xs text-[#735338]">Belum ada murid terdaftar.</p>
                             ) : (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                 {allStudents.map(stu => {
                                   const comp = (task.completions || []).find(
                                     c => c.studentEmail.toLowerCase() === stu.email.toLowerCase()
                                   );
+                                  const stuAnsweredCount = comp?.worksheetAnswers
+                                    ? Object.values(comp.worksheetAnswers).filter(
+                                        v => String(v || '').trim().length > 0
+                                      ).length
+                                    : 0;
+                                  const isInspectingThis =
+                                    inspectingStudentTask?.taskId === task.id &&
+                                    inspectingStudentTask?.studentEmail.toLowerCase() ===
+                                      stu.email.toLowerCase();
+
                                   return (
                                     <div
                                       key={stu.email}
-                                      className={`p-2.5 rounded-xl border text-xs flex flex-col justify-between ${
+                                      className={`p-3 rounded-xl border text-xs flex flex-col justify-between ${
                                         comp
                                           ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
                                           : 'bg-white border-stone-200 text-stone-700'
@@ -912,16 +1787,48 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                               : 'bg-amber-100 text-amber-900'
                                           }`}
                                         >
-                                          {comp ? '✅ Selesai' : '⏳ Belum'}
+                                          {comp
+                                            ? hasWorksheet
+                                              ? `✅ ${stuAnsweredCount}/${totalWorksheetQuestions} Soal`
+                                              : '✅ Selesai'
+                                            : '⏳ Belum Mengisi'}
                                         </span>
                                       </div>
+
                                       {comp && (
-                                        <div className="mt-1 text-[11px] text-emerald-800">
-                                          <div>Waktu: {comp.completedAt}</div>
+                                        <div className="mt-1.5 text-[11px] text-emerald-800 space-y-1">
+                                          <div>
+                                            Update terakhir: {comp.completedAt}
+                                            {comp.studentNameField ? ` · 名前: ${comp.studentNameField}` : ''}
+                                          </div>
                                           {comp.note && (
-                                            <div className="italic mt-0.5 text-emerald-900">
-                                              Catatan: "{comp.note}"
+                                            <div className="italic text-emerald-900">
+                                              Catatan Murid: "{comp.note}"
                                             </div>
+                                          )}
+                                          {hasWorksheet && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                if (isInspectingThis) {
+                                                  setInspectingStudentTask(null);
+                                                } else {
+                                                  setInspectingStudentTask({
+                                                    taskId: task.id,
+                                                    studentEmail: stu.email,
+                                                  });
+                                                  setTeacherCommentDraft(comp.teacherComment || '');
+                                                }
+                                              }}
+                                              className="mt-1 px-2.5 py-1 rounded-lg bg-[#881337] text-white text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                            >
+                                              <Eye className="w-3 h-3" />
+                                              <span>
+                                                {isInspectingThis
+                                                  ? 'Tutup Tabel Jawaban Murid'
+                                                  : 'Lihat Tabel Jawaban Murid'}
+                                              </span>
+                                            </button>
                                           )}
                                         </div>
                                       )}
@@ -930,6 +1837,94 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                 })}
                               </div>
                             )}
+
+                            {/* Detail Lembar Jawaban Murid yang Sedang Diperiksa Master */}
+                            {inspectingStudentTask &&
+                              inspectingStudentTask.taskId === task.id &&
+                              hasWorksheet && (() => {
+                                const targetComp = (task.completions || []).find(
+                                  c =>
+                                    c.studentEmail.toLowerCase() ===
+                                    inspectingStudentTask.studentEmail.toLowerCase()
+                                );
+                                if (!targetComp) return null;
+                                const stuAnswers = targetComp.worksheetAnswers || {};
+                                return (
+                                  <div className="mt-3 p-4 bg-white border-2 border-[#881337] rounded-2xl space-y-3">
+                                    <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                                      <div>
+                                        <h5 className="text-sm font-extrabold text-[#881337]">
+                                          📄 Lembar Jawaban Murid: {targetComp.studentName} (名前: {targetComp.studentNameField || targetComp.studentName})
+                                        </h5>
+                                        <p className="text-[11px] text-[#6e533d]">
+                                          Waktu pengumpulan/simpan: {targetComp.completedAt}
+                                        </p>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => setInspectingStudentTask(null)}
+                                        className="text-xs font-bold text-rose-700 hover:underline"
+                                      >
+                                        Tutup
+                                      </button>
+                                    </div>
+
+                                    <div className="overflow-x-auto max-h-80">
+                                      <table className="w-full border-collapse border border-stone-400 text-xs">
+                                        <thead>
+                                          <tr className="bg-stone-100">
+                                            <th className="border border-stone-400 py-1.5 px-2 w-10 text-center">No.</th>
+                                            <th className="border border-stone-400 py-1.5 px-2.5 w-56">Pertanyaan</th>
+                                            <th className="border border-stone-400 py-1.5 px-2.5">Jawaban yang Diketik Murid</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {task.worksheetQuestions!.map((qText, idx) => {
+                                            const qNo = idx + 1;
+                                            const ans = stuAnswers[qNo] || '';
+                                            return (
+                                              <tr key={qNo}>
+                                                <td className="border border-stone-400 py-1.5 px-2 text-center font-serif">
+                                                  {qNo}.
+                                                </td>
+                                                <td className="border border-stone-400 py-1.5 px-2.5 font-serif">
+                                                  {qText}
+                                                </td>
+                                                <td className="border border-stone-400 py-1.5 px-2.5 font-japanese font-semibold text-[#881337]">
+                                                  {ans || <span className="text-stone-400 font-sans italic">(Belum diisi)</span>}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+
+                                    {/* Input Komentar Sensei untuk Lembar 1 Murid */}
+                                    <div className="pt-2 border-t border-stone-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={teacherCommentDraft}
+                                        onChange={e => setTeacherCommentDraft(e.target.value)}
+                                        placeholder="Tulis Komentar Sensei pada Lembar 1 murid ini..."
+                                        className="flex-1 px-3 py-1.5 rounded-xl border border-stone-300 text-xs"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleSaveTeacherComment(
+                                            task.id,
+                                            targetComp.studentEmail
+                                          )
+                                        }
+                                        className="px-3.5 py-1.5 rounded-xl bg-[#881337] text-white text-xs font-bold cursor-pointer"
+                                      >
+                                        Simpan Komentar Sensei
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                           </div>
                         )}
                       </div>

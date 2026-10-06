@@ -8,8 +8,7 @@ const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'sensei_sari_db.json');
 
 // Cloud Sync Relay Endpoints (Menjembatani sinkronisasi real-time antara ais-dev, ais-pre, dan lintas perangkat)
-const CLOUD_OBJECT_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a106331a7571ef';
-const NTFY_SYNC_URL = 'https://ntfy.sh/sari_sensei_sync_8890ebbf_v2';
+const NTFY_SYNC_URL = 'https://ntfy.sh/sari_sensei_live_8890ebbf_v4';
 
 const MASTER_CONFIG = {
   email: 'dioalifap24@gmail.com',
@@ -76,6 +75,60 @@ interface PresenceEntry {
   lastActionAt?: string;
 }
 
+const DEFAULT_LEMBAR_1_QUESTIONS: string[] = [
+  'Saya adalah Bagas',
+  'Dia (perempuan) adalah selvia tri haryani',
+  'Rianti adalah seorang dokter',
+  'Bagas bukan orang china',
+  'Jimmy adalah orang jerman',
+  'Dia (laki-laki) bukan seorang peneliti',
+  'Rizki adalah seorang pelajar, Rani juga seorang pelajar',
+  'Ini adalah majalah sepeda',
+  'Disini adalah ruang kelas amakusa',
+  '89.901',
+  '9.087',
+  '673.567',
+  'Mobil ini adalah mobil buatan Jerman',
+  'Hasan membaca majalah bola',
+  'Saya tadi pagi minum kopi',
+  'Kemarin malam Arin membeli kamera di toko kamera',
+  'Saya bermain bola, setelah itu minum jus',
+  'Guputa tidak makan daging sapi dan daging babi',
+  'Sekarang jam 04.47 pagi',
+  'Besok saya pergi ke selolah jam 05.58 pagi',
+  'Setiap hari Putra istirahat siang dari jam 12.00 sampai jam 14.00',
+  'Setiap malam Saya menonton film dari jam 19.39 sampai jam 20.57',
+  'Kemarin adik laki-laki tidak makan apapun',
+  'Bima pergi ke Jepang tanggal 19 Oktober 2026',
+  '2 hari lalu Saya dan Rama belajar bahasa jerman di perpustakaan',
+];
+
+const DEFAULT_WORKSHEET_TASK = {
+  id: 'task-lembar-1-sensei',
+  title: 'Lembar 1: Tabel Latihan Soal Terjemahan & Kalimat Bahasa Jepang (25 Soal)',
+  description:
+    'Isi kolom 名前 (Nama) di atas tabel, lalu ketik terjemahan bahasa Jepang pada kolom tabel kosong di sebelah kanan setiap pertanyaan (Nomor 1 sampai 25). Klik Kumpulkan & Tandai Selesai setelah selesai.',
+  level: 'N5',
+  category: 'materi',
+  dueDate: '2026-10-05',
+  dueTime: '23:59',
+  durationMinutes: 60,
+  timerStatus: 'idle',
+  createdAt: '2026-10-05 08:00',
+  createdAtTimestamp: 1000,
+  createdBy: 'skywalker',
+  isActive: true,
+  worksheetQuestions: DEFAULT_LEMBAR_1_QUESTIONS,
+  completions: [],
+  updatedAt: 1000,
+};
+
+function normalizeTaskTimestamp(ts?: number): number {
+  if (!ts || typeof ts !== 'number') return 0;
+  if (ts === 1791187200000) return 1000;
+  return ts;
+}
+
 interface ServerDatabase {
   users: { user: any; password: string }[];
   scores: any[];
@@ -127,7 +180,19 @@ function loadDatabase(): ServerDatabase {
         Array.isArray(parsed.deletedTaskIds) ? parsed.deletedTaskIds.map((id: any) => String(id)) : []
       );
       const rawTasks = Array.isArray(parsed.dailyTasks) ? parsed.dailyTasks : [];
-      const filteredTasks = rawTasks.filter((t: any) => t?.id && !deletedTasksSet.has(String(t.id)));
+      const filteredTasks = rawTasks
+        .filter((t: any) => t?.id && !deletedTasksSet.has(String(t.id)))
+        .map((t: any) => ({
+          ...t,
+          createdAtTimestamp: normalizeTaskTimestamp(t.createdAtTimestamp) || 1000,
+          updatedAt: normalizeTaskTimestamp(t.updatedAt) || 1000,
+        }));
+      if (
+        !deletedTasksSet.has(DEFAULT_WORKSHEET_TASK.id) &&
+        !filteredTasks.some((t: any) => String(t?.id) === DEFAULT_WORKSHEET_TASK.id)
+      ) {
+        filteredTasks.unshift({ ...DEFAULT_WORKSHEET_TASK });
+      }
 
       return {
         users: filteredUsers.length > 0 ? filteredUsers : [...INITIAL_STUDENTS],
@@ -152,7 +217,7 @@ function loadDatabase(): ServerDatabase {
     activeQuizzes: [],
     quizControl: { isActive: false, updatedAt: 0 },
     onlinePresence: {},
-    dailyTasks: [],
+    dailyTasks: [{ ...DEFAULT_WORKSHEET_TASK }],
     deletedTaskIds: [],
     deletedEmails: Array.from(SAMPLE_EMAILS),
     rankingResetAt: 0,
@@ -466,25 +531,52 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
         const existing = db.dailyTasks[idx];
         // Merge completions by studentEmail
         const compMap = new Map<string, any>();
+        let compModified = false;
         for (const c of [...(existing.completions || []), ...(incomingTask.completions || [])]) {
           if (c?.studentEmail) {
             const em = String(c.studentEmail).toLowerCase();
             if (!SAMPLE_EMAILS.has(em) && !db.deletedEmails.includes(em)) {
               const prevC = compMap.get(em);
-              if (!prevC || (c.completedAtTimestamp || 0) >= (prevC.completedAtTimestamp || 0)) {
+              if (!prevC) {
                 compMap.set(em, c);
+              } else {
+                const incomingNewer = (c.completedAtTimestamp || 0) >= (prevC.completedAtTimestamp || 0);
+                const mergedAnswers = incomingNewer
+                  ? { ...(prevC.worksheetAnswers || {}), ...(c.worksheetAnswers || {}) }
+                  : { ...(c.worksheetAnswers || {}), ...(prevC.worksheetAnswers || {}) };
+                const mergedEntry = {
+                  ...(incomingNewer ? { ...prevC, ...c } : { ...c, ...prevC }),
+                  isCompleted: Boolean(c.isCompleted || prevC.isCompleted),
+                  autoSubmittedByTimer: Boolean(c.autoSubmittedByTimer || prevC.autoSubmittedByTimer),
+                  worksheetAnswers: mergedAnswers,
+                  teacherComment: c.teacherComment || prevC.teacherComment,
+                };
+                if (JSON.stringify(mergedEntry) !== JSON.stringify(prevC)) {
+                  compModified = true;
+                }
+                compMap.set(em, mergedEntry);
               }
             }
           }
         }
         const mergedCompletions = Array.from(compMap.values());
-        const incomingUpdated = incomingTask.updatedAt || 0;
-        const existingUpdated = existing.updatedAt || 0;
+        const incomingUpdated = normalizeTaskTimestamp(incomingTask.updatedAt);
+        const existingUpdated = normalizeTaskTimestamp(existing.updatedAt);
 
-        if (incomingUpdated > existingUpdated || mergedCompletions.length !== (existing.completions || []).length) {
+        if (
+          incomingUpdated > existingUpdated ||
+          compModified ||
+          mergedCompletions.length !== (existing.completions || []).length
+        ) {
+          const winner = incomingUpdated >= existingUpdated ? { ...existing, ...incomingTask } : existing;
           db.dailyTasks[idx] = {
-            ...(incomingUpdated >= existingUpdated ? { ...existing, ...incomingTask } : existing),
+            ...winner,
+            worksheetQuestions:
+              incomingUpdated >= existingUpdated
+                ? incomingTask.worksheetQuestions || existing.worksheetQuestions
+                : existing.worksheetQuestions || incomingTask.worksheetQuestions,
             completions: mergedCompletions,
+            createdAtTimestamp: normalizeTaskTimestamp(winner.createdAtTimestamp) || 1000,
             updatedAt: Math.max(incomingUpdated, existingUpdated),
           };
           changed = true;
@@ -498,44 +590,19 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
   return changed;
 }
 
-let isPushingCloud = false;
-let pendingCloudPush = false;
+let lastCloudPushAt = 0;
 
 async function pushDatabaseToCloud() {
-  if (isPushingCloud) {
-    pendingCloudPush = true;
-    return;
-  }
-  isPushingCloud = true;
+  const now = Date.now();
+  if (now - lastCloudPushAt < 15000) return;
+  lastCloudPushAt = now;
   try {
-    const snapshot = {
-      users: db.users,
-      scores: db.scores,
-      activeQuizzes: db.activeQuizzes,
-      quizControl: db.quizControl,
-      onlinePresence: db.onlinePresence,
-      dailyTasks: db.dailyTasks,
-      deletedTaskIds: db.deletedTaskIds,
-      deletedEmails: db.deletedEmails,
-      rankingResetAt: db.rankingResetAt,
-      updatedAt: db.updatedAt,
-    };
-
-    // 1. Push full state to persistent Cloud JSON object
-    await fetch(CLOUD_OBJECT_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'sari_sensei_db',
-        data: snapshot,
-      }),
-    }).catch(() => {});
-
-    // 2. Broadcast real-time notification via ntfy.sh so SSE clients & peer servers immediately sync
     const compactEvent = JSON.stringify({
       type: 'cloud_state_sync',
+      users: db.users,
       quizControl: db.quizControl,
-      usersCount: db.users.length,
+      deletedEmails: db.deletedEmails,
+      deletedTaskIds: db.deletedTaskIds,
       updatedAt: db.updatedAt,
     });
     await fetch(NTFY_SYNC_URL, {
@@ -545,12 +612,6 @@ async function pushDatabaseToCloud() {
     }).catch(() => {});
   } catch {
     // Ignore transient network errors
-  } finally {
-    isPushingCloud = false;
-    if (pendingCloudPush) {
-      pendingCloudPush = false;
-      pushDatabaseToCloud();
-    }
   }
 }
 
@@ -559,16 +620,62 @@ async function pullDatabaseFromCloud() {
   if (isPullingCloud) return;
   isPullingCloud = true;
   try {
-    const res = await fetch(CLOUD_OBJECT_URL);
+    const res = await fetch(`${NTFY_SYNC_URL}/json?poll=1&since=12h`);
     if (res.ok) {
-      const json = await res.json();
-      const cloudData = json?.data;
-      if (cloudData && typeof cloudData === 'object') {
-        const changed = mergeExternalPayloadIntoDb(cloudData);
-        if (changed) {
-          db.updatedAt = Date.now();
-          saveDatabaseLocalOnly(db);
-        }
+      const text = await res.text();
+      const lines = text.split('\n').filter(Boolean);
+      let anyChanged = false;
+      for (const line of lines) {
+        try {
+          const outer = JSON.parse(line);
+          if (outer?.message && typeof outer.message === 'string' && outer.message.startsWith('{')) {
+            const packet = JSON.parse(outer.message);
+            if (packet.type === 'user_registered' && packet.entry) {
+              if (
+                mergeExternalPayloadIntoDb({
+                  users: [packet.entry],
+                  onlinePresence: packet.presence
+                    ? { [String(packet.entry?.user?.email || '').toLowerCase()]: packet.presence }
+                    : undefined,
+                })
+              ) {
+                anyChanged = true;
+              }
+            } else if (packet.type === 'daily_task_upserted' && packet.task) {
+              if (mergeExternalPayloadIntoDb({ dailyTasks: [packet.task] })) {
+                anyChanged = true;
+              }
+            } else if (packet.type === 'daily_task_deleted' && packet.taskId) {
+              if (mergeExternalPayloadIntoDb({ deletedTaskIds: [packet.taskId] })) {
+                anyChanged = true;
+              }
+            } else if (packet.type === 'score_saved' && packet.score) {
+              if (mergeExternalPayloadIntoDb({ scores: [packet.score] })) {
+                anyChanged = true;
+              }
+            } else if (packet.type === 'active_quiz' && packet.record) {
+              if (mergeExternalPayloadIntoDb({ activeQuizzes: [packet.record] })) {
+                anyChanged = true;
+              }
+            } else if (packet.type === 'presence_update' && packet.presence?.email) {
+              if (
+                mergeExternalPayloadIntoDb({
+                  onlinePresence: { [String(packet.presence.email).toLowerCase()]: packet.presence },
+                })
+              ) {
+                anyChanged = true;
+              }
+            } else if (packet.type === 'cloud_state_sync' && Array.isArray(packet.users)) {
+              if (mergeExternalPayloadIntoDb(packet)) {
+                anyChanged = true;
+              }
+            }
+          }
+        } catch {}
+      }
+      if (anyChanged) {
+        db.updatedAt = Date.now();
+        saveDatabaseLocalOnly(db);
       }
     }
   } catch {
@@ -578,7 +685,7 @@ async function pullDatabaseFromCloud() {
   }
 }
 
-function saveDatabase(targetDb: ServerDatabase, skipCloudPush = false) {
+function saveDatabase(targetDb: ServerDatabase, skipCloudPush = true) {
   targetDb.updatedAt = Date.now();
   saveDatabaseLocalOnly(targetDb);
   if (!skipCloudPush) {
@@ -603,13 +710,11 @@ async function startServer() {
 
   app.use(express.json({ limit: '5mb' }));
 
-  // Initial pull from cloud on server startup & periodic background cloud sync every 3 seconds
-  pullDatabaseFromCloud().then(() => {
-    pushDatabaseToCloud();
-  });
+  // Initial pull from cloud on server startup & periodic background cloud sync every 25 seconds
+  pullDatabaseFromCloud();
   setInterval(() => {
     pullDatabaseFromCloud();
-  }, 3000);
+  }, 25000);
 
   // GET /api/state - Return full synchronized state
   app.get('/api/state', (_req, res) => {
