@@ -68,6 +68,9 @@ interface PresenceEntry {
   name: string;
   nickname?: string;
   lastSeen: number;
+  lastOnlineTimestamp?: number;
+  lastOnlineAt?: string;
+  updatedAt?: number;
   currentTab?: string;
   currentActivity?: string;
   activeLevel?: string;
@@ -484,6 +487,20 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
       const current = db.onlinePresence[lowerKey];
       const incomingSeen = typeof pVal?.lastSeen === 'number' ? pVal.lastSeen : 0;
       const currentSeen = current ? current.lastSeen || 0 : -1;
+      const incomingLastOnlineTs = Math.max(
+        typeof pVal?.lastOnlineTimestamp === 'number' ? pVal.lastOnlineTimestamp : 0,
+        incomingSeen > 0 ? incomingSeen : 0
+      );
+      const currentLastOnlineTs = Math.max(
+        typeof current?.lastOnlineTimestamp === 'number' ? current.lastOnlineTimestamp : 0,
+        currentSeen > 0 ? currentSeen : 0
+      );
+      const bestLastOnlineTs = Math.max(incomingLastOnlineTs, currentLastOnlineTs);
+      const incomingUpdated =
+        typeof pVal?.updatedAt === 'number' ? pVal.updatedAt : incomingLastOnlineTs;
+      const currentUpdated =
+        typeof current?.updatedAt === 'number' ? current.updatedAt : currentLastOnlineTs;
+      const isIncomingNewer = !current || incomingUpdated >= currentUpdated;
 
       const incomingScreenshot = typeof pVal?.screenshotAttempts === 'number' ? pVal.screenshotAttempts : 0;
       const incomingAiTranslate = typeof pVal?.aiTranslateAttempts === 'number' ? pVal.aiTranslateAttempts : 0;
@@ -492,6 +509,7 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
 
       if (
         !current ||
+        isIncomingNewer ||
         incomingSeen >= currentSeen ||
         pVal?.currentActivity !== current.currentActivity ||
         incomingScreenshot > currentScreenshot ||
@@ -501,15 +519,33 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
           email: lowerKey,
           name: pVal?.name || current?.name || 'Murid',
           nickname: pVal?.nickname || current?.nickname || 'Murid',
-          lastSeen: incomingSeen >= 0 ? incomingSeen : currentSeen,
-          currentTab: pVal?.currentTab || current?.currentTab || 'home',
-          currentActivity: pVal?.currentActivity || current?.currentActivity || 'Membuka Aplikasi',
-          activeLevel: pVal?.activeLevel || current?.activeLevel || 'N5',
+          lastSeen: isIncomingNewer ? incomingSeen : incomingSeen >= 0 ? incomingSeen : currentSeen,
+          lastOnlineTimestamp: bestLastOnlineTs > 0 ? bestLastOnlineTs : undefined,
+          lastOnlineAt: (isIncomingNewer && pVal?.lastOnlineAt) || current?.lastOnlineAt || pVal?.lastOnlineAt,
+          updatedAt: Math.max(incomingUpdated, currentUpdated),
+          currentTab: (isIncomingNewer ? pVal?.currentTab : current?.currentTab) || pVal?.currentTab || 'home',
+          currentActivity:
+            (isIncomingNewer ? pVal?.currentActivity : current?.currentActivity) ||
+            pVal?.currentActivity ||
+            'Membuka Aplikasi',
+          activeLevel: (isIncomingNewer ? pVal?.activeLevel : current?.activeLevel) || pVal?.activeLevel || 'N5',
           quizProgress: pVal?.quizProgress ?? current?.quizProgress,
-          lastActionAt: pVal?.lastActionAt || current?.lastActionAt,
+          lastActionAt: (isIncomingNewer ? pVal?.lastActionAt : current?.lastActionAt) || pVal?.lastActionAt,
           screenshotAttempts: Math.max(incomingScreenshot, currentScreenshot),
           aiTranslateAttempts: Math.max(incomingAiTranslate, currentAiTranslate),
         };
+        if (bestLastOnlineTs > 0) {
+          const uIdx = db.users.findIndex(u => u?.user?.email?.toLowerCase() === lowerKey);
+          if (uIdx !== -1) {
+            db.users[uIdx].user.lastOnlineTimestamp = Math.max(
+              db.users[uIdx].user.lastOnlineTimestamp || 0,
+              bestLastOnlineTs
+            );
+            if (db.onlinePresence[lowerKey].lastOnlineAt) {
+              db.users[uIdx].user.lastOnlineAt = db.onlinePresence[lowerKey].lastOnlineAt;
+            }
+          }
+        }
         changed = true;
       }
     }
@@ -1050,6 +1086,9 @@ async function startServer() {
       name,
       nickname,
       lastSeen,
+      lastOnlineTimestamp,
+      lastOnlineAt,
+      updatedAt,
       currentTab,
       currentActivity,
       activeLevel,
@@ -1063,11 +1102,23 @@ async function startServer() {
       ensureStudentInDb(emailLower, name, nickname || (name ? name.split(/\s+/)[0] : undefined));
       sortDbUsers();
       const prev = db.onlinePresence[emailLower] as any;
+      const nowMs = Date.now();
+      const effectiveLastSeen = typeof lastSeen === 'number' ? lastSeen : nowMs;
+      const effectiveLastOnlineTs = Math.max(
+        typeof lastOnlineTimestamp === 'number' ? lastOnlineTimestamp : 0,
+        effectiveLastSeen > 0 ? effectiveLastSeen : 0,
+        prev?.lastOnlineTimestamp || 0,
+        prev?.lastSeen || 0,
+        nowMs
+      );
       db.onlinePresence[emailLower] = {
         email: emailLower,
         name: name || prev?.name || 'Murid',
         nickname: nickname || prev?.nickname || (name ? name.split(/\s+/)[0] : 'Murid'),
-        lastSeen: typeof lastSeen === 'number' ? lastSeen : Date.now(),
+        lastSeen: effectiveLastSeen,
+        lastOnlineTimestamp: effectiveLastOnlineTs,
+        lastOnlineAt: lastOnlineAt || prev?.lastOnlineAt,
+        updatedAt: typeof updatedAt === 'number' ? updatedAt : nowMs,
         currentTab: currentTab || prev?.currentTab || 'home',
         currentActivity: currentActivity || prev?.currentActivity || 'Membuka Aplikasi',
         activeLevel: activeLevel || prev?.activeLevel || 'N5',
@@ -1075,7 +1126,7 @@ async function startServer() {
         lastActionAt:
           lastActionAt ||
           prev?.lastActionAt ||
-          new Date().toLocaleTimeString('id-ID', {
+          new Date(nowMs).toLocaleTimeString('id-ID', {
             hour12: false,
             hour: '2-digit',
             minute: '2-digit',
@@ -1084,6 +1135,15 @@ async function startServer() {
         screenshotAttempts: Math.max(screenshotAttempts || 0, prev?.screenshotAttempts || 0),
         aiTranslateAttempts: Math.max(aiTranslateAttempts || 0, prev?.aiTranslateAttempts || 0),
       } as any;
+
+      const uIdx = db.users.findIndex(u => u?.user?.email?.toLowerCase() === emailLower);
+      if (uIdx !== -1) {
+        db.users[uIdx].user.lastOnlineTimestamp = effectiveLastOnlineTs;
+        if (lastOnlineAt) {
+          db.users[uIdx].user.lastOnlineAt = lastOnlineAt;
+        }
+      }
+
       saveDatabase(db);
     }
     res.json({ success: true, onlinePresence: db.onlinePresence, users: db.users });

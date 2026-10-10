@@ -159,33 +159,37 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8 space-y-5">
       {/* 🎨 JUDUL ATAS DENGAN ANIMASI API MEMBARA */}
       <div className="text-center space-y-2">
-        {/* Lencana Berapi-api •900 KANJI RESMI JLPT• */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black shadow-lg tracking-wider text-white bg-gradient-to-r from-red-600 via-orange-500 to-amber-500 border border-orange-300">
-          <Flame className="w-4 h-4 fire-flame-icon text-yellow-200 fill-yellow-400" />
-          <span className="drop-shadow-xs">•900 KANJI RESMI JLPT•</span>
-          <Flame className="w-4 h-4 fire-flame-icon text-yellow-200 fill-yellow-400" />
+        <div className="inline-flex items-center gap-2 text-xs font-black tracking-wider text-red-700">
+          <Flame className="w-4 h-4 fire-flame-icon text-amber-400 fill-amber-400" />
+          <span>900 Kanji Resmi JLPT (N5–N2)</span>
+          <Flame className="w-4 h-4 fire-flame-icon text-amber-400 fill-amber-400" />
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#881337] font-japanese tracking-wide flex items-center justify-center gap-2">
+        <h1 className="text-2xl sm:text-3xl font-extrabold font-japanese tracking-wide flex items-center justify-center gap-2 text-[#881337]">
           <span>漢字</span>
-          <span>KARTU HAFALAN KANJI</span>
+          <span>Kartu Hafalan Kanji</span>
         </h1>
 
-        {/* 🌟 BANNER PENGGUGAH SEMANGAT BER-API-API */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-amber-50 via-orange-50 to-red-50 border border-orange-200 rounded-2xl p-2.5 shadow-xs max-w-lg mx-auto">
-          {/* Efek percikan api kecil melayang */}
-          <div className="flex items-center justify-center gap-2 text-xs font-bold text-red-700">
+        {/* 🌟 BANNER PENGGUGAH SEMANGAT */}
+        <div className="relative overflow-hidden border rounded-2xl p-2.5 shadow-xs max-w-lg mx-auto bg-gradient-to-r from-amber-50 via-orange-50 to-red-50 border-orange-200">
+          <div className="flex items-center justify-center gap-2 text-xs font-bold">
             <span className="text-base animate-pulse">🔥</span>
-            <span className="font-japanese text-sm text-red-800">{currentQuote.kanji}</span>
-            <span className="text-[#8c6b4b] hidden sm:inline">({currentQuote.romaji})</span>
-            <span className="text-xs text-orange-600 font-semibold">— {currentQuote.arti}</span>
+            <span className="font-japanese text-sm text-red-800">
+              {currentQuote.kanji}
+            </span>
+            <span className="hidden sm:inline text-[#8c6b4b]">
+              ({currentQuote.romaji})
+            </span>
+            <span className="text-xs font-semibold text-orange-600">
+              — {currentQuote.arti}
+            </span>
             <span className="text-base animate-pulse">🔥</span>
           </div>
         </div>
       </div>
 
       {/* 🎨 PILIHAN LEVEL DI ATAS: ⦿ N5 ∘ N4 ∘ N3 ∘ N2 */}
-      <div className="bg-[#fffdfa] border-2 border-[#fbcfe8] rounded-2xl p-2.5 shadow-xs">
+      <div className="border-2 rounded-2xl p-2.5 shadow-xs bg-[#fffdfa] border-[#fbcfe8]">
         <div className="flex items-center justify-center gap-2 sm:gap-3">
           {(['N5', 'N4', 'N3', 'N2'] as JLPTLevel[]).map((lvl) => {
             const isSelected = activeLevel === lvl;
@@ -199,7 +203,7 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
               <button
                 key={lvl}
                 onClick={() => setActiveLevel(lvl)}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs ${
+                className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer ${
                   isSelected
                     ? 'bg-[#881337] text-white shadow-md scale-105 ring-2 ring-orange-400'
                     : 'bg-white text-[#624734] border border-[#ebdccb] hover:border-[#881337] hover:bg-[#fff9f3]'
@@ -225,9 +229,9 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
               {learnedInLevelCount} / {levelDeck.length} Dipelajari ({levelProgressPercent}%)
             </span>
           </div>
-          <div className="w-full h-2 bg-[#f3e8da] rounded-full overflow-hidden">
+          <div className="w-full h-2 rounded-full overflow-hidden bg-[#f3e8da]">
             <div
-              className="h-full bg-gradient-to-r from-[#881337] to-amber-600 rounded-full transition-all duration-300"
+              className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-[#881337] to-amber-600"
               style={{ width: `${Math.max(learnedInLevelCount > 0 ? 2 : 0, levelProgressPercent)}%` }}
             />
           </div>
@@ -246,7 +250,7 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
               setIsFlipped(false);
             }}
             placeholder={`Cari kanji di Level ${activeLevel} (contoh: 一, ichi, satu, 1)...`}
-            className="w-full px-4 py-2 bg-white border border-[#dec7b0] focus:border-[#881337] rounded-xl text-xs sm:text-sm text-[#3d2a1b] placeholder:text-[#a88a70] outline-hidden shadow-2xs"
+            className="w-full px-4 py-2 border rounded-xl text-xs sm:text-sm outline-hidden shadow-2xs transition-colors bg-white border-[#dec7b0] focus:border-[#881337] text-[#3d2a1b] placeholder:text-[#a88a70]"
           />
           {searchQuery && (
             <button
@@ -261,7 +265,7 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
         {/* Tombol Kobarkan Api Semangat */}
         <button
           onClick={() => setFireMode(!fireMode)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
             fireMode
               ? 'bg-gradient-to-r from-red-600 to-orange-500 text-white shadow-md'
               : 'bg-white text-[#8c6b4b] border border-[#ebdccb]'
@@ -274,16 +278,17 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
       </div>
 
       {/* 🎨 1 KARTU BESAR DI TENGAH LAYAR */}
-      {/* Latar krem: #fffdfa, Pinggir merah muda: #fbcfe8, Sudut membulat: rounded-3xl + Aura Api */}
       {currentCard ? (
         <div
           onClick={handleFlipCard}
-          className={`relative w-full min-h-[380px] sm:min-h-[420px] bg-[#fffdfa] border-4 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-lg cursor-pointer select-none transition-all duration-300 transform hover:-translate-y-1 ${
-            fireMode ? 'fire-card-glow' : 'border-[#fbcfe8] hover:border-[#881337]'
+          className={`relative w-full min-h-[380px] sm:min-h-[420px] border-4 rounded-3xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer select-none transition-all duration-200 transform hover:-translate-y-1 ${
+            fireMode
+              ? 'fire-card-glow'
+              : 'border-[#fbcfe8] hover:border-[#881337]'
           } ${
             isFlipped
-              ? 'bg-gradient-to-b from-[#fffcf9] to-[#fff6f8]'
-              : 'hover:shadow-2xl'
+              ? 'bg-gradient-to-b from-[#fffcf9] to-[#fff6f8] shadow-lg'
+              : 'bg-[#fffdfa] shadow-lg hover:shadow-2xl'
           }`}
         >
           {/* Percikan Api Bergerak (Animated Flame Embers di pojok kartu) */}
@@ -316,13 +321,13 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
             </div>
           )}
 
-          {/* Header Kartu: Level Badge & Indikator */}
+          {/* Header Kartu: Level & Indikator */}
           <div className="flex items-center justify-between w-full relative z-10">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-[#881337] to-[#b91c1c] text-white rounded-xl text-xs font-bold shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               <span>JLPT {currentCard.level} · No. {currentCard.id}</span>
             </span>
-            <div className="flex items-center gap-1.5 text-xs text-[#8c6b4b] font-semibold bg-white/90 px-2.5 py-1 rounded-full border border-[#f5d0dc]">
+            <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-xl border bg-white/90 text-[#8c6b4b] border-[#f5d0dc]">
               <RotateCw className="w-3.5 h-3.5 text-[#881337]" />
               <span>{isFlipped ? 'Sisi Balik' : 'Sisi Depan'}</span>
             </div>
@@ -332,13 +337,15 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
           {!isFlipped ? (
             <div className="text-center my-auto py-10 space-y-4 relative z-10">
               <div 
-                className={`text-7xl sm:text-8xl md:text-9xl font-extrabold text-[#881337] font-japanese tracking-wide leading-none transition-transform duration-300 ${
-                  fireMode ? 'drop-shadow-[0_6px_18px_rgba(234,88,12,0.45)] scale-102' : 'drop-shadow-xs'
+                className={`text-7xl sm:text-8xl md:text-9xl font-extrabold font-japanese tracking-wide leading-none transition-transform duration-300 text-[#881337] ${
+                  fireMode
+                    ? 'drop-shadow-[0_6px_18px_rgba(234,88,12,0.45)] scale-102'
+                    : 'drop-shadow-xs'
                 }`}
               >
                 {currentCard.kanji}
               </div>
-              <p className="text-xs text-[#a88a70] italic flex items-center justify-center gap-1.5">
+              <p className="text-xs italic flex items-center justify-center gap-1.5 text-[#a88a70]">
                 <span>Klik untuk membalik</span>
                 <span className="text-orange-500 font-bold">🔄</span>
               </p>
@@ -349,18 +356,18 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
               {/* Kanji Utama Kecil & Ejaan */}
               <div className="flex items-center justify-between pb-2 border-b border-[#f5d0dc]">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-[#881337] font-japanese">
+                  <span className="text-3xl font-extrabold font-japanese text-[#881337]">
                     {currentCard.kanji}
                   </span>
-                  <span className="text-xs text-[#8c6b4b] font-mono">
+                  <span className="text-xs font-mono tabular-nums text-[#8c6b4b]">
                     #{currentCard.id}
                   </span>
                 </div>
                 <button
                   onClick={(e) => speakJapanese(currentCard.kanji, e)}
-                  className={`p-2 rounded-full transition-all ${
+                  className={`p-2 rounded-full transition-all cursor-pointer ${
                     speaking
-                      ? 'bg-[#881337] text-white animate-pulse'
+                      ? 'bg-rose-700 text-white animate-pulse'
                       : 'bg-[#faebd7] hover:bg-[#881337] text-[#881337] hover:text-white'
                   }`}
                   title="Dengarkan pengucapan kanji"
@@ -371,36 +378,46 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
 
               {/* Rincian Sesuai Format Wajib Sensei Sari */}
               <div className="space-y-2 text-xs sm:text-sm text-[#4a3424]">
-                <div className="p-2.5 bg-white/95 rounded-xl border border-[#f5d0dc] flex items-start gap-2 shadow-2xs">
-                  <span className="font-bold text-[#881337] shrink-0">✏️ Bacaan On:</span>
-                  <span className="font-japanese font-bold text-[#3d2a1b] text-sm">
+                <div className="p-2.5 rounded-xl border flex items-start gap-2 shadow-2xs bg-white/95 border-[#f5d0dc]">
+                  <span className="font-bold shrink-0 text-[#881337]">
+                    Bacaan On:
+                  </span>
+                  <span className="font-japanese font-bold text-sm text-[#3d2a1b]">
                     {currentCard.bacaanOn}
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-white/95 rounded-xl border border-[#f5d0dc] flex items-start gap-2 shadow-2xs">
-                  <span className="font-bold text-[#881337] shrink-0">✏️ Bacaan Kun:</span>
-                  <span className="font-japanese font-bold text-[#3d2a1b] text-sm">
+                <div className="p-2.5 rounded-xl border flex items-start gap-2 shadow-2xs bg-white/95 border-[#f5d0dc]">
+                  <span className="font-bold shrink-0 text-[#881337]">
+                    Bacaan Kun:
+                  </span>
+                  <span className="font-japanese font-bold text-sm text-[#3d2a1b]">
                     {currentCard.bacaanKun}
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-white/95 rounded-xl border border-[#f5d0dc] flex items-start gap-2 shadow-2xs">
-                  <span className="font-bold text-[#881337] shrink-0">📝 Ejaan/Romaji:</span>
-                  <span className="font-mono text-[#624734] font-semibold">
+                <div className="p-2.5 rounded-xl border flex items-start gap-2 shadow-2xs bg-white/95 border-[#f5d0dc]">
+                  <span className="font-bold shrink-0 text-[#881337]">
+                    Ejaan / Romaji:
+                  </span>
+                  <span className="font-mono font-semibold text-[#624734]">
                     {currentCard.ejaan}
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-white/95 rounded-xl border border-[#f5d0dc] flex items-start gap-2 shadow-2xs">
-                  <span className="font-bold text-[#881337] shrink-0">🇮🇩 Arti Indonesia:</span>
+                <div className="p-2.5 rounded-xl border flex items-start gap-2 shadow-2xs bg-white/95 border-[#f5d0dc]">
+                  <span className="font-bold shrink-0 text-[#881337]">
+                    Arti Indonesia:
+                  </span>
                   <span className="font-bold text-[#20150e]">
                     {currentCard.arti}
                   </span>
                 </div>
 
-                <div className="p-2.5 bg-[#fff8f0] rounded-xl border border-[#ebdccb] flex items-start gap-2">
-                  <span className="font-bold text-[#881337] shrink-0">📖 Contoh Kata:</span>
+                <div className="p-2.5 rounded-xl border flex items-start gap-2 bg-[#fff8f0] border-[#ebdccb]">
+                  <span className="font-bold shrink-0 text-[#881337]">
+                    Contoh Kata:
+                  </span>
                   <span className="font-medium text-[#4a3424]">
                     {currentCard.contoh}
                   </span>
@@ -410,10 +427,10 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
           )}
 
           {/* Footer Kartu: Audio & Semangat */}
-          <div className="flex items-center justify-between w-full pt-3 border-t border-[#f5d0dc]/60 relative z-10 gap-2">
+          <div className="flex items-center justify-between w-full pt-3 border-t relative z-10 gap-2 border-[#f5d0dc]/60">
             <button
               onClick={(e) => speakJapanese(currentCard.kanji, e)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#faebd7] hover:bg-[#881337] text-[#881337] hover:text-white rounded-xl text-xs font-bold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer bg-[#faebd7] hover:bg-[#881337] text-[#881337] hover:text-white"
               title="Dengarkan audio"
             >
               <Volume2 className="w-3.5 h-3.5" />
@@ -432,18 +449,20 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
               <span>{isCurrentCardLearned ? 'Sudah Dipelajari' : 'Tandai Dipelajari'}</span>
             </button>
 
-            <span className="text-[11px] text-[#8c6b4b] font-medium hidden sm:flex items-center gap-1">
+            <span className="text-[11px] font-medium hidden sm:flex items-center gap-1 text-[#8c6b4b]">
               <Zap className="w-3 h-3 text-orange-500 fill-orange-500" />
               <span>Klik untuk membalik</span>
             </span>
           </div>
         </div>
       ) : (
-        <div className="text-center py-16 bg-white border-2 border-[#fbcfe8] rounded-3xl p-8 shadow-xs">
-          <p className="text-sm text-[#735338] mb-3">Tidak ada kanji yang cocok dengan pencarian "{searchQuery}".</p>
+        <div className="text-center py-16 border-2 rounded-3xl p-8 shadow-xs bg-white border-[#fbcfe8]">
+          <p className="text-sm mb-3 text-[#735338]">
+            Tidak ada kanji yang cocok dengan pencarian "{searchQuery}".
+          </p>
           <button
             onClick={() => setSearchQuery('')}
-            className="px-4 py-2 bg-[#881337] text-white rounded-xl text-xs font-bold shadow-xs"
+            className="px-4 py-2 text-white rounded-xl text-xs font-bold shadow-xs bg-[#881337]"
           >
             Hapus Pencarian
           </button>
@@ -453,7 +472,7 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
       {/* 🎨 DI BAWAH KARTU: NOMOR URUT / TOTAL, TOMBOL ← SEBELUMNYA | BERIKUTNYA → */}
       <div className="space-y-3">
         <div className="text-center">
-          <span className="px-4 py-1.5 bg-[#fffdfa] border border-[#fbcfe8] rounded-full text-xs font-bold text-[#881337] shadow-2xs inline-flex items-center gap-1.5">
+          <span className="text-xs font-bold tabular-nums inline-flex items-center gap-1.5 text-[#881337]">
             <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
             <span>
               {deck.length > 0 
@@ -463,12 +482,12 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
           </span>
         </div>
 
-        {/* Tombol ← Sebelumnya | Berikutnya → (Hanya aktif jika ada kartu) */}
+        {/* Tombol ← Sebelumnya | Berikutnya → */}
         <div className="flex items-center justify-between gap-3">
           <button
             onClick={handlePrev}
             disabled={deck.length <= 1}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white hover:bg-[#fff9f3] active:bg-[#faebd7] border-2 border-[#fbcfe8] hover:border-[#881337] rounded-2xl font-bold text-xs sm:text-sm text-[#881337] transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 border-2 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer bg-white hover:bg-[#fff9f3] active:bg-[#faebd7] border-[#fbcfe8] hover:border-[#881337] text-[#881337]"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>← Sebelumnya</span>
@@ -477,7 +496,7 @@ export const KanjiCardsView: React.FC<KanjiCardsViewProps> = ({ activeLevel, set
           <button
             onClick={handleNext}
             disabled={deck.length <= 1}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-[#881337] to-[#b91c1c] hover:from-[#70102d] hover:to-[#991b1b] active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-[#881337] to-[#b91c1c] hover:from-[#70102d] hover:to-[#991b1b] active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <span>Berikutnya →</span>
             <ChevronRight className="w-4 h-4" />

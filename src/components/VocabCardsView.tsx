@@ -235,7 +235,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
     <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
       {/* Toast Notification */}
       {notificationMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-[#881337] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-2xl border border-[#fbcfe8] animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-2">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 font-bold text-xs sm:text-sm rounded-2xl shadow-2xl border animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-2 bg-[#881337] text-white border-[#fbcfe8]">
           <span>🌸</span>
           <span>{notificationMsg}</span>
         </div>
@@ -244,14 +244,14 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#881337] mb-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold mb-1 text-[#881337]">
             <BookOpen className="w-3.5 h-3.5" />
-            <span>KARTU HAFALAN KOSAKATA · 4.845 KOSAKATA RESMI JLPT (N5–N2)</span>
+            <span>Kartu Hafalan Kosakata · 4.845 Kosakata Resmi JLPT (N5–N2)</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#881337] font-japanese flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold font-japanese flex items-center gap-2.5 text-[#881337]">
             <span>Kartu Kosakata</span>
-            <span className="text-xs font-normal font-sans px-2.5 py-0.5 bg-[#fae8eb] text-[#881337] rounded-full border border-[#fbcfe8] font-bold">
-              {deck.length} Kosakata
+            <span className="text-xs font-sans font-semibold text-[#735338]">
+              · {deck.length.toLocaleString('id-ID')} Kosakata
             </span>
           </h2>
         </div>
@@ -261,7 +261,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
           <button
             onClick={handleResetOrder}
             title="Urutkan semula"
-            className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#fff7ee] border border-[#ebdccb] rounded-xl text-[#624734] font-semibold text-xs transition-colors shadow-xs"
+            className="flex items-center gap-1 px-3 py-1.5 border rounded-xl font-semibold text-xs transition-colors shadow-xs cursor-pointer bg-white hover:bg-[#fff7ee] border-[#ebdccb] text-[#624734]"
           >
             <RotateCcw className="w-3.5 h-3.5 text-[#881337]" />
             <span>Urutkan Semula</span>
@@ -270,7 +270,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
           <button
             onClick={handleShuffle}
             title="Acak urutan kartu hafalan"
-            className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#fff7ee] border border-[#ebdccb] rounded-xl text-[#881337] font-semibold text-xs transition-colors shadow-xs"
+            className="flex items-center gap-1 px-3 py-1.5 border rounded-xl font-semibold text-xs transition-colors shadow-xs cursor-pointer bg-white hover:bg-[#fff7ee] border-[#ebdccb] text-[#881337]"
           >
             <Shuffle className="w-3.5 h-3.5" />
             <span>Acak</span>
@@ -279,14 +279,16 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
       </div>
 
       {/* Target & Level Filter Bar */}
-      <div className="bg-[#fffdfa] border border-[#ebdccb] rounded-2xl p-3 mb-4 shadow-xs">
+      <div className="border rounded-2xl p-3 mb-4 shadow-xs bg-[#fffdfa] border-[#ebdccb]">
         <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-[#f5ede1]">
           <div className="flex items-center gap-1.5 text-xs text-[#735338]">
             <Target className="w-3.5 h-3.5 text-[#881337]" />
-            <span className="font-bold text-[#881337]">{targetInfo.label}</span>
+            <span className="font-bold text-[#881337]">
+              {targetInfo.label}
+            </span>
           </div>
-          <span className="text-[11px] font-bold text-[#881337]">
-            {deck.length} Kartu Tersedia
+          <span className="text-[11px] font-bold tabular-nums text-[#881337]">
+            {deck.length.toLocaleString('id-ID')} Kartu Tersedia
           </span>
         </div>
 
@@ -302,7 +304,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
             <button
               key={lvl.id}
               onClick={() => handleLevelFilterChange(lvl.id)}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl shrink-0 transition-all ${
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl shrink-0 transition-all cursor-pointer ${
                 selectedLevelFilter === lvl.id
                   ? 'bg-[#881337] text-white shadow-xs scale-105'
                   : 'bg-white border border-[#ebdccb] text-[#735338] hover:border-[#881337]'
@@ -323,9 +325,9 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
               {learnedInCurrentDeck.toLocaleString('id-ID')} / {deck.length.toLocaleString('id-ID')} Dipelajari ({deckProgressPercent}%)
             </span>
           </div>
-          <div className="w-full h-2 bg-[#f3e8da] rounded-full overflow-hidden">
+          <div className="w-full h-2 rounded-full overflow-hidden bg-[#f3e8da]">
             <div
-              className="h-full bg-gradient-to-r from-[#881337] to-[#be123c] rounded-full transition-all duration-300"
+              className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-[#881337] to-[#be123c]"
               style={{ width: `${Math.max(learnedInCurrentDeck > 0 ? 2 : 0, deckProgressPercent)}%` }}
             />
           </div>
@@ -343,7 +345,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari: Indonesia / Kana / Kanji / Ejaan..."
-            className="w-full pl-9 pr-8 py-2.5 bg-white border border-[#dec7b0] focus:border-[#881337] focus:ring-1 focus:ring-[#881337] rounded-xl text-xs sm:text-sm text-[#3d2a1b] placeholder:text-[#a88a70] outline-hidden shadow-2xs"
+            className="w-full pl-9 pr-8 py-2.5 border rounded-xl text-xs sm:text-sm outline-hidden shadow-2xs transition-colors bg-white border-[#dec7b0] focus:border-[#881337] focus:ring-1 focus:ring-[#881337] text-[#3d2a1b] placeholder:text-[#a88a70]"
           />
           {searchQuery && (
             <button
@@ -355,13 +357,17 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
           )}
         </div>
         {searchQuery && (
-          <div className="flex items-center justify-between text-[11px] text-[#735338] mt-1.5 px-1">
+          <div className="flex items-center justify-between text-[11px] mt-1.5 px-1 text-[#735338]">
             <span>
-              Hasil pencarian "{searchQuery}": <strong className="text-[#881337]">{deck.length} kosakata</strong> ditemukan
+              Hasil pencarian "{searchQuery}":{' '}
+              <strong className="text-[#881337]">
+                {deck.length} kosakata
+              </strong>{' '}
+              ditemukan
             </span>
             <button
               onClick={() => setSearchQuery('')}
-              className="text-[#881337] hover:underline font-semibold"
+              className="hover:underline font-semibold text-[#881337]"
             >
               Hapus pencarian
             </button>
@@ -370,12 +376,12 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
       </div>
 
       {/* Card Info & Counter */}
-      <div className="flex items-center justify-between text-xs text-[#735338] mb-3 px-1">
-        <span className="font-semibold">
+      <div className="flex items-center justify-between text-xs mb-3 px-1 text-[#735338]">
+        <span className="font-semibold tabular-nums">
           {deck.length > 0 ? `Kartu ${currentIndex + 1} dari ${deck.length}` : '0 Kartu Ditemukan'}
         </span>
-        <span className="text-[11px] bg-[#fae8eb] text-[#881337] px-2.5 py-0.5 rounded-full font-bold">
-          {isFlipped ? '🔍 Sisi Belakang (Arti, Ejaan & Kanji)' : '✨ Sisi Depan (Huruf Kana & Kanji)'}
+        <span className="text-[11px] font-bold text-[#881337]">
+          {isFlipped ? 'Sisi Belakang (Arti, Ejaan & Kanji)' : 'Sisi Depan (Huruf Kana & Kanji)'}
         </span>
       </div>
 
@@ -383,28 +389,30 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
       {currentCard ? (
         <div
           onClick={handleFlipCard}
-          className={`relative w-full min-h-[320px] sm:min-h-[360px] bg-[#fffdfa] border-2 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-md cursor-pointer select-none transition-all duration-300 transform hover:-translate-y-1 ${
+          className={`relative w-full min-h-[320px] sm:min-h-[360px] border-2 rounded-3xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer select-none transition-all duration-200 transform hover:-translate-y-1 ${
             isFlipped
-              ? 'border-[#881337] bg-gradient-to-b from-[#fffaf8] to-[#fff5f0]'
-              : 'border-[#ecd9c6] hover:border-[#881337]'
+              ? 'bg-gradient-to-b from-[#fffaf8] to-[#fff5f0] border-[#881337] shadow-md'
+              : 'bg-[#fffdfa] border-[#ecd9c6] hover:border-[#881337] shadow-md'
           }`}
         >
-          {/* Top Bar: Level Badge & Flip Prompt */}
+          {/* Top Bar: Level & Flip Prompt */}
           <div className="flex items-center justify-between w-full">
-            <span className="px-2.5 py-1 bg-[#881337] text-white rounded-lg text-xs font-bold">
+            <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#881337] text-white">
               JLPT {currentCard.level}
             </span>
-            <span className="text-xs text-[#a88a70] italic">Klik kartu untuk membalik 🔄</span>
+            <span className="text-xs italic text-[#a88a70]">
+              Klik kartu untuk membalik 🔄
+            </span>
           </div>
 
           {/* SISI DEPAN: KANA DITONJOLKAN PALING DEPAN & TEGAS */}
           {!isFlipped ? (
             <div className="text-center my-auto py-6 space-y-3">
-              <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#881337] font-japanese tracking-wide leading-tight">
+              <div className="text-4xl sm:text-5xl md:text-6xl font-extrabold font-japanese tracking-wide leading-tight text-[#881337]">
                 【{currentCard.kana || currentCard.japanese}】
               </div>
               {currentCard.japanese && currentCard.japanese !== currentCard.kana && (
-                <div className="text-xl sm:text-2xl font-bold text-[#5c3e29] font-japanese">
+                <div className="text-xl sm:text-2xl font-bold font-japanese text-[#5c3e29]">
                   Kanji: {currentCard.japanese}
                 </div>
               )}
@@ -413,22 +421,22 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
             /* SISI BELAKANG: FORMAT 【KANA】 → KANJI → EJAAN → ARTI */
             <div className="text-center my-auto py-4 space-y-3.5 animate-in fade-in duration-200">
               <div>
-                <div className="text-3xl sm:text-4xl font-extrabold text-[#881337] font-japanese">
+                <div className="text-3xl sm:text-4xl font-extrabold font-japanese text-[#881337]">
                   【{currentCard.kana || currentCard.japanese}】
                 </div>
                 {currentCard.japanese && currentCard.japanese !== currentCard.kana && (
-                  <div className="text-lg font-bold text-[#5c3e29] font-japanese mt-1">
+                  <div className="text-lg font-bold font-japanese mt-1 text-[#5c3e29]">
                     Kanji: {currentCard.japanese}
                   </div>
                 )}
-                <div className="text-xs sm:text-sm font-mono text-[#8c6b4b] mt-1">
+                <div className="text-xs sm:text-sm font-mono mt-1 text-[#8c6b4b]">
                   Ejaan: {currentCard.romaji || currentCard.reading}
                 </div>
               </div>
 
               {/* Arti Bahasa Indonesia */}
-              <div className="p-3.5 bg-white/95 rounded-2xl border border-[#eeddc8] shadow-2xs">
-                <div className="text-[10px] font-bold text-[#881337] uppercase tracking-wider mb-0.5">
+              <div className="p-3.5 rounded-2xl border shadow-2xs bg-white/95 border-[#eeddc8]">
+                <div className="text-[10px] font-bold uppercase tracking-wider mb-0.5 text-[#881337]">
                   Arti Bahasa Indonesia
                 </div>
                 <div className="text-base sm:text-lg font-bold text-[#3d2a1b]">
@@ -439,12 +447,12 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
           )}
 
           {/* Bottom Bar: Action buttons */}
-          <div className="flex items-center justify-between w-full pt-4 border-t border-[#f5ede1]/80 gap-2">
+          <div className="flex items-center justify-between w-full pt-4 border-t gap-2 border-[#f5ede1]/80">
             <button
               onClick={(e) => speakText(currentCard.kana || currentCard.japanese, e)}
-              className={`p-2.5 rounded-full transition-all ${
+              className={`p-2.5 rounded-full transition-all cursor-pointer ${
                 isSpeaking
-                  ? 'bg-[#881337] text-white animate-pulse'
+                  ? 'bg-rose-700 text-white animate-pulse'
                   : 'bg-[#faebd7] hover:bg-[#881337] text-[#881337] hover:text-white'
               }`}
               title="Dengarkan pengucapan audio"
@@ -464,17 +472,19 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
               <span>{isCurrentCardLearned ? 'Sudah Dipelajari' : 'Tandai Dipelajari'}</span>
             </button>
 
-            <span className="text-xs text-[#a88a70]">
+            <span className="text-xs tabular-nums text-[#a88a70]">
               Kosakata #{currentCard.id}
             </span>
           </div>
         </div>
       ) : (
-        <div className="text-center py-16 bg-white border border-[#ebdccb] rounded-3xl p-8">
-          <p className="text-base text-[#735338] mb-3">Tidak ada kartu yang cocok dengan pencarian.</p>
+        <div className="text-center py-16 border rounded-3xl p-8 bg-white border-[#ebdccb]">
+          <p className="text-base mb-3 text-[#735338]">
+            Tidak ada kartu yang cocok dengan pencarian.
+          </p>
           <button
             onClick={() => setSearchQuery('')}
-            className="px-4 py-2 bg-[#881337] text-white rounded-xl text-xs font-bold"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#881337]"
           >
             Hapus Pencarian
           </button>
@@ -486,7 +496,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
         <button
           onClick={handlePrev}
           disabled={deck.length <= 1}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white hover:bg-[#fff7ee] border border-[#ebdccb] active:border-[#881337] rounded-2xl font-bold text-xs sm:text-sm text-[#735338] transition-all shadow-xs disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 border rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-xs disabled:opacity-50 cursor-pointer bg-white hover:bg-[#fff7ee] border-[#ebdccb] active:border-[#881337] text-[#735338]"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Sebelumnya</span>
@@ -495,7 +505,7 @@ export const VocabCardsView: React.FC<VocabCardsViewProps> = ({ activeLevel, set
         <button
           onClick={handleNext}
           disabled={deck.length <= 1}
-          className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-[#881337] hover:bg-[#70102d] text-white rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 text-white rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer bg-[#881337] hover:bg-[#70102d]"
         >
           <span>Berikutnya</span>
           <ChevronRight className="w-4 h-4" />

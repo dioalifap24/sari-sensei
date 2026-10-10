@@ -4,9 +4,12 @@
   :root {
     --font-serif-jp: 'Shippori Mincho', 'Noto Serif JP', serif;
     --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    color-scheme: light;
   }
 
+  html,
   body {
+    color-scheme: light;
     font-family: var(--font-sans);
     background-color: #fdfbf7;
     color: #2b1d19;
@@ -278,6 +281,161 @@
   animation: sakuraPetalFall var(--petal-duration, 9s) linear infinite;
   animation-delay: var(--petal-delay, 0s);
 }
+
+/* ================= ANIMASI MEMBALIK LEMBARAN MANGA JEPANG (3D MANGA PAGE TURN) ================= */
+@keyframes mangaPageTurnNext {
+  0% {
+    opacity: 0.35;
+    transform: perspective(1800px) rotateY(-28deg) skewY(2deg) translateX(28px) scale(0.96);
+    filter: brightness(0.92) contrast(1.06);
+  }
+  45% {
+    opacity: 0.92;
+    transform: perspective(1800px) rotateY(4deg) skewY(-0.4deg) translateX(-4px) scale(1.005);
+    filter: brightness(1.02) contrast(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg) skewY(0deg) translateX(0) scale(1);
+    filter: brightness(1) contrast(1);
+  }
+}
+
+@keyframes mangaPageTurnPrev {
+  0% {
+    opacity: 0.35;
+    transform: perspective(1800px) rotateY(28deg) skewY(-2deg) translateX(-28px) scale(0.96);
+    filter: brightness(0.92) contrast(1.06);
+  }
+  45% {
+    opacity: 0.92;
+    transform: perspective(1800px) rotateY(-4deg) skewY(0.4deg) translateX(4px) scale(1.005);
+    filter: brightness(1.02) contrast(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg) skewY(0deg) translateX(0) scale(1);
+    filter: brightness(1) contrast(1);
+  }
+}
+
+@keyframes mangaCurlShadowSweepNext {
+  0% {
+    opacity: 0.85;
+    transform: translateX(100%) skewX(-12deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-110%) skewX(-12deg);
+  }
+}
+
+@keyframes mangaCurlShadowSweepPrev {
+  0% {
+    opacity: 0.85;
+    transform: translateX(-100%) skewX(12deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(110%) skewX(12deg);
+  }
+}
+
+@keyframes mangaKomaSubFlip {
+  0% {
+    opacity: 0.55;
+    transform: perspective(1200px) rotateX(-8deg) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) rotateX(0deg) translateY(0);
+  }
+}
+
+.manga-page-turn-next {
+  transform-origin: left center;
+  animation: mangaPageTurnNext 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.manga-page-turn-prev {
+  transform-origin: right center;
+  animation: mangaPageTurnPrev 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.manga-curl-sweep-next {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(28, 25, 23, 0.22) 38%,
+    rgba(255, 253, 245, 0.85) 54%,
+    rgba(28, 25, 23, 0.14) 70%,
+    transparent 100%
+  );
+  animation: mangaCurlShadowSweepNext 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.manga-curl-sweep-prev {
+  background: linear-gradient(
+    -90deg,
+    transparent 0%,
+    rgba(28, 25, 23, 0.22) 38%,
+    rgba(255, 253, 245, 0.85) 54%,
+    rgba(28, 25, 23, 0.14) 70%,
+    transparent 100%
+  );
+  animation: mangaCurlShadowSweepPrev 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.manga-koma-flip {
+  transform-origin: top center;
+  animation: mangaKomaSubFlip 0.36s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ================= GAYA BORDER HITAM TEBAL & GUTTER KHAS MANGA (KOMA-WARI / コマ割り) ================= */
+.manga-page-gutter-canvas {
+  background-color: #f1ebe0;
+  background-image:
+    radial-gradient(rgba(0, 0, 0, 0.085) 1px, transparent 1px),
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 14px 14px, 28px 28px, 28px 28px;
+  border: 5px solid #000000;
+  outline: 2px solid #000000;
+  outline-offset: -9px;
+  box-shadow: 12px 12px 0px #000000;
+}
+
+.manga-koma-panel {
+  border: 4px solid #000000;
+  outline: 1.5px solid rgba(0, 0, 0, 0.22);
+  outline-offset: -6px;
+  box-shadow: 7px 7px 0px #000000;
+  border-radius: 0px;
+}
+
+.manga-subkoma-panel {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  border-radius: 0px;
+}
+
+.manga-gutter-channel {
+  position: relative;
+  background-color: #f1ebe0;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(0, 0, 0, 0.07) 0px,
+    rgba(0, 0, 0, 0.07) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+  border-top: 2.5px solid #000000;
+  border-bottom: 2.5px solid #000000;
+}
+
+
 
 
 

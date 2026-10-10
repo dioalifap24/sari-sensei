@@ -107,22 +107,22 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-6">
       {/* 📘 HEADER UTAMA — TINGKAT MATERI */}
-      <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="border-2 rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#fffdfa] border-[#ebdccb]">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#faebd7] border border-[#e3ceba] rounded-full text-xs font-bold text-[#881337] mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 border rounded-full text-xs font-bold mb-2 bg-[#faebd7] border-[#e3ceba] text-[#881337]">
             <span>📘</span>
             <span>{currentMateri.title}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#881337] font-japanese">
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-japanese text-[#881337]">
             Materi Belajar JLPT {activeLevel}
           </h1>
-          <p className="text-xs text-[#735338] mt-1">
+          <p className="text-xs mt-1 text-[#735338]">
             {currentMateri.subtitle}
           </p>
         </div>
 
         {/* Level Switcher */}
-        <div className="flex items-center gap-1.5 p-1.5 bg-[#f5ede1] rounded-2xl shrink-0">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl shrink-0 bg-[#f5ede1]">
           {(['N5', 'N4', 'N3', 'N2'] as JLPTLevel[]).map((lvl) => (
             <button
               key={lvl}
@@ -144,29 +144,29 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
       </div>
 
       {/* 📌 TENTANG LEVEL & KUOTA LENGKAP */}
-      <div className="bg-white border border-[#ebdccb] rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+      <div className="border rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 bg-white border-[#ebdccb]">
         <div className="flex items-center gap-2 text-sm font-bold text-[#881337]">
           <span>📌</span>
           <span>TENTANG {activeLevel}</span>
         </div>
-        <p className="text-xs sm:text-sm text-[#553b26] leading-relaxed">
+        <p className="text-xs sm:text-sm leading-relaxed text-[#553b26]">
           {currentMateri.tentang}
         </p>
         <div className="flex flex-wrap items-center gap-3 pt-1 text-xs font-semibold text-[#8c6b4b]">
-          <span className="px-2.5 py-1 bg-[#fff8ef] border border-[#ebdccb] rounded-lg">
+          <span className="px-2.5 py-1 border rounded-lg bg-[#fff8ef] border-[#ebdccb]">
             Kanji: {currentMateri.stats.kanji}
           </span>
-          <span className="px-2.5 py-1 bg-[#fae8eb] text-[#881337] border border-[#f5c2cb] rounded-lg font-bold">
+          <span className="px-2.5 py-1 border rounded-lg font-bold bg-[#fae8eb] text-[#881337] border-[#f5c2cb]">
             Total Kosakata: {currentMateri.vocabList.length} Kata (Lengkap Resmi)
           </span>
-          <span className="px-2.5 py-1 bg-[#fff8ef] border border-[#ebdccb] rounded-lg">
+          <span className="px-2.5 py-1 border rounded-lg bg-[#fff8ef] border-[#ebdccb]">
             Estimasi Belajar: {currentMateri.stats.hours}
           </span>
         </div>
       </div>
 
       {/* 🔍 KOTAK PENCARIAN (Indonesia / Kana / Kanji / Ejaan) */}
-      <div className="bg-[#fffdfa] border border-[#ebdccb] rounded-2xl p-4 shadow-xs space-y-2">
+      <div className="border rounded-2xl p-4 shadow-xs space-y-2 bg-[#fffdfa] border-[#ebdccb]">
         <div className="flex items-center justify-between text-xs font-bold text-[#881337]">
           <div className="flex items-center gap-2">
             <Search className="w-4 h-4" />
@@ -182,7 +182,7 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari: Indonesia / Kana / Kanji / Ejaan (contoh: bertemu, 会う, あう, au)..."
-            className="w-full px-4 py-2.5 bg-white border border-[#dec7b0] focus:border-[#881337] focus:ring-1 focus:ring-[#881337] rounded-xl text-xs sm:text-sm text-[#3d2a1b] placeholder:text-[#a88a70] outline-hidden shadow-2xs"
+            className="w-full px-4 py-2.5 border rounded-xl text-xs sm:text-sm outline-hidden shadow-2xs transition-colors bg-white border-[#dec7b0] focus:border-[#881337] focus:ring-1 focus:ring-[#881337] text-[#3d2a1b] placeholder:text-[#a88a70]"
           />
           {searchQuery && (
             <button
@@ -257,9 +257,9 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
 
       {/* 📚 DAFTAR KOSAKATA — DENGAN EJAAN */}
       {(activeTab === 'semua' || activeTab === 'vocab') && (
-        <div className="bg-white border border-[#ebdccb] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-[#f0e2d3] gap-2">
-            <div className="text-sm font-bold text-[#881337] flex items-center gap-2">
+        <div className="border rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 bg-white border-[#ebdccb]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b gap-2 border-[#f0e2d3]">
+            <div className="text-sm font-bold flex items-center gap-2 text-[#881337]">
               <Layers className="w-4 h-4 text-[#881337]" />
               <span>📚 DAFTAR KOSAKATA {activeLevel} ({currentMateri.vocabList.length} Kata Resmi)</span>
             </div>
@@ -269,16 +269,16 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
             {displayedVocab.map((item, idx) => (
               <div
                 key={idx}
-                className="p-3 bg-[#fffdfa] border border-[#f0e2d3] hover:border-[#881337] rounded-xl flex items-center justify-between gap-2 transition-all group"
+                className="p-3 border rounded-xl flex items-center justify-between gap-2 transition-all group bg-[#fffdfa] border-[#f0e2d3] hover:border-[#881337]"
               >
                 <div className="space-y-0.5">
                   <div className="flex items-baseline gap-1.5">
                     {/* Kana ditonjolkan paling depan & tegas */}
-                    <span className="text-base font-extrabold text-[#881337] font-japanese tracking-wide">
+                    <span className="text-base font-extrabold font-japanese tracking-wide text-[#881337]">
                       【{item.kana}】
                     </span>
                     {item.kanji && item.kanji !== '—' && (
-                      <span className="text-xs font-bold text-[#4a3424] font-japanese">
+                      <span className="text-xs font-bold font-japanese text-[#4a3424]">
                         → {item.kanji}
                       </span>
                     )}
@@ -293,7 +293,7 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
 
                 <button
                   onClick={() => speakText(item.kana || item.kanji)}
-                  className="p-2 text-[#a88a70] hover:text-[#881337] hover:bg-[#fae8eb] rounded-lg transition-colors shrink-0"
+                  className="p-2 rounded-lg transition-colors shrink-0 text-[#a88a70] hover:text-[#881337] hover:bg-[#fae8eb]"
                   title="Dengar pelafalan"
                 >
                   <Volume2 className="w-4 h-4" />
@@ -313,7 +313,7 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
             <div className="pt-3 text-center">
               <button
                 onClick={() => setVocabVisibleLimit(prev => prev + 90)}
-                className="px-6 py-2.5 bg-[#881337] hover:bg-[#70102d] text-white text-xs font-bold rounded-xl shadow-xs transition-all"
+                className="px-6 py-2.5 text-white text-xs font-bold rounded-xl shadow-xs transition-all bg-[#881337] hover:bg-[#70102d]"
               >
                 Muat 90 Kosakata Berikutnya (Menampilkan {vocabVisibleLimit} dari {filteredVocab.length})
               </button>
@@ -324,9 +324,9 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
 
       {/* 📚 DAFTAR KANJI — DENGAN EJAAN */}
       {(activeTab === 'semua' || activeTab === 'kanji') && (
-        <div className="bg-white border border-[#ebdccb] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="border rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 bg-white border-[#ebdccb]">
           <div className="flex items-center justify-between pb-2 border-b border-[#f0e2d3]">
-            <div className="text-sm font-bold text-[#881337] flex items-center gap-2">
+            <div className="text-sm font-bold flex items-center gap-2 text-[#881337]">
               <span className="font-japanese text-base">漢字</span>
               <span>📚 DAFTAR KANJI {activeLevel} — DENGAN EJAAN</span>
             </div>
@@ -336,14 +336,14 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
             {filteredKanji.map((item, idx) => (
               <div
                 key={idx}
-                className="p-3 bg-[#fffdfa] border border-[#f0e2d3] hover:border-[#881337] rounded-xl flex items-center justify-between gap-2 transition-all group"
+                className="p-3 border rounded-xl flex items-center justify-between gap-2 transition-all group bg-[#fffdfa] border-[#f0e2d3] hover:border-[#881337]"
               >
                 <div className="space-y-0.5">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-bold text-[#881337] font-japanese">
+                    <span className="text-lg font-bold font-japanese text-[#881337]">
                       {item.kanji}
                     </span>
-                    <span className="text-sm font-extrabold text-[#70102d] font-japanese">
+                    <span className="text-sm font-extrabold font-japanese text-[#70102d]">
                       — 【{item.kana}】
                     </span>
                   </div>
@@ -357,7 +357,7 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
 
                 <button
                   onClick={() => speakText(item.kana.split('/')[0].trim())}
-                  className="p-2 text-[#a88a70] hover:text-[#881337] hover:bg-[#fae8eb] rounded-lg transition-colors shrink-0"
+                  className="p-2 rounded-lg transition-colors shrink-0 text-[#a88a70] hover:text-[#881337] hover:bg-[#fae8eb]"
                   title="Dengar pelafalan kanji"
                 >
                   <Volume2 className="w-4 h-4" />
@@ -376,17 +376,19 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
 
       {/* 📌 HURUF DASAR — HIRAGANA & KATAKANA LENGKAP (RUANGGURU) */}
       {(activeTab === 'semua' || activeTab === 'huruf') && activeLevel === 'N5' && (
-        <div className="bg-white border border-[#ebdccb] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="border rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 bg-white border-[#ebdccb]">
           <div className="flex items-center justify-between pb-2 border-b border-[#f0e2d3]">
-            <div className="text-sm font-bold text-[#881337] flex items-center gap-2">
+            <div className="text-sm font-bold flex items-center gap-2 text-[#881337]">
               <Type className="w-4 h-4" />
               <span>📌 HURUF DASAR — HIRAGANA & KATAKANA</span>
             </div>
-            <div className="flex items-center gap-1.5 p-1 bg-[#f5ede1] rounded-xl text-xs">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl text-xs bg-[#f5ede1]">
               <button
                 onClick={() => setKanaSubTab('hiragana')}
                 className={`px-3 py-1 font-bold rounded-lg transition-all ${
-                  kanaSubTab === 'hiragana' ? 'bg-[#881337] text-white' : 'text-[#624734]'
+                  kanaSubTab === 'hiragana'
+                    ? 'bg-[#881337] text-white'
+                    : 'text-[#624734]'
                 }`}
               >
                 Hiragana Lengkap
@@ -394,7 +396,9 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
               <button
                 onClick={() => setKanaSubTab('katakana')}
                 className={`px-3 py-1 font-bold rounded-lg transition-all ${
-                  kanaSubTab === 'katakana' ? 'bg-[#881337] text-white' : 'text-[#624734]'
+                  kanaSubTab === 'katakana'
+                    ? 'bg-[#881337] text-white'
+                    : 'text-[#624734]'
                 }`}
               >
                 Katakana Lengkap
@@ -404,30 +408,33 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
 
           <div className="space-y-3">
             {(kanaSubTab === 'hiragana' ? RUANGGURU_HIRAGANA : RUANGGURU_KATAKANA).map((row, rIdx) => (
-              <div key={rIdx} className="p-3 bg-[#fffbf4] border border-[#f0e4d6] rounded-xl space-y-2">
-                <div className="text-xs font-bold text-[#881337] uppercase tracking-wider">
+              <div
+                key={rIdx}
+                className="p-3 border rounded-xl space-y-2 bg-[#fffbf4] border-[#f0e4d6]"
+              >
+                <div className="text-xs font-bold uppercase tracking-wider text-[#881337]">
                   {row.group}:
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {row.items.map((k, kIdx) => (
                     <div
                       key={kIdx}
-                      className="px-3 py-1.5 bg-white border border-[#ebdccb] hover:border-[#881337] rounded-lg text-center flex items-center gap-1.5 shadow-2xs group"
+                      className="px-3 py-1.5 border rounded-lg text-center flex items-center gap-1.5 shadow-2xs group bg-white border-[#ebdccb] hover:border-[#881337]"
                     >
-                      <span className="text-base font-extrabold text-[#881337] font-japanese">
+                      <span className="text-base font-extrabold font-japanese text-[#881337]">
                         {k.kana}
                       </span>
                       <span className="text-xs font-mono text-[#8c6b4b]">
                         → {k.romaji}
                       </span>
                       {k.note && (
-                        <span className="text-[10px] text-[#a88a70] italic">
+                        <span className="text-[10px] italic text-[#a88a70]">
                           ({k.note})
                         </span>
                       )}
                       <button
                         onClick={() => speakText(k.kana)}
-                        className="text-[#a88a70] hover:text-[#881337] ml-1"
+                        className="ml-1 text-[#a88a70] hover:text-[#881337]"
                         title="Dengar audio"
                       >
                         <Volume2 className="w-3 h-3" />
@@ -445,19 +452,22 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
       {(activeTab === 'semua' || activeTab === 'bunpou') && (
         <div className="space-y-4">
           {/* Bunpou Dasar */}
-          <div className="bg-white border border-[#ebdccb] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-            <div className="text-sm font-bold text-[#881337] flex items-center gap-2 pb-2 border-b border-[#f0e2d3]">
+          <div className="border rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 bg-white border-[#ebdccb]">
+            <div className="text-sm font-bold flex items-center gap-2 pb-2 border-b text-[#881337] border-[#f0e2d3]">
               <BookOpen className="w-4 h-4 text-[#881337]" />
               <span>📌 BUNPOU {activeLevel} — TATA BAHASA</span>
             </div>
 
             <div className="space-y-3">
               {currentMateri.bunpouNotes.map((note, idx) => (
-                <div key={idx} className="p-3.5 bg-[#fffdfa] border border-[#f0e2d3] rounded-xl space-y-1.5">
+                <div
+                  key={idx}
+                  className="p-3.5 border rounded-xl space-y-1.5 bg-[#fffdfa] border-[#f0e2d3]"
+                >
                   <div className="text-xs sm:text-sm font-bold text-[#881337]">
                     🔹 {note.title}
                   </div>
-                  <ul className="text-xs text-[#4a3424] space-y-1 pl-3">
+                  <ul className="text-xs space-y-1 pl-3 text-[#4a3424]">
                     {note.content.map((c, cIdx) => (
                       <li key={cIdx} className="leading-relaxed">
                         • {c}
@@ -470,8 +480,8 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
           </div>
 
           {/* Pola Kalimat Dasar */}
-          <div className="bg-white border border-[#ebdccb] rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
-            <div className="text-sm font-bold text-[#881337] flex items-center gap-2 pb-2 border-b border-[#f0e2d3]">
+          <div className="border rounded-2xl p-4 sm:p-5 shadow-xs space-y-4 bg-white border-[#ebdccb]">
+            <div className="text-sm font-bold flex items-center gap-2 pb-2 border-b text-[#881337] border-[#f0e2d3]">
               <Sparkles className="w-4 h-4 text-[#881337]" />
               <span>📌 POLA KALIMAT DASAR {activeLevel}</span>
             </div>
@@ -480,10 +490,10 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
               {currentMateri.polaKalimat.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 bg-[#fffbf4] border border-[#f0e4d6] hover:border-[#881337] rounded-xl flex items-center justify-between gap-3 transition-all"
+                  className="p-3 border rounded-xl flex items-center justify-between gap-3 transition-all bg-[#fffbf4] border-[#f0e4d6] hover:border-[#881337]"
                 >
                   <div className="space-y-1">
-                    <div className="text-sm font-bold text-[#881337] font-japanese">
+                    <div className="text-sm font-bold font-japanese text-[#881337]">
                       {item.id}. {item.pattern}
                     </div>
                     <div className="text-xs font-mono text-[#8c6b4b]">
@@ -496,7 +506,7 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
 
                   <button
                     onClick={() => speakText(item.pattern)}
-                    className="p-2 text-[#a88a70] hover:text-[#881337] hover:bg-[#fae8eb] rounded-lg transition-colors shrink-0"
+                    className="p-2 rounded-lg transition-colors shrink-0 text-[#a88a70] hover:text-[#881337] hover:bg-[#fae8eb]"
                     title="Dengar kalimat"
                   >
                     <Volume2 className="w-4 h-4" />
@@ -512,7 +522,7 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
           SUMBER DI POJOK KIRI BAWAH
          ────────────────────────────────────────────────────────── */}
       <div className="pt-4 border-t border-[#ebdccb]">
-        <div className="text-left text-xs font-bold text-[#881337] bg-[#fbf5ed] inline-block px-3 py-1.5 rounded-lg border border-[#e3ceba]">
+        <div className="text-left text-xs font-bold inline-block px-3 py-1.5 rounded-lg border text-[#881337] bg-[#fbf5ed] border-[#e3ceba]">
           {currentMateri.sumber}
         </div>
       </div>

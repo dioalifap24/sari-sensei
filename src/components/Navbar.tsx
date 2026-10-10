@@ -65,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#fdfbf7]/95 backdrop-blur-md border-b border-[#ebdccb] shadow-xs">
+    <header className="sticky top-0 z-40 backdrop-blur-md border-b shadow-xs bg-[#fdfbf7]/95 border-[#ebdccb]">
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
         {/* Brand Zone - Title with Sakura Icons */}
         <div 
@@ -74,10 +74,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <span className="text-xl md:text-2xl transition-transform group-hover:scale-110 duration-200" aria-hidden="true">🌸</span>
           <div className="flex flex-col items-center">
-            <span className="text-xl md:text-2xl font-bold tracking-tight text-[#881337] font-japanese hover:text-[#9f1239] transition-colors">
+            <span className="text-xl md:text-2xl font-bold tracking-tight font-japanese transition-colors text-[#881337] hover:text-[#9f1239]">
               Sari Sensei
             </span>
-            <span className="text-[10px] text-[#8c6b4b] -mt-1 font-medium tracking-wider hidden sm:block">
+            <span className="text-[10px] -mt-1 font-medium tracking-wider hidden sm:block text-[#8c6b4b]">
               さり せんせい · JLPT N5–N2
             </span>
           </div>
@@ -223,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Right Action Zone: User Profile & Logout */}
         <div className="flex items-center gap-2">
           {/* Level Tag */}
-          <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-[#fff6ee] border border-[#e8d2ba] rounded-full text-xs font-semibold text-[#881337]">
+          <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 border rounded-full text-xs font-semibold bg-[#fff6ee] border-[#e8d2ba] text-[#881337]">
             <span className="text-[10px] text-[#99653a]">LEVEL</span>
             <span>{activeLevel}</span>
           </div>
@@ -249,18 +249,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                   setActiveTab(isMasterUser ? 'master_management' : 'laporan');
                 }}
-                className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 bg-[#fbf0e6] border border-[#e4ccb5] rounded-lg text-xs font-medium text-[#463222] hover:bg-[#f6e5d5] transition-colors"
+                className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition-colors bg-[#fbf0e6] border-[#e4ccb5] text-[#463222] hover:bg-[#f6e5d5]"
                 title={isMasterUser ? `${currentUser.fullName || 'GLOSTER GLADIATOR'} (${currentUser.nickname || 'skywalker'}) - Akun Master` : `${currentUser.fullName || currentUser.name || ''} (${currentUser.email})`}
               >
                 {isMasterUser ? (
                   <UchihaClanLogo className="w-5 h-5 hover:scale-110 transition-transform" />
                 ) : (
-                  <div className="w-5 h-5 rounded-full bg-[#881337] text-white flex items-center justify-center text-[10px] font-bold">
+                  <div className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] font-bold bg-[#881337]">
                     {(currentUser.nickname || currentUser.fullName || 'S').charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="flex items-center gap-1 max-w-[120px] sm:max-w-[170px] truncate">
-                  <span className="font-bold text-[#881337] truncate">
+                  <span className="font-bold truncate text-[#881337]">
                     {currentUser.nickname || currentUser.fullName || (isMasterUser ? 'skywalker' : currentUser.email.split('@')[0])}
                   </span>
                 </div>
@@ -274,7 +274,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                   onLogout();
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-[#fff0f3] hover:bg-[#ffe2e7] text-[#9f1239] border border-[#fecdd3] text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+                className="flex items-center gap-1 px-3 py-1.5 border text-xs font-medium rounded-lg transition-colors whitespace-nowrap bg-[#fff0f3] hover:bg-[#ffe2e7] text-[#9f1239] border-[#fecdd3]"
                 title={isMasterUser ? "Keluar dari akun master" : "Keluar dari akun murid"}
               >
                 <LogOut className="w-3.5 h-3.5" />

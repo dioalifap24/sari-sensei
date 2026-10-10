@@ -23,6 +23,11 @@ import {
 export function App() {
   // Initialize storage seeds, sync One Piece logout quote counter, & preload character portraits + audio
   useEffect(() => {
+    try {
+      localStorage.removeItem('sensei_sari_study_theme_mode_v1');
+    } catch {
+      // ignore
+    }
     storageService.init();
     preloadOnePieceFarewellAssets();
     fetch('/api/onepiece-quote-counter')
@@ -377,7 +382,7 @@ export function App() {
 
   // ================= SCENARIO 2: MAIN DASHBOARD APPLICATION =================
   return (
-    <div className="min-h-screen bg-[#fdfbf7] bg-japanese-pattern text-[#2b1d19] flex flex-col relative selection:bg-[#fbcfe8] selection:text-[#881337]">
+    <div className="min-h-screen flex flex-col relative selection:bg-[#fbcfe8] selection:text-[#881337] bg-[#fdfbf7] bg-japanese-pattern text-[#2b1d19]">
       <SakuraEffect
         triggerRain={triggerSakuraRain}
         triggerCelebration={triggerSakuraCelebration}
@@ -478,7 +483,7 @@ export function App() {
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#fffdfa]/95 backdrop-blur-md border-t border-[#ebdccb] py-1.5 px-2 flex justify-around items-center">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-md border-t py-1.5 px-2 flex justify-around items-center bg-[#fffdfa]/95 border-[#ebdccb]">
         <button
           onClick={() => {
             if (isStudentQuizRunning && !isMasterUser) {
@@ -597,7 +602,7 @@ export function App() {
       </nav>
 
       {/* Footer */}
-      <footer className="py-6 border-t border-[#ebdccb] text-center text-xs text-[#8c6b4b] bg-[#fbf5ed]/60">
+      <footer className="py-6 border-t text-center text-xs border-[#ebdccb] text-[#8c6b4b] bg-[#fbf5ed]/60">
         <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 font-japanese font-bold text-[#881337]">
             <span>🌸</span>

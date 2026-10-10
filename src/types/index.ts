@@ -6,6 +6,8 @@ export interface User {
   nickname: string;
   name?: string;
   registeredAt: string;
+  lastOnlineAt?: string;
+  lastOnlineTimestamp?: number;
   isMaster?: boolean;
   role?: 'student' | 'master';
 }
@@ -60,6 +62,9 @@ export interface StudentPresenceInfo {
   name: string;
   nickname?: string;
   lastSeen: number;
+  lastOnlineTimestamp?: number;
+  lastOnlineAt?: string;
+  updatedAt?: number;
   currentTab?: string;
   currentActivity?: string;
   activeLevel?: JLPTLevel;

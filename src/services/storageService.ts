@@ -119,6 +119,47 @@ function setRankingResetAt(ts: number) {
   } catch {}
 }
 
+function formatFullDateTimeWIB(tsMs: number): string {
+  try {
+    const dt = new Date(tsMs);
+    if (Number.isNaN(dt.getTime())) return '-';
+    const datePart = dt.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+    const timePart = dt.toLocaleTimeString('id-ID', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    return `${datePart} · ${timePart} WIB`;
+  } catch {
+    return '-';
+  }
+}
+
+function parseFlexibleDateStringToMs(rawStr?: string): number {
+  if (!rawStr || typeof rawStr !== 'string') return 0;
+  const trimmed = rawStr.trim();
+  if (!trimmed || trimmed === '-') return 0;
+  // Match YYYY-MM-DD HH:mm(:ss)
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10) - 1;
+    const day = parseInt(isoMatch[3], 10);
+    const hour = isoMatch[4] ? parseInt(isoMatch[4], 10) : 8;
+    const min = isoMatch[5] ? parseInt(isoMatch[5], 10) : 0;
+    const sec = isoMatch[6] ? parseInt(isoMatch[6], 10) : 0;
+    const dt = new Date(year, month, day, hour, min, sec);
+    if (!Number.isNaN(dt.getTime())) return dt.getTime();
+  }
+  const parsed = Date.parse(trimmed);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 function normalizeAndSortUsersList(
   entries: { user: User; password: string }[],
   deletedSet: Set<string>
@@ -147,12 +188,21 @@ function normalizeAndSortUsersList(
       ? MASTER_CONFIG.nickname
       : (rawUser.nickname || cleanFullName.split(/\s+/)[0] || cleanFullName).trim();
 
+    const rawLastOnlineTs =
+      typeof rawUser.lastOnlineTimestamp === 'number' && rawUser.lastOnlineTimestamp > 0
+        ? rawUser.lastOnlineTimestamp
+        : parseFlexibleDateStringToMs(rawUser.lastOnlineAt);
+
     const normalizedUser: User = {
       email: isMasterAcc ? MASTER_CONFIG.email : emailLower,
       fullName: cleanFullName,
       nickname: cleanNickname,
       name: cleanFullName,
       registeredAt: rawUser.registeredAt || '2026-10-01 08:00',
+      lastOnlineTimestamp: rawLastOnlineTs > 0 ? rawLastOnlineTs : undefined,
+      lastOnlineAt:
+        rawUser.lastOnlineAt ||
+        (rawLastOnlineTs > 0 ? formatFullDateTimeWIB(rawLastOnlineTs) : undefined),
       isMaster: isMasterAcc,
       role: isMasterAcc ? 'master' : 'student',
     };
@@ -166,6 +216,15 @@ function normalizeAndSortUsersList(
     } else {
       if (item.password && item.password !== 'password123' && existing.password === 'password123') {
         existing.password = item.password;
+      }
+      if (
+        normalizedUser.lastOnlineTimestamp &&
+        (!existing.user.lastOnlineTimestamp ||
+          normalizedUser.lastOnlineTimestamp > existing.user.lastOnlineTimestamp)
+      ) {
+        existing.user.lastOnlineTimestamp = normalizedUser.lastOnlineTimestamp;
+        existing.user.lastOnlineAt =
+          normalizedUser.lastOnlineAt || formatFullDateTimeWIB(normalizedUser.lastOnlineTimestamp);
       }
       if (
         cleanFullName &&
@@ -375,18 +434,49 @@ function applyIncomingSyncData(serverData: any) {
       const existing = mergedPresence[lowerKey];
       const incomingSeen = typeof v?.lastSeen === 'number' ? v.lastSeen : 0;
       const existingSeen = existing ? existing.lastSeen || 0 : -1;
+      const incomingLastOnlineTs = Math.max(
+        typeof v?.lastOnlineTimestamp === 'number' ? v.lastOnlineTimestamp : 0,
+        incomingSeen > 0 ? incomingSeen : 0
+      );
+      const existingLastOnlineTs = Math.max(
+        typeof existing?.lastOnlineTimestamp === 'number' ? existing.lastOnlineTimestamp : 0,
+        existingSeen > 0 ? existingSeen : 0
+      );
+      const bestLastOnlineTs = Math.max(incomingLastOnlineTs, existingLastOnlineTs);
+      const incomingUpdated =
+        typeof v?.updatedAt === 'number' ? v.updatedAt : incomingLastOnlineTs;
+      const existingUpdated =
+        typeof existing?.updatedAt === 'number' ? existing.updatedAt : existingLastOnlineTs;
+      const isIncomingNewer = !existing || incomingUpdated >= existingUpdated;
 
-      if (!existing || incomingSeen >= existingSeen || v?.currentActivity !== existing.currentActivity) {
+      if (
+        !existing ||
+        isIncomingNewer ||
+        incomingSeen >= existingSeen ||
+        v?.currentActivity !== existing.currentActivity
+      ) {
         mergedPresence[lowerKey] = {
           email: lowerKey,
           name: v?.name || existing?.name || 'Murid',
           nickname: v?.nickname || existing?.nickname || 'Murid',
-          lastSeen: Math.max(incomingSeen, existingSeen),
-          currentTab: v?.currentTab || existing?.currentTab || 'home',
-          currentActivity: v?.currentActivity || existing?.currentActivity || 'Membuka Aplikasi',
-          activeLevel: v?.activeLevel || existing?.activeLevel || 'N5',
+          lastSeen: isIncomingNewer ? incomingSeen : Math.max(incomingSeen, existingSeen),
+          lastOnlineTimestamp: bestLastOnlineTs > 0 ? bestLastOnlineTs : undefined,
+          lastOnlineAt:
+            (isIncomingNewer && v?.lastOnlineAt) ||
+            existing?.lastOnlineAt ||
+            v?.lastOnlineAt ||
+            (bestLastOnlineTs > 0 ? formatFullDateTimeWIB(bestLastOnlineTs) : undefined),
+          updatedAt: Math.max(incomingUpdated, existingUpdated),
+          currentTab: (isIncomingNewer ? v?.currentTab : existing?.currentTab) || v?.currentTab || 'home',
+          currentActivity:
+            (isIncomingNewer ? v?.currentActivity : existing?.currentActivity) ||
+            v?.currentActivity ||
+            'Membuka Aplikasi',
+          activeLevel: (isIncomingNewer ? v?.activeLevel : existing?.activeLevel) || v?.activeLevel || 'N5',
           quizProgress: v?.quizProgress ?? existing?.quizProgress,
-          lastActionAt: v?.lastActionAt || existing?.lastActionAt,
+          lastActionAt: (isIncomingNewer ? v?.lastActionAt : existing?.lastActionAt) || v?.lastActionAt,
+          screenshotAttempts: Math.max(v?.screenshotAttempts || 0, existing?.screenshotAttempts || 0),
+          aiTranslateAttempts: Math.max(v?.aiTranslateAttempts || 0, existing?.aiTranslateAttempts || 0),
         };
       }
     }
@@ -1714,7 +1804,14 @@ export const storageService = {
       const presenceMap = storageService.getOnlinePresenceMap();
       const email = user.email.toLowerCase();
       const prev = presenceMap[email];
-      const nowTime = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const nowMs = Date.now();
+      const nowTime = new Date(nowMs).toLocaleTimeString('id-ID', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const nowFullDateTime = formatFullDateTimeWIB(nowMs);
 
       const activityChanged =
         activityDetails?.currentActivity && activityDetails.currentActivity !== prev?.currentActivity;
@@ -1723,15 +1820,32 @@ export const storageService = {
         email,
         name: user.fullName || user.nickname || prev?.name || 'Murid',
         nickname: user.nickname || user.fullName?.split(/\s+/)[0] || prev?.nickname || 'Murid',
-        lastSeen: Date.now(),
+        lastSeen: nowMs,
+        lastOnlineTimestamp: nowMs,
+        lastOnlineAt: nowFullDateTime,
+        updatedAt: nowMs,
         currentTab: activityDetails?.currentTab || prev?.currentTab || 'home',
         currentActivity: activityDetails?.currentActivity || prev?.currentActivity || '🏠 Di Beranda Portal Kelas',
         activeLevel: activityDetails?.activeLevel || prev?.activeLevel || storageService.getActiveLevel(),
         quizProgress: activityDetails?.quizProgress !== undefined ? activityDetails.quizProgress : prev?.quizProgress,
         lastActionAt: activityChanged ? nowTime : prev?.lastActionAt || nowTime,
+        screenshotAttempts: prev?.screenshotAttempts || 0,
+        aiTranslateAttempts: prev?.aiTranslateAttempts || 0,
       };
 
       localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
+
+      // Simpan juga jam & tanggal terakhir online ke data profil murid di STORAGE_USERS_KEY
+      try {
+        const usersList = storageService.getUsers();
+        const uIdx = usersList.findIndex(u => u.user.email.toLowerCase() === email);
+        if (uIdx !== -1) {
+          usersList[uIdx].user.lastOnlineTimestamp = nowMs;
+          usersList[uIdx].user.lastOnlineAt = nowFullDateTime;
+          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersList));
+        }
+      } catch {}
+
       fetch('/api/presence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1756,27 +1870,219 @@ export const storageService = {
     try {
       const presenceMap = storageService.getOnlinePresenceMap();
       const target = email.toLowerCase();
-      const nowTime = new Date().toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      if (presenceMap[target]) {
-        presenceMap[target].lastSeen = 0;
-        presenceMap[target].currentActivity = '⚪ Keluar / Offline';
-        presenceMap[target].lastActionAt = nowTime;
-        localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
-        fetch('/api/presence', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(presenceMap[target]),
-        }).catch(() => {});
-        broadcastCloudRealtimeEvent({
-          type: 'presence_update',
-          presence: presenceMap[target],
-        });
-        pushStateToCloudObject();
-        window.dispatchEvent(new CustomEvent('presence_updated', { detail: { email: target, online: false } }));
-      }
+      const nowMs = Date.now();
+      const nowTime = new Date(nowMs).toLocaleTimeString('id-ID', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const nowFullDateTime = formatFullDateTimeWIB(nowMs);
+      const prev = presenceMap[target];
+
+      presenceMap[target] = {
+        email: target,
+        name: prev?.name || 'Murid',
+        nickname: prev?.nickname || 'Murid',
+        lastSeen: 0,
+        lastOnlineTimestamp: nowMs,
+        lastOnlineAt: nowFullDateTime,
+        updatedAt: nowMs,
+        currentTab: prev?.currentTab || 'home',
+        currentActivity: '⚪ Keluar / Offline',
+        activeLevel: prev?.activeLevel || 'N5',
+        quizProgress: prev?.quizProgress,
+        lastActionAt: nowTime,
+        screenshotAttempts: prev?.screenshotAttempts || 0,
+        aiTranslateAttempts: prev?.aiTranslateAttempts || 0,
+      };
+
+      localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
+
+      // Simpan juga waktu terakhir online saat murid logout ke STORAGE_USERS_KEY
+      try {
+        const usersList = storageService.getUsers();
+        const uIdx = usersList.findIndex(u => u.user.email.toLowerCase() === target);
+        if (uIdx !== -1) {
+          usersList[uIdx].user.lastOnlineTimestamp = nowMs;
+          usersList[uIdx].user.lastOnlineAt = nowFullDateTime;
+          localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(usersList));
+        }
+      } catch {}
+
+      fetch('/api/presence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(presenceMap[target]),
+      }).catch(() => {});
+      broadcastCloudRealtimeEvent({
+        type: 'presence_update',
+        presence: presenceMap[target],
+      });
+      pushStateToCloudObject();
+      window.dispatchEvent(new CustomEvent('presence_updated', { detail: { email: target, online: false } }));
     } catch (e) {
       console.error('Failed to set presence offline', e);
     }
+  },
+
+  /**
+   * Mendapatkan rincian lengkap Jam & Tanggal Terakhir Murid Online / Belajar
+   * untuk ditampilkan pada Daftar Semua Murid di Halaman Master.
+   */
+  getStudentLastOnlineDetails: (
+    student: User,
+    nowMs: number = Date.now()
+  ): {
+    isOnline: boolean;
+    lastOnlineTimestamp: number | null;
+    formattedDayDate: string;
+    formattedShortDate: string;
+    formattedTime: string;
+    formattedDateTime: string;
+    relativeTimeLabel: string;
+    lastStudyActivity: string;
+  } => {
+    const emailLower = (student.email || '').trim().toLowerCase();
+    const isOnline = storageService.isStudentOnline(emailLower);
+    const presenceMap = storageService.getOnlinePresenceMap();
+    const pres = presenceMap[emailLower];
+
+    // Kumpulkan semua sumber waktu aktivitas belajar murid untuk akurasi 100%
+    let bestTs = 0;
+
+    if (pres) {
+      if (typeof pres.lastOnlineTimestamp === 'number' && pres.lastOnlineTimestamp > bestTs) {
+        bestTs = pres.lastOnlineTimestamp;
+      }
+      if (typeof pres.lastSeen === 'number' && pres.lastSeen > bestTs) {
+        bestTs = pres.lastSeen;
+      }
+      if (pres.lastOnlineAt) {
+        const parsedPresAt = parseFlexibleDateStringToMs(pres.lastOnlineAt);
+        if (parsedPresAt > bestTs) bestTs = parsedPresAt;
+      }
+    }
+
+    if (typeof student.lastOnlineTimestamp === 'number' && student.lastOnlineTimestamp > bestTs) {
+      bestTs = student.lastOnlineTimestamp;
+    }
+    if (student.lastOnlineAt) {
+      const parsedUserAt = parseFlexibleDateStringToMs(student.lastOnlineAt);
+      if (parsedUserAt > bestTs) bestTs = parsedUserAt;
+    }
+
+    // Cek dari rekaman kuis aktif / selesai
+    const activeQuizzes = storageService.getActiveQuizRecords();
+    for (const q of activeQuizzes) {
+      if (q.userEmail.toLowerCase() === emailLower) {
+        if ((q.completedAtTimestamp || 0) > bestTs) bestTs = q.completedAtTimestamp!;
+        if ((q.startedAtTimestamp || 0) > bestTs) bestTs = q.startedAtTimestamp;
+      }
+    }
+
+    // Cek dari pengumpulan / pengerjaan Tugas Harian Sensei
+    const dailyTasks = storageService.getDailyTasks();
+    for (const t of dailyTasks) {
+      for (const c of t.completions || []) {
+        if (c.studentEmail.toLowerCase() === emailLower && (c.completedAtTimestamp || 0) > bestTs) {
+          bestTs = c.completedAtTimestamp;
+        }
+      }
+    }
+
+    // Cek dari riwayat skor kuis
+    const scores = storageService.getScores();
+    for (const s of scores) {
+      if (s.userEmail.toLowerCase() === emailLower && s.completedAt) {
+        const scTs = parseFlexibleDateStringToMs(s.completedAt);
+        if (scTs > bestTs) bestTs = scTs;
+      }
+    }
+
+    // Jika sedang online saat ini, pastikan timestamp paling mutakhir
+    if (isOnline && (bestTs === 0 || nowMs - bestTs > 60_000)) {
+      bestTs = pres?.lastSeen && pres.lastSeen > 0 ? pres.lastSeen : nowMs;
+    }
+
+    // Fallback ke waktu pendaftaran jika murid baru terdaftar dan belum ada log lain
+    if (bestTs <= 0 && student.registeredAt) {
+      bestTs = parseFlexibleDateStringToMs(student.registeredAt);
+    }
+
+    let formattedDayDate = student.registeredAt ? student.registeredAt.split(' ')[0] : '-';
+    let formattedShortDate = formattedDayDate;
+    let formattedTime =
+      pres?.lastActionAt ||
+      (student.registeredAt && student.registeredAt.includes(' ')
+        ? `${student.registeredAt.split(' ')[1]} WIB`
+        : '-');
+    let formattedDateTime = `${formattedShortDate} · ${formattedTime}`;
+    let relativeTimeLabel = isOnline ? 'Sedang Online & Aktif Sekarang' : 'Belum tercatat';
+
+    if (bestTs > 0) {
+      const dt = new Date(bestTs);
+      if (!Number.isNaN(dt.getTime())) {
+        formattedDayDate = dt.toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+        formattedShortDate = dt.toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+        const timeStr = dt.toLocaleTimeString('id-ID', {
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+        formattedTime = `${timeStr} WIB`;
+        formattedDateTime = `${formattedShortDate} · ${formattedTime}`;
+
+        if (isOnline) {
+          relativeTimeLabel = 'Sedang Online & Belajar Sekarang';
+        } else {
+          const diffSec = Math.max(0, Math.floor((nowMs - bestTs) / 1000));
+          if (diffSec < 60) {
+            relativeTimeLabel = 'Baru saja keluar (< 1 menit lalu)';
+          } else if (diffSec < 3600) {
+            const mins = Math.floor(diffSec / 60);
+            relativeTimeLabel = `${mins} menit yang lalu`;
+          } else if (diffSec < 86400) {
+            const hrs = Math.floor(diffSec / 3600);
+            const remMins = Math.floor((diffSec % 3600) / 60);
+            relativeTimeLabel = remMins > 0 ? `${hrs} jam ${remMins} menit lalu` : `${hrs} jam yang lalu`;
+          } else {
+            const days = Math.floor(diffSec / 86400);
+            relativeTimeLabel = days === 1 ? 'Kemarin' : `${days} hari yang lalu`;
+          }
+        }
+      }
+    }
+
+    const lastStudyActivity =
+      pres?.currentActivity && pres.currentActivity !== '⚪ Keluar / Offline'
+        ? pres.currentActivity
+        : isOnline
+        ? '🏠 Membuka Beranda Portal Kelas'
+        : pres?.currentTab
+        ? `Terakhir di menu: ${pres.currentTab.toUpperCase()} (JLPT ${pres.activeLevel || 'N5'})`
+        : 'Terakhir mengakses Portal Kelas';
+
+    return {
+      isOnline,
+      lastOnlineTimestamp: bestTs > 0 ? bestTs : null,
+      formattedDayDate,
+      formattedShortDate,
+      formattedTime,
+      formattedDateTime,
+      relativeTimeLabel,
+      lastStudyActivity,
+    };
   },
 
   isStudentOnline: (email: string): boolean => {
