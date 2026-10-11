@@ -20,7 +20,21 @@ const STORAGE_DELETED_TASK_IDS_KEY = 'sensei_sari_deleted_task_ids_v1';
 
 // Cloud Sync Relay Endpoints (Menjamin sinkronisasi real-time antar ais-dev, ais-pre, HP murid, dan laptop Master)
 const NTFY_SYNC_URL = 'https://ntfy.sh/sari_sensei_live_8890ebbf_v4';
+const REMOTE_SERVER_ORIGIN = 'https://ais-pre-3tf33r2hbiuxyzlcjj7wbn-272271852625.asia-southeast1.run.app';
 let announcedSessionEmail = '';
+
+function resolveApiUrl(apiPath: string): string {
+  if (typeof window !== 'undefined') {
+    const isCapacitorOrFileApk =
+      window.location.protocol === 'capacitor:' ||
+      window.location.protocol === 'file:' ||
+      (window.location.hostname === 'localhost' && !window.location.port);
+    if (isCapacitorOrFileApk) {
+      return `${REMOTE_SERVER_ORIGIN}${apiPath}`;
+    }
+  }
+  return apiPath;
+}
 
 // BroadcastChannel untuk sinkronisasi instan antar tab di browser yang sama
 const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window 
@@ -44,15 +58,17 @@ if (syncChannel) {
 
 let syncIntervalStarted = false;
 let sseConnectionStarted = false;
-let isSyncingWithServer = false;
+let activeSyncPromise: Promise<void> | null = null;
 let lastLocalUserMutationAt = 0;
 let lastCloudPollAt = 0;
+let hasAnnouncedLocalRosterInSession = false;
 
 const SAMPLE_STUDENT_EMAIL_SET = new Set([
   'budi.santoso@gmail.com',
   'anisa.dewi@gmail.com',
   'rizky.pratama@gmail.com',
   'putri.ayu@gmail.com',
+  'kingugik@gmail.com',
 ]);
 
 const SAMPLE_RECORD_IDS = new Set([
@@ -214,7 +230,12 @@ function normalizeAndSortUsersList(
         password: item.password || (isMasterAcc ? MASTER_CONFIG.password : 'password123'),
       });
     } else {
-      if (item.password && item.password !== 'password123' && existing.password === 'password123') {
+      if (
+        item.password &&
+        item.password !== 'password123' &&
+        item.password !== '••••••••' &&
+        (existing.password === 'password123' || existing.password === '••••••••' || !existing.password)
+      ) {
         existing.password = item.password;
       }
       if (
@@ -226,21 +247,43 @@ function normalizeAndSortUsersList(
         existing.user.lastOnlineAt =
           normalizedUser.lastOnlineAt || formatFullDateTimeWIB(normalizedUser.lastOnlineTimestamp);
       }
-      if (
+      const emailPrefix = emailLower.split('@')[0];
+      const isExistingFullFallback =
+        !existing.user.fullName ||
+        existing.user.fullName === 'Murid Terdaftar' ||
+        existing.user.fullName === 'Murid' ||
+        existing.user.fullName.toLowerCase() === emailPrefix;
+      const isIncomingFullReal =
         cleanFullName &&
         cleanFullName !== 'Murid' &&
         cleanFullName !== 'Murid Terdaftar' &&
-        (!existing.user.fullName || existing.user.fullName === 'Murid Terdaftar' || existing.user.fullName === 'Murid')
-      ) {
+        cleanFullName.toLowerCase() !== emailPrefix;
+
+      if (isIncomingFullReal && (isExistingFullFallback || cleanFullName.length > (existing.user.fullName || '').length)) {
         existing.user.fullName = cleanFullName;
         existing.user.name = cleanFullName;
       }
-      if (
+
+      const firstWordOfFull = (existing.user.fullName || cleanFullName).split(/\s+/)[0]?.toLowerCase() || '';
+      const isExistingNickFallback =
+        !existing.user.nickname ||
+        existing.user.nickname === 'Murid' ||
+        existing.user.nickname.toLowerCase() === emailPrefix ||
+        existing.user.nickname.toLowerCase() === firstWordOfFull;
+      const isIncomingNickReal =
         cleanNickname &&
         cleanNickname !== 'Murid' &&
-        (!existing.user.nickname || existing.user.nickname === 'Murid')
-      ) {
+        cleanNickname.toLowerCase() !== emailPrefix;
+
+      if (isIncomingNickReal && isExistingNickFallback && existing.user.nickname !== cleanNickname) {
         existing.user.nickname = cleanNickname;
+      }
+      if (
+        normalizedUser.registeredAt &&
+        normalizedUser.registeredAt !== '2026-10-01 08:00' &&
+        (!existing.user.registeredAt || existing.user.registeredAt === '2026-10-01 08:00')
+      ) {
+        existing.user.registeredAt = normalizedUser.registeredAt;
       }
     }
   }
@@ -275,16 +318,39 @@ function normalizeAndSortUsersList(
 }
 
 // Broadcast event instan ke ntfy.sh agar perangkat lain (HP murid / laptop Master) langsung menerima dalam < 0.3 detik
-function broadcastCloudRealtimeEvent(eventPayload: Record<string, any>) {
+function broadcastCloudRealtimeEvent(eventPayload: Record<string, any>, retryOnFail = false) {
   try {
+    const bodyStr = JSON.stringify({
+      ...eventPayload,
+      ts: Date.now(),
+    });
     fetch(NTFY_SYNC_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        ...eventPayload,
-        ts: Date.now(),
-      }),
-    }).catch(() => {});
+      body: bodyStr,
+    })
+      .then((res) => {
+        if (!res.ok && retryOnFail && typeof window !== 'undefined') {
+          window.setTimeout(() => {
+            fetch(NTFY_SYNC_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: bodyStr,
+            }).catch(() => {});
+          }, 1500);
+        }
+      })
+      .catch(() => {
+        if (retryOnFail && typeof window !== 'undefined') {
+          window.setTimeout(() => {
+            fetch(NTFY_SYNC_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: bodyStr,
+            }).catch(() => {});
+          }, 1500);
+        }
+      });
   } catch {}
 }
 
@@ -298,10 +364,10 @@ function normalizeTaskTimestamp(ts?: number): number {
 function applyIncomingSyncData(serverData: any) {
   if (!serverData || typeof serverData !== 'object') return;
 
-  // 1. Deleted emails
+  // 1. Deleted emails (dan pulihkan otomatis jika murid sudah terdaftar aktif kembali di serverData.users)
+  const deletedSet = getDeletedEmailsSet();
+  let delChanged = false;
   if (Array.isArray(serverData.deletedEmails)) {
-    const deletedSet = getDeletedEmailsSet();
-    let delChanged = false;
     for (const de of serverData.deletedEmails) {
       if (de) {
         const lower = String(de).toLowerCase().trim();
@@ -311,9 +377,29 @@ function applyIncomingSyncData(serverData: any) {
         }
       }
     }
-    if (delChanged) {
-      saveDeletedEmailsSet(deletedSet);
+  }
+  const serverDeletedSet = new Set<string>(
+    Array.isArray(serverData.deletedEmails)
+      ? serverData.deletedEmails.map((e: any) => String(e || '').toLowerCase().trim())
+      : []
+  );
+  if (Array.isArray(serverData.users)) {
+    for (const item of serverData.users) {
+      const rawU = item?.user || item;
+      const em = String(rawU?.email || '').toLowerCase().trim();
+      if (
+        em &&
+        !SAMPLE_STUDENT_EMAIL_SET.has(em) &&
+        !serverDeletedSet.has(em) &&
+        deletedSet.has(em)
+      ) {
+        deletedSet.delete(em);
+        delChanged = true;
+      }
     }
+  }
+  if (delChanged) {
+    saveDeletedEmailsSet(deletedSet);
   }
 
   // 2. Ranking Reset Timestamp
@@ -342,16 +428,114 @@ function applyIncomingSyncData(serverData: any) {
     }
   }
 
-  // 4. Users
+  // 4. Users (Kumpulkan juga dari onlinePresence, scores, activeQuizzes, dan dailyTasks agar murid yang baru mendaftar/aktif langsung masuk ke Akun Master)
   let hasUserChanges = false;
-  if (Array.isArray(serverData.users) && serverData.users.length > 0) {
-    const deletedSet = getDeletedEmailsSet();
+  let newlyDiscoveredStudent: User | null = null;
+  const incomingUserCandidates: { user: User; password: string }[] = [];
+
+  if (Array.isArray(serverData.users)) {
+    for (const u of serverData.users) {
+      if (u) incomingUserCandidates.push(u);
+    }
+  }
+  if (serverData.onlinePresence && typeof serverData.onlinePresence === 'object') {
+    for (const [emKey, pVal] of Object.entries(serverData.onlinePresence as Record<string, any>)) {
+      if (emKey && !SAMPLE_STUDENT_EMAIL_SET.has(emKey.toLowerCase()) && !deletedSet.has(emKey.toLowerCase())) {
+        const pName = pVal?.name || emKey.split('@')[0];
+        incomingUserCandidates.push({
+          user: {
+            email: emKey.toLowerCase(),
+            fullName: pName,
+            nickname: pVal?.nickname || pName.split(/\s+/)[0] || pName,
+            name: pName,
+            registeredAt: '2026-10-01 08:00',
+            lastOnlineTimestamp: pVal?.lastOnlineTimestamp || pVal?.lastSeen,
+            lastOnlineAt: pVal?.lastOnlineAt,
+            isMaster: false,
+            role: 'student',
+          },
+          password: 'password123',
+        });
+      }
+    }
+  }
+  if (Array.isArray(serverData.scores)) {
+    for (const sc of serverData.scores) {
+      if (sc?.userEmail && !SAMPLE_STUDENT_EMAIL_SET.has(String(sc.userEmail).toLowerCase())) {
+        incomingUserCandidates.push({
+          user: {
+            email: String(sc.userEmail).toLowerCase(),
+            fullName: sc.studentName || sc.studentNickname || String(sc.userEmail).split('@')[0],
+            nickname: sc.studentNickname || (sc.studentName ? sc.studentName.split(/\s+/)[0] : String(sc.userEmail).split('@')[0]),
+            name: sc.studentName || sc.studentNickname || String(sc.userEmail).split('@')[0],
+            registeredAt: sc.completedAt || '2026-10-01 08:00',
+            isMaster: false,
+            role: 'student',
+          },
+          password: 'password123',
+        });
+      }
+    }
+  }
+  if (Array.isArray(serverData.activeQuizzes)) {
+    for (const aq of serverData.activeQuizzes) {
+      if (aq?.userEmail && !SAMPLE_STUDENT_EMAIL_SET.has(String(aq.userEmail).toLowerCase())) {
+        incomingUserCandidates.push({
+          user: {
+            email: String(aq.userEmail).toLowerCase(),
+            fullName: aq.studentName || aq.studentNickname || String(aq.userEmail).split('@')[0],
+            nickname: aq.studentNickname || (aq.studentName ? aq.studentName.split(/\s+/)[0] : String(aq.userEmail).split('@')[0]),
+            name: aq.studentName || aq.studentNickname || String(aq.userEmail).split('@')[0],
+            registeredAt: aq.date ? `${aq.date} 08:00` : '2026-10-01 08:00',
+            isMaster: false,
+            role: 'student',
+          },
+          password: 'password123',
+        });
+      }
+    }
+  }
+  if (Array.isArray(serverData.dailyTasks)) {
+    for (const dt of serverData.dailyTasks) {
+      for (const comp of dt?.completions || []) {
+        if (comp?.studentEmail && !SAMPLE_STUDENT_EMAIL_SET.has(String(comp.studentEmail).toLowerCase())) {
+          const cName = comp.studentName || comp.studentNameField || comp.studentNickname || String(comp.studentEmail).split('@')[0];
+          incomingUserCandidates.push({
+            user: {
+              email: String(comp.studentEmail).toLowerCase(),
+              fullName: cName,
+              nickname: comp.studentNickname || cName.split(/\s+/)[0] || cName,
+              name: cName,
+              registeredAt: comp.completedAt || '2026-10-01 08:00',
+              isMaster: false,
+              role: 'student',
+            },
+            password: 'password123',
+          });
+        }
+      }
+    }
+  }
+
+  if (incomingUserCandidates.length > 0 || delChanged) {
     const latestLocalRaw = localStorage.getItem(STORAGE_USERS_KEY);
-    const latestLocalUsers = latestLocalRaw ? JSON.parse(latestLocalRaw) : storageService.getUsers();
+    const latestLocalUsers: { user: User; password: string }[] = latestLocalRaw
+      ? JSON.parse(latestLocalRaw)
+      : storageService.getUsers();
+    const prevEmailsSet = new Set(
+      latestLocalUsers.map((u) => String(u?.user?.email || '').toLowerCase().trim())
+    );
     const mergedUsers = normalizeAndSortUsersList(
-      [...latestLocalUsers, ...serverData.users],
+      [...(Array.isArray(serverData.users) ? serverData.users : []), ...latestLocalUsers, ...incomingUserCandidates],
       deletedSet
     );
+    for (const mu of mergedUsers) {
+      const em = mu.user.email.toLowerCase();
+      if (!mu.user.isMaster && !prevEmailsSet.has(em)) {
+        newlyDiscoveredStudent = mu.user;
+        break;
+      }
+    }
     const nextUsersStr = JSON.stringify(mergedUsers);
     if (latestLocalRaw !== nextUsersStr) {
       localStorage.setItem(STORAGE_USERS_KEY, nextUsersStr);
@@ -617,7 +801,11 @@ function applyIncomingSyncData(serverData: any) {
   }
 
   if (hasUserChanges) {
-    window.dispatchEvent(new CustomEvent('student_data_updated'));
+    window.dispatchEvent(
+      new CustomEvent('student_data_updated', {
+        detail: newlyDiscoveredStudent ? { newStudent: newlyDiscoveredStudent } : undefined,
+      })
+    );
   }
 }
 
@@ -635,9 +823,20 @@ function handleRealtimeCloudPacket(packet: any) {
     applyIncomingSyncData({ deletedTaskIds: [packet.taskId] });
   }
   if (packet.type === 'user_registered' && packet.entry) {
+    const regEmail = String(packet.entry?.user?.email || '').toLowerCase().trim();
+    if (regEmail) {
+      const deletedSet = getDeletedEmailsSet();
+      if (deletedSet.has(regEmail)) {
+        deletedSet.delete(regEmail);
+        saveDeletedEmailsSet(deletedSet);
+      }
+    }
+    const incomingUsersList = Array.isArray(packet.users)
+      ? [packet.entry, ...packet.users]
+      : [packet.entry];
     applyIncomingSyncData({
-      users: [packet.entry],
-      onlinePresence: packet.presence ? { [packet.entry.user.email.toLowerCase()]: packet.presence } : undefined,
+      users: incomingUsersList,
+      onlinePresence: packet.presence && regEmail ? { [regEmail]: packet.presence } : undefined,
     });
   }
   if (packet.type === 'user_deleted' && packet.email) {
@@ -711,19 +910,22 @@ async function pullStateFromCloudObject() {
 }
 
 let lastCloudStateBroadcastAt = 0;
-async function pushStateToCloudObject() {
+async function pushStateToCloudObject(forceImmediate = false) {
   const now = Date.now();
-  if (now - lastCloudStateBroadcastAt < 12000) return;
+  if (!forceImmediate && now - lastCloudStateBroadcastAt < 10000) return;
   lastCloudStateBroadcastAt = now;
   try {
-    broadcastCloudRealtimeEvent({
-      type: 'cloud_state_sync',
-      users: storageService.getUsers(),
-      quizControl: storageService.getQuizControlState(),
-      deletedEmails: Array.from(getDeletedEmailsSet()),
-      deletedTaskIds: Array.from(getDeletedTaskIdsSet()),
-      updatedAt: now,
-    });
+    broadcastCloudRealtimeEvent(
+      {
+        type: 'cloud_state_sync',
+        users: storageService.getUsers(),
+        quizControl: storageService.getQuizControlState(),
+        deletedEmails: Array.from(getDeletedEmailsSet()),
+        deletedTaskIds: Array.from(getDeletedTaskIdsSet()),
+        updatedAt: now,
+      },
+      forceImmediate
+    );
   } catch {}
 }
 
@@ -733,14 +935,14 @@ function startRealtimeCloudSSE() {
 
   // 1. Koneksi SSE Lokal Langsung (/api/realtime-stream) untuk sinkronisasi instan 0-delay (< 15ms) antara Murid & Master
   try {
-    const localEs = new EventSource('/api/realtime-stream');
+    const localEs = new EventSource(resolveApiUrl('/api/realtime-stream'));
     localEs.onmessage = (ev) => {
       try {
         if (ev.data && ev.data.startsWith('{')) {
           const parsed = JSON.parse(ev.data);
           if (parsed.type === 'onepiece_quote_counter' && typeof parsed.counter === 'number') {
             const cur = Number(localStorage.getItem('sensei_sari_onepiece_quote_counter') || '0');
-            if (parsed.counter > cur) {
+            if (packetHasNewerCounter(parsed.counter, cur)) {
               localStorage.setItem('sensei_sari_onepiece_quote_counter', String(parsed.counter));
             }
           }
@@ -753,9 +955,9 @@ function startRealtimeCloudSSE() {
     };
   } catch {}
 
-  // 2. Koneksi SSE Cloud Cadangan
+  // 2. Koneksi SSE Cloud Real-Time (dengan ?since=12h agar seluruh murid yang baru mendaftar langsung masuk seketika)
   try {
-    const es = new EventSource(`${NTFY_SYNC_URL}/sse`);
+    const es = new EventSource(`${NTFY_SYNC_URL}/sse?since=12h`);
     es.onmessage = (ev) => {
       try {
         const outer = JSON.parse(ev.data);
@@ -770,6 +972,10 @@ function startRealtimeCloudSSE() {
       // Browser EventSource automatically reconnects
     };
   } catch {}
+}
+
+function packetHasNewerCounter(incoming: number, current: number): boolean {
+  return incoming > current;
 }
 
 // Penyedia Verifikasi Perubahan Kata Sandi Resmi
@@ -900,15 +1106,15 @@ const INITIAL_STUDENTS: { user: User; password: string }[] = [
   },
   {
     user: { 
-      email: 'kingugik@gmail.com', 
-      fullName: 'king ugik', 
-      nickname: 'king ugik', 
-      name: 'king ugik', 
-      registeredAt: '2026-10-01 06:52',
+      email: 'dwinuranggrainipuspitasari@gmail.com', 
+      fullName: 'dwi nur anggraini puspitasari', 
+      nickname: 'puspitasari', 
+      name: 'dwi nur anggraini puspitasari', 
+      registeredAt: '2026-10-04 08:42',
       isMaster: false,
       role: 'student',
     },
-    password: '1234',
+    password: 'nuranggraini320',
   },
 ];
 
@@ -950,7 +1156,7 @@ export const storageService = {
       startRealtimeCloudSSE();
 
       // 2. Jalankan sinkronisasi ke server backend & Cloud Object
-      storageService.syncWithServer();
+      storageService.syncWithServer(true);
       if (!syncIntervalStarted && typeof window !== 'undefined') {
         syncIntervalStarted = true;
         window.setInterval(() => {
@@ -963,87 +1169,104 @@ export const storageService = {
   },
 
   // Sinkronisasi dua arah antara LocalStorage, Server Lokal, dan Cloud Sync Pusat
-  syncWithServer: async (): Promise<void> => {
-    if (isSyncingWithServer) return;
-    isSyncingWithServer = true;
-    try {
-      const localUsers = storageService.getUsers();
-      const currentUser = storageService.getCurrentUser();
-      const localScores = storageService.getScores();
-      const localQuizzes = storageService.getActiveQuizRecords();
-      const localPresence = storageService.getOnlinePresenceMap();
-      const localQuizControl = storageService.getQuizControlState();
-      const localDailyTasks = storageService.getDailyTasks();
-      const deletedTaskIds = Array.from(getDeletedTaskIdsSet());
-      const deletedEmails = Array.from(getDeletedEmailsSet());
-      const rankingResetAt = getRankingResetAt();
+  syncWithServer: async (forceCloudSync: boolean = false): Promise<void> => {
+    if (activeSyncPromise && !forceCloudSync) {
+      return activeSyncPromise;
+    }
+    const runSync = async () => {
+      try {
+        const localUsers = storageService.getUsers();
+        const currentUser = storageService.getCurrentUser();
+        const localScores = storageService.getScores();
+        const localQuizzes = storageService.getActiveQuizRecords();
+        const localPresence = storageService.getOnlinePresenceMap();
+        const localQuizControl = storageService.getQuizControlState();
+        const localDailyTasks = storageService.getDailyTasks();
+        const deletedTaskIds = Array.from(getDeletedTaskIdsSet());
+        const deletedEmails = Array.from(getDeletedEmailsSet());
+        const rankingResetAt = getRankingResetAt();
 
-      // 1. Sinkronisasi dengan Express Server lokal (/api/sync)
-      const localSyncPromise = fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          users: localUsers,
-          currentUser,
-          scores: localScores,
-          activeQuizzes: localQuizzes,
-          onlinePresence: localPresence,
-          quizControl: localQuizControl,
-          dailyTasks: localDailyTasks,
-          deletedTaskIds,
-          deletedEmails,
-          rankingResetAt,
-        }),
-      })
-        .then(r => (r.ok ? r.json() : null))
-        .then(data => {
-          if (data) applyIncomingSyncData(data);
+        // 1. Sinkronisasi dengan Express Server lokal (/api/sync)
+        const localSyncPromise = fetch(resolveApiUrl('/api/sync'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            users: localUsers,
+            currentUser,
+            scores: localScores,
+            activeQuizzes: localQuizzes,
+            onlinePresence: localPresence,
+            quizControl: localQuizControl,
+            dailyTasks: localDailyTasks,
+            deletedTaskIds,
+            deletedEmails,
+            rankingResetAt,
+          }),
         })
-        .catch(() => {});
-
-      // 2. Sinkronisasi riwayat Cloud Ntfy secara bijak (setiap 25 detik, tanpa memicu rate limit 429)
-      const now = Date.now();
-      if (
-        currentUser &&
-        !storageService.isMaster(currentUser) &&
-        announcedSessionEmail !== currentUser.email.toLowerCase()
-      ) {
-        announcedSessionEmail = currentUser.email.toLowerCase();
-        const foundEntry = localUsers.find(
-          u => u.user.email.toLowerCase() === announcedSessionEmail
-        ) || { user: currentUser, password: 'password123' };
-        broadcastCloudRealtimeEvent({
-          type: 'user_registered',
-          entry: foundEntry,
-          presence: localPresence[announcedSessionEmail],
-        });
-      }
-
-      if (now - lastCloudPollAt > 25000) {
-        lastCloudPollAt = now;
-        fetch(`${NTFY_SYNC_URL}/json?poll=1&since=12h`)
-          .then(r => (r.ok ? r.text() : ''))
-          .then(text => {
-            if (!text) return;
-            const lines = text.split('\n').filter(Boolean);
-            for (const line of lines) {
-              try {
-                const outer = JSON.parse(line);
-                if (outer?.message && typeof outer.message === 'string' && outer.message.startsWith('{')) {
-                  handleRealtimeCloudPacket(JSON.parse(outer.message));
-                }
-              } catch {}
-            }
+          .then(r => (r.ok ? r.json() : null))
+          .then(data => {
+            if (data) applyIncomingSyncData(data);
           })
           .catch(() => {});
-      }
 
-      await localSyncPromise;
-    } catch {
-      // Abaikan jika sedang offline sementara
-    } finally {
-      isSyncingWithServer = false;
-    }
+        // 2. Sinkronisasi Real-Time Cloud Ntfy (mengumumkan akun murid di perangkat ini & menarik murid baru)
+        const now = Date.now();
+        if (
+          currentUser &&
+          !storageService.isMaster(currentUser) &&
+          announcedSessionEmail !== currentUser.email.toLowerCase()
+        ) {
+          announcedSessionEmail = currentUser.email.toLowerCase();
+          const foundEntry = localUsers.find(
+            u => u.user.email.toLowerCase() === announcedSessionEmail
+          ) || { user: currentUser, password: 'password123' };
+          broadcastCloudRealtimeEvent(
+            {
+              type: 'user_registered',
+              entry: foundEntry,
+              users: localUsers,
+              presence: localPresence[announcedSessionEmail],
+            },
+            true
+          );
+        } else if (!hasAnnouncedLocalRosterInSession) {
+          hasAnnouncedLocalRosterInSession = true;
+          const customLocalStudents = localUsers.filter(u => !storageService.isMaster(u.user));
+          if (customLocalStudents.length > 0) {
+            pushStateToCloudObject(false);
+          }
+        }
+
+        let cloudPollPromise: Promise<void> = Promise.resolve();
+        if (forceCloudSync || now - lastCloudPollAt > 5000) {
+          lastCloudPollAt = now;
+          cloudPollPromise = fetch(`${NTFY_SYNC_URL}/json?poll=1&since=12h`)
+            .then(r => (r.ok ? r.text() : ''))
+            .then(text => {
+              if (!text) return;
+              const lines = text.split('\n').filter(Boolean);
+              for (const line of lines) {
+                try {
+                  const outer = JSON.parse(line);
+                  if (outer?.message && typeof outer.message === 'string' && outer.message.startsWith('{')) {
+                    handleRealtimeCloudPacket(JSON.parse(outer.message));
+                  }
+                } catch {}
+              }
+            })
+            .catch(() => {});
+        }
+
+        await Promise.all([localSyncPromise, cloudPollPromise]);
+      } catch {
+        // Abaikan jika sedang offline sementara
+      } finally {
+        activeSyncPromise = null;
+      }
+    };
+
+    activeSyncPromise = runSync();
+    return activeSyncPromise;
   },
 
   // Check if a user is the Master Account
@@ -1188,6 +1411,34 @@ export const storageService = {
 
       collected.push(...INITIAL_STUDENTS);
 
+      const rawTasks = localStorage.getItem(STORAGE_DAILY_TASKS_KEY);
+      if (rawTasks) {
+        try {
+          const parsedTasks = JSON.parse(rawTasks);
+          if (Array.isArray(parsedTasks)) {
+            for (const dt of parsedTasks) {
+              for (const comp of dt?.completions || []) {
+                if (comp?.studentEmail) {
+                  const cName = comp.studentName || comp.studentNameField || comp.studentNickname || String(comp.studentEmail).split('@')[0];
+                  collected.push({
+                    user: {
+                      email: comp.studentEmail,
+                      fullName: cName,
+                      nickname: comp.studentNickname || cName.split(/\s+/)[0] || cName,
+                      name: cName,
+                      registeredAt: comp.completedAt || '2026-10-01 08:00',
+                      isMaster: false,
+                      role: 'student',
+                    },
+                    password: 'password123',
+                  });
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+
       const normalized = normalizeAndSortUsersList(collected, deletedSet);
       const currentRaw = localStorage.getItem(STORAGE_USERS_KEY);
       const normalizedStr = JSON.stringify(normalized);
@@ -1238,7 +1489,7 @@ export const storageService = {
     users[idx].password = cleanPass;
     lastLocalUserMutationAt = Date.now();
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
-    fetch('/api/users/password', {
+    fetch(resolveApiUrl('/api/users/password'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: trimmedEmail, newPassword: cleanPass }),
@@ -1396,7 +1647,7 @@ export const storageService = {
         localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presMap));
       }
 
-      fetch('/api/users/delete', {
+      fetch(resolveApiUrl('/api/users/delete'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail }),
@@ -1578,21 +1829,26 @@ export const storageService = {
     const sortedUsers = normalizeAndSortUsersList(users, deletedSet);
     localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(sortedUsers));
 
-    // Tandai kehadiran online & aktivitas pendaftaran baru
-    storageService.heartbeatPresence(newUser, {
-      currentTab: 'home',
-      currentActivity: setAsCurrentUser
-        ? 'Baru Mendaftar & Masuk ke Beranda'
-        : 'Baru Didaftarkan oleh Master',
-      activeLevel: 'N5',
-    });
+    // Tandai kehadiran online & aktivitas pendaftaran baru (tanpa broadcast terpisah agar menyatu dalam paket user_registered)
+    storageService.heartbeatPresence(
+      newUser,
+      {
+        currentTab: 'home',
+        currentActivity: setAsCurrentUser
+          ? 'Baru Mendaftar & Masuk ke Beranda'
+          : 'Baru Didaftarkan oleh Master',
+        activeLevel: 'N5',
+      },
+      true
+    );
 
     if (setAsCurrentUser) {
-      storageService.setCurrentUser(newUser);
+      storageService.setCurrentUser(newUser, true);
+      announcedSessionEmail = trimmedEmail;
     }
 
     // 1. Kirim langsung ke server lokal
-    fetch('/api/users/register', {
+    fetch(resolveApiUrl('/api/users/register'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user: newUser, password }),
@@ -1606,22 +1862,26 @@ export const storageService = {
             getDeletedEmailsSet()
           );
           localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(merged));
-          window.dispatchEvent(new CustomEvent('student_data_updated'));
+          window.dispatchEvent(new CustomEvent('student_data_updated', { detail: { newStudent: newUser } }));
         }
       })
       .catch(() => {});
 
-    // 2. Broadcast instan ke Cloud SSE & Cloud Object agar langsung muncul di Daftar Murid Akun Master
+    // 2. Broadcast instan 1-paket lengkap ke Cloud SSE (dengan auto-retry) agar langsung masuk real-time di Akun Master
     const presenceEntry = storageService.getOnlinePresenceMap()[trimmedEmail];
-    broadcastCloudRealtimeEvent({
-      type: 'user_registered',
-      entry: { user: newUser, password },
-      presence: presenceEntry,
-    });
-    pushStateToCloudObject();
+    lastCloudStateBroadcastAt = Date.now();
+    broadcastCloudRealtimeEvent(
+      {
+        type: 'user_registered',
+        entry: { user: newUser, password },
+        users: sortedUsers,
+        presence: presenceEntry,
+      },
+      true
+    );
 
     syncChannel?.postMessage({ type: 'sync_trigger' });
-    window.dispatchEvent(new CustomEvent('student_data_updated'));
+    window.dispatchEvent(new CustomEvent('student_data_updated', { detail: { newStudent: newUser } }));
 
     return { success: true, message: `Pendaftaran berhasil! Selamat datang, ${cleanNickname}! 🌸`, user: newUser };
   },
@@ -1687,15 +1947,20 @@ export const storageService = {
       localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
     }
 
-    storageService.setCurrentUser(found.user);
-    storageService.heartbeatPresence(found.user, {
-      currentTab: 'home',
-      currentActivity: 'Baru Login & Masuk ke Beranda',
-      activeLevel: storageService.getActiveLevel(),
-    });
+    storageService.setCurrentUser(found.user, true);
+    announcedSessionEmail = trimmedEmail;
+    storageService.heartbeatPresence(
+      found.user,
+      {
+        currentTab: 'home',
+        currentActivity: 'Baru Login & Masuk ke Beranda',
+        activeLevel: storageService.getActiveLevel(),
+      },
+      true
+    );
 
     // Pastikan akun murid yang login langsung disinkronkan ke server pusat & Cloud
-    fetch('/api/users/register', {
+    fetch(resolveApiUrl('/api/users/register'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user: found.user, password: found.password }),
@@ -1713,12 +1978,16 @@ export const storageService = {
       })
       .catch(() => {});
 
-    broadcastCloudRealtimeEvent({
-      type: 'user_registered',
-      entry: found,
-      presence: storageService.getOnlinePresenceMap()[trimmedEmail],
-    });
-    pushStateToCloudObject();
+    lastCloudStateBroadcastAt = Date.now();
+    broadcastCloudRealtimeEvent(
+      {
+        type: 'user_registered',
+        entry: found,
+        users: storageService.getUsers(),
+        presence: storageService.getOnlinePresenceMap()[trimmedEmail],
+      },
+      true
+    );
 
     return { 
       success: true, 
@@ -1744,11 +2013,11 @@ export const storageService = {
     }
   },
 
-  setCurrentUser: (user: User | null) => {
+  setCurrentUser: (user: User | null, skipHeartbeat: boolean = false) => {
     if (user) {
       localStorage.setItem(STORAGE_CURRENT_USER_KEY, JSON.stringify(user));
       storageService.updateLastActive();
-      if (!storageService.isMaster(user)) {
+      if (!storageService.isMaster(user) && !skipHeartbeat) {
         storageService.heartbeatPresence(user);
       }
     } else {
@@ -1797,7 +2066,8 @@ export const storageService = {
       currentActivity?: string;
       activeLevel?: JLPTLevel;
       quizProgress?: string;
-    }
+    },
+    skipCloudBroadcast: boolean = false
   ) => {
     if (!user || storageService.isMaster(user)) return;
     try {
@@ -1846,18 +2116,17 @@ export const storageService = {
         }
       } catch {}
 
-      fetch('/api/presence', {
+      fetch(resolveApiUrl('/api/presence'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(presenceMap[email]),
       }).catch(() => {});
 
-      if (activityChanged) {
+      if (activityChanged && !skipCloudBroadcast) {
         broadcastCloudRealtimeEvent({
           type: 'presence_update',
           presence: presenceMap[email],
         });
-        pushStateToCloudObject();
       }
 
       window.dispatchEvent(new CustomEvent('presence_updated', { detail: { email, online: true } }));
@@ -1910,7 +2179,7 @@ export const storageService = {
         }
       } catch {}
 
-      fetch('/api/presence', {
+      fetch(resolveApiUrl('/api/presence'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(presenceMap[target]),
@@ -2169,7 +2438,7 @@ export const storageService = {
       localStorage.setItem(STORAGE_QUIZ_CONTROL_KEY, JSON.stringify(state));
 
       // 1. Kirim ke server lokal
-      fetch('/api/quizzes/control', {
+      fetch(resolveApiUrl('/api/quizzes/control'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quizControl: state }),
@@ -2247,7 +2516,7 @@ export const storageService = {
         quizProgress: `0/${totalQuestions} terjawab`,
       });
 
-      fetch('/api/quizzes/active', {
+      fetch(resolveApiUrl('/api/quizzes/active'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ record: newRecord }),
@@ -2283,7 +2552,7 @@ export const storageService = {
         records[idx].currentQuestion = currentQuestion;
         records[idx].answeredCount = answeredCount;
         localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
-        fetch('/api/quizzes/active', {
+        fetch(resolveApiUrl('/api/quizzes/active'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ record: records[idx] }),
@@ -2311,7 +2580,7 @@ export const storageService = {
       if (idx !== -1) {
         records[idx].tabViolationsCount = violationsCount;
         localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
-        fetch('/api/quizzes/active', {
+        fetch(resolveApiUrl('/api/quizzes/active'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ record: records[idx] }),
@@ -2385,7 +2654,7 @@ export const storageService = {
           });
         }
 
-        fetch('/api/quizzes/active', {
+        fetch(resolveApiUrl('/api/quizzes/active'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ record: records[idx] }),
@@ -2410,7 +2679,7 @@ export const storageService = {
       let records = storageService.getActiveQuizRecords();
       records = records.filter(r => r.id !== id);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify(records));
-      fetch('/api/quizzes/active', {
+      fetch(resolveApiUrl('/api/quizzes/active'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deleteId: id }),
@@ -2429,7 +2698,7 @@ export const storageService = {
       const resetTs = Date.now();
       setRankingResetAt(resetTs);
       localStorage.setItem(STORAGE_ACTIVE_QUIZZES_KEY, JSON.stringify([]));
-      fetch('/api/quizzes/active', {
+      fetch(resolveApiUrl('/api/quizzes/active'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reset: true }),
@@ -2477,7 +2746,7 @@ export const storageService = {
     const scores = storageService.getScores();
     scores.unshift(result);
     localStorage.setItem(STORAGE_SCORES_KEY, JSON.stringify(scores));
-    fetch('/api/scores', {
+    fetch(resolveApiUrl('/api/scores'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ score: result }),
@@ -2865,7 +3134,7 @@ export const storageService = {
     tasks[idx] = updatedTask;
     localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
 
-    fetch('/api/daily-tasks', {
+    fetch(resolveApiUrl('/api/daily-tasks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: updatedTask }),
@@ -2899,7 +3168,7 @@ export const storageService = {
     tasks[idx] = updatedTask;
     localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
 
-    fetch('/api/daily-tasks', {
+    fetch(resolveApiUrl('/api/daily-tasks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: updatedTask }),
@@ -2972,7 +3241,7 @@ export const storageService = {
     tasks.unshift(newTask);
     localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
 
-    fetch('/api/daily-tasks', {
+    fetch(resolveApiUrl('/api/daily-tasks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: newTask }),
@@ -3034,7 +3303,7 @@ export const storageService = {
     tasks[idx] = updatedTask;
     localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
 
-    fetch('/api/daily-tasks', {
+    fetch(resolveApiUrl('/api/daily-tasks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: updatedTask }),
@@ -3061,7 +3330,7 @@ export const storageService = {
       const tasks = storageService.getDailyTasks().filter(t => String(t.id) !== idStr);
       localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
 
-      fetch('/api/daily-tasks', {
+      fetch(resolveApiUrl('/api/daily-tasks'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deleteTaskId: idStr }),
@@ -3154,7 +3423,7 @@ export const storageService = {
       });
     }
 
-    fetch('/api/daily-tasks', {
+    fetch(resolveApiUrl('/api/daily-tasks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: updatedTask }),
@@ -3243,7 +3512,7 @@ export const storageService = {
       });
     }
 
-    fetch('/api/daily-tasks', {
+    fetch(resolveApiUrl('/api/daily-tasks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: updatedTask }),
@@ -3289,7 +3558,7 @@ export const storageService = {
     tasks[idx] = updatedTask;
     localStorage.setItem(STORAGE_DAILY_TASKS_KEY, JSON.stringify(tasks));
 
-    fetch('/api/daily-tasks', {
+    fetch(resolveApiUrl('/api/daily-tasks'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: updatedTask }),
@@ -3383,7 +3652,7 @@ export const storageService = {
       };
       updatedAnyTask = tasks[i];
 
-      fetch('/api/daily-tasks', {
+      fetch(resolveApiUrl('/api/daily-tasks'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task: tasks[i] }),
@@ -3422,7 +3691,7 @@ export const storageService = {
       aiTranslateAttempts: nextPresAi,
     };
     localStorage.setItem(STORAGE_ONLINE_PRESENCE_KEY, JSON.stringify(presenceMap));
-    fetch('/api/presence', {
+    fetch(resolveApiUrl('/api/presence'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(presenceMap[emailLower]),

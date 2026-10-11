@@ -22,6 +22,7 @@ const SAMPLE_EMAILS = new Set([
   'anisa.dewi@gmail.com',
   'rizky.pratama@gmail.com',
   'putri.ayu@gmail.com',
+  'kingugik@gmail.com',
 ]);
 
 const SAMPLE_RECORD_IDS = new Set([
@@ -51,15 +52,15 @@ const INITIAL_STUDENTS = [
   },
   {
     user: {
-      email: 'kingugik@gmail.com',
-      fullName: 'king ugik',
-      nickname: 'king ugik',
-      name: 'king ugik',
-      registeredAt: '2026-10-01 06:52',
+      email: 'dwinuranggrainipuspitasari@gmail.com',
+      fullName: 'dwi nur anggraini puspitasari',
+      nickname: 'puspitasari',
+      name: 'dwi nur anggraini puspitasari',
+      registeredAt: '2026-10-04 08:42',
       isMaster: false,
       role: 'student',
     },
-    password: '1234',
+    password: 'nuranggraini320',
   },
 ];
 
@@ -181,6 +182,17 @@ function loadDatabase(): ServerDatabase {
         ...(Array.isArray(parsed.deletedEmails) ? parsed.deletedEmails : []),
         ...Array.from(SAMPLE_EMAILS),
       ]);
+      // Ensure registered initial students (such as puspitasari) are present unless explicitly deleted
+      for (const initEntry of INITIAL_STUDENTS) {
+        const initEmail = String(initEntry.user.email).toLowerCase();
+        if (
+          !SAMPLE_EMAILS.has(initEmail) &&
+          !deletedSet.has(initEmail) &&
+          !filteredUsers.some((u: any) => String(u?.user?.email || u?.email || '').toLowerCase() === initEmail)
+        ) {
+          filteredUsers.push(initEntry);
+        }
+      }
       const deletedTasksSet = new Set<string>(
         Array.isArray(parsed.deletedTaskIds) ? parsed.deletedTaskIds.map((id: any) => String(id)) : []
       );
@@ -289,18 +301,37 @@ function ensureStudentInDb(
     return true;
   } else {
     const existingUser = db.users[existingIdx].user;
+    const emailPrefix = emailLower.split('@')[0];
     let modified = false;
-    if (
+    const isExistingNameFallback =
+      !existingUser.fullName ||
+      existingUser.fullName === 'Murid' ||
+      existingUser.fullName === 'Murid Terdaftar' ||
+      existingUser.fullName.toLowerCase() === emailPrefix;
+    const isIncomingNameReal =
       cleanFullName &&
       cleanFullName !== 'Murid' &&
       cleanFullName !== 'Murid Terdaftar' &&
-      (!existingUser.fullName || existingUser.fullName === 'Murid' || existingUser.fullName === 'Murid Terdaftar')
-    ) {
+      cleanFullName.toLowerCase() !== emailPrefix;
+
+    if (isIncomingNameReal && (isExistingNameFallback || cleanFullName.length > (existingUser.fullName || '').length)) {
       existingUser.fullName = cleanFullName;
       existingUser.name = cleanFullName;
       modified = true;
     }
-    if (cleanNickname && cleanNickname !== 'Murid' && (!existingUser.nickname || existingUser.nickname === 'Murid')) {
+
+    const firstWordOfFull = (existingUser.fullName || cleanFullName).split(/\s+/)[0]?.toLowerCase() || '';
+    const isExistingNickFallback =
+      !existingUser.nickname ||
+      existingUser.nickname === 'Murid' ||
+      existingUser.nickname.toLowerCase() === emailPrefix ||
+      existingUser.nickname.toLowerCase() === firstWordOfFull;
+    const isIncomingNickReal =
+      cleanNickname &&
+      cleanNickname !== 'Murid' &&
+      cleanNickname.toLowerCase() !== emailPrefix;
+
+    if (isIncomingNickReal && isExistingNickFallback && existingUser.nickname !== cleanNickname) {
       existingUser.nickname = cleanNickname;
       modified = true;
     }
@@ -336,12 +367,15 @@ function sortDbUsers() {
   db.users = [...masterList, ...customStudents];
 }
 
-function mergeExternalPayloadIntoDb(payload: any): boolean {
+function mergeExternalPayloadIntoDb(
+  payload: any,
+  options?: { allowDeletions?: boolean }
+): boolean {
   if (!payload || typeof payload !== 'object') return false;
   let changed = false;
 
-  // 1. Deleted emails
-  if (Array.isArray(payload.deletedEmails)) {
+  // 1. Deleted emails (Only apply deletions when explicitly authorized, never from stale client background polls)
+  if (options?.allowDeletions && Array.isArray(payload.deletedEmails)) {
     for (const de of payload.deletedEmails) {
       const lower = String(de || '').trim().toLowerCase();
       if (lower && lower !== MASTER_CONFIG.email.toLowerCase() && !db.deletedEmails.includes(lower)) {
@@ -587,6 +621,9 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
           if (c?.studentEmail) {
             const em = String(c.studentEmail).toLowerCase();
             if (!SAMPLE_EMAILS.has(em) && !db.deletedEmails.includes(em)) {
+              if (ensureStudentInDb(em, c.studentName || c.studentNameField, c.studentNickname)) {
+                changed = true;
+              }
               const prevC = compMap.get(em);
               if (!prevC) {
                 compMap.set(em, c);
@@ -660,9 +697,9 @@ function mergeExternalPayloadIntoDb(payload: any): boolean {
 
 let lastCloudPushAt = 0;
 
-async function pushDatabaseToCloud() {
+async function pushDatabaseToCloud(forceImmediate = false) {
   const now = Date.now();
-  if (now - lastCloudPushAt < 15000) return;
+  if (!forceImmediate && now - lastCloudPushAt < 10000) return;
   lastCloudPushAt = now;
   try {
     const compactEvent = JSON.stringify({
@@ -699,14 +736,32 @@ async function pullDatabaseFromCloud() {
           if (outer?.message && typeof outer.message === 'string' && outer.message.startsWith('{')) {
             const packet = JSON.parse(outer.message);
             if (packet.type === 'user_registered' && packet.entry) {
+              const regEmail = String(packet.entry?.user?.email || '').trim().toLowerCase();
+              if (regEmail) {
+                db.deletedEmails = db.deletedEmails.filter(e => e !== regEmail);
+              }
               if (
                 mergeExternalPayloadIntoDb({
                   users: [packet.entry],
                   onlinePresence: packet.presence
-                    ? { [String(packet.entry?.user?.email || '').toLowerCase()]: packet.presence }
+                    ? { [regEmail]: packet.presence }
                     : undefined,
                 })
               ) {
+                anyChanged = true;
+              }
+            } else if (packet.type === 'user_deleted' && packet.email) {
+              const delEmail = String(packet.email).trim().toLowerCase();
+              if (
+                delEmail &&
+                delEmail !== MASTER_CONFIG.email.toLowerCase() &&
+                !db.deletedEmails.includes(delEmail)
+              ) {
+                db.deletedEmails.push(delEmail);
+                db.users = db.users.filter(u => u?.user?.email?.toLowerCase() !== delEmail);
+                db.scores = db.scores.filter(s => s?.userEmail?.toLowerCase() !== delEmail);
+                db.activeQuizzes = db.activeQuizzes.filter(q => q?.userEmail?.toLowerCase() !== delEmail);
+                delete db.onlinePresence[delEmail];
                 anyChanged = true;
               }
             } else if (packet.type === 'daily_task_upserted' && packet.task) {
@@ -744,6 +799,7 @@ async function pullDatabaseFromCloud() {
       if (anyChanged) {
         db.updatedAt = Date.now();
         saveDatabaseLocalOnly(db);
+        broadcastRealtimeStateToClients();
       }
     }
   } catch {
@@ -792,12 +848,12 @@ function broadcastRealtimeStateToClients() {
   }
 }
 
-function saveDatabase(targetDb: ServerDatabase, skipCloudPush = true) {
+function saveDatabase(targetDb: ServerDatabase, skipCloudPush = false, forceCloudPush = false) {
   targetDb.updatedAt = Date.now();
   saveDatabaseLocalOnly(targetDb);
   broadcastRealtimeStateToClients();
   if (!skipCloudPush) {
-    pushDatabaseToCloud();
+    pushDatabaseToCloud(forceCloudPush);
   }
 }
 
@@ -818,11 +874,17 @@ async function startServer() {
 
   app.use(express.json({ limit: '5mb' }));
 
-  // Initial pull from cloud on server startup & periodic background cloud sync every 25 seconds
-  pullDatabaseFromCloud();
+  // Initial pull from cloud on server startup, then push authoritative roster to cloud & keep syncing every 3.5 seconds
+  pullDatabaseFromCloud().then(() => {
+    pushDatabaseToCloud(true);
+  });
   setInterval(() => {
     pullDatabaseFromCloud();
-  }, 25000);
+  }, 3500);
+  // Keep cloud relay populated every 20 minutes so ntfy 12h TTL never expires
+  setInterval(() => {
+    pushDatabaseToCloud(true);
+  }, 20 * 60 * 1000);
 
   // GET /api/realtime-stream - Server-Sent Events (SSE) stream untuk sinkronisasi langsung tanpa delay
   app.get('/api/realtime-stream', (req, res) => {
@@ -957,7 +1019,7 @@ async function startServer() {
       };
     }
 
-    saveDatabase(db);
+    saveDatabase(db, false, true);
     res.json({
       success: true,
       user: normalizedUser,
@@ -980,7 +1042,7 @@ async function startServer() {
       return;
     }
     db.users[idx].password = newPassword.trim();
-    saveDatabase(db);
+    saveDatabase(db, false, true);
     res.json({ success: true, users: db.users });
   });
 
@@ -1005,7 +1067,7 @@ async function startServer() {
     db.activeQuizzes = db.activeQuizzes.filter(q => q.userEmail.toLowerCase() !== emailLower);
     delete db.onlinePresence[emailLower];
 
-    saveDatabase(db);
+    saveDatabase(db, false, true);
     res.json({
       success: true,
       users: db.users,

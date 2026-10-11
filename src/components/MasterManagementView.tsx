@@ -161,6 +161,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const knownStudentEmailsRef = React.useRef<Set<string> | null>(null);
 
   // Add New Student Modal State (Master Direct Registration)
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -175,16 +176,35 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setActiveRecords(storageService.getActiveQuizRecords());
     const creds = storageService.getAllStudentsWithCredentials();
     setStudentsCredentials(creds);
-    setStudentsList(creds.map(c => c.user));
+    const loadedUsers = creds.map(c => c.user);
+    setStudentsList(loadedUsers);
+
+    // Deteksi otomatis murid baru yang baru saja mendaftar secara real-time
+    const currentEmailSet = new Set(loadedUsers.map(u => u.email.toLowerCase()));
+    if (knownStudentEmailsRef.current !== null) {
+      const newlyRegistered = loadedUsers.filter(
+        u => !knownStudentEmailsRef.current!.has(u.email.toLowerCase())
+      );
+      if (newlyRegistered.length > 0) {
+        const latestNew = newlyRegistered[0];
+        const displayName = latestNew.fullName || latestNew.nickname || latestNew.email;
+        setNotificationMsg(
+          `Murid baru "${displayName}" (${latestNew.email}) otomatis tersinkronisasi secara real-time ke Daftar Murid Master! 🌸`
+        );
+        setTimeout(() => setNotificationMsg(null), 5000);
+      }
+    }
+    knownStudentEmailsRef.current = currentEmailSet;
+
     setPresenceMap(storageService.getOnlinePresenceMap());
     setQuizControl(storageService.getQuizControlState());
     setAllScores(storageService.getAllScores());
   };
 
   const handleManualSyncAndReload = async () => {
-    await storageService.syncWithServer();
+    await storageService.syncWithServer(true);
     loadData();
-    setNotificationMsg('Data daftar murid, aktivitas live, & nilai kuis berhasil disinkronkan! 🔄');
+    setNotificationMsg('Data daftar murid, aktivitas live, & nilai kuis berhasil disinkronkan secara real-time! 🔄');
     setTimeout(() => setNotificationMsg(null), 3000);
   };
 
@@ -234,8 +254,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   };
 
   useEffect(() => {
-    storageService.syncWithServer().then(() => loadData());
     loadData();
+    storageService.syncWithServer(true).then(() => loadData());
 
     // Auto-refresh & server/cloud sync interval every 1.5 seconds for live tracking
     const intervalId = window.setInterval(() => {
@@ -992,6 +1012,10 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                       <span>Daftar Semua Murid yang Berhasil Mendaftar & Pantauan Aktivitas Live</span>
                       <span className="px-2.5 py-0.5 bg-[#881337] text-white border-2 border-black text-[11px] font-black">
                         {studentsList.length} Murid Terdaftar
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 text-emerald-950 border-2 border-black text-[10px] font-black">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                        <span>AUTO-SYNC REAL-TIME AKTIF</span>
                       </span>
                     </h2>
                   </div>

@@ -1,0 +1,33 @@
+{
+  "packageId": "com.sarisensei.jlpt",
+  "host": "ais-pre-3tf33r2hbiuxyzlcjj7wbn-272271852625.asia-southeast1.run.app",
+  "name": "Sari Sensei — Belajar JLPT N5–N2",
+  "launcherName": "Sari Sensei",
+  "display": "standalone",
+  "themeColor": "#881337",
+  "navigationColor": "#fcf9f2",
+  "navigationColorDark": "#1c1917",
+  "navigationDividerColor": "#e7e5e4",
+  "navigationDividerColorDark": "#292524",
+  "backgroundColor": "#fcf9f2",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://ais-pre-3tf33r2hbiuxyzlcjj7wbn-272271852625.asia-southeast1.run.app/pwa-512x512.png",
+  "maskableIconUrl": "https://ais-pre-3tf33r2hbiuxyzlcjj7wbn-272271852625.asia-southeast1.run.app/pwa-maskable-512x512.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://ais-pre-3tf33r2hbiuxyzlcjj7wbn-272271852625.asia-southeast1.run.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://ais-pre-3tf33r2hbiuxyzlcjj7wbn-272271852625.asia-southeast1.run.app/",
+  "minSdkVersion": 21,
+  "orientation": "portrait"
+}

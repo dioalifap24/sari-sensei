@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#881337" />
+      <stop offset="100%" stop-color="#4c0519" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Square -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad)" />
+  <!-- Outer Gold Frame -->
+  <rect x="36" y="36" width="440" height="440" rx="72" fill="none" stroke="url(#goldGrad)" stroke-width="10" />
+  <!-- Inner Cream Circle Emblem -->
+  <circle cx="256" cy="240" r="142" fill="#fcf9f2" stroke="#1c1917" stroke-width="10" />
+  <!-- Japanese Sun Disc Accent -->
+  <circle cx="256" cy="240" r="108" fill="#ffe4e6" />
+  <!-- Torii Gate / Kanji Silhouette -->
+  <path d="M166 176 H346 V198 H166 Z" fill="#881337" />
+  <path d="M184 212 H328 V230 H184 Z" fill="#881337" />
+  <rect x="202" y="194" width="22" height="122" rx="4" fill="#881337" />
+  <rect x="288" y="194" width="22" height="122" rx="4" fill="#881337" />
+  <rect x="245" y="176" width="22" height="46" rx="4" fill="#1c1917" />
+  <!-- Bottom Ribbon Label -->
+  <rect x="96" y="400" width="320" height="54" rx="14" fill="#1c1917" stroke="url(#goldGrad)" stroke-width="6" />
+  <text x="256" y="436" font-family="serif" font-size="30" font-weight="900" fill="#fde68a" text-anchor="middle" letter-spacing="3">SARI SENSEI</text>
+</svg>

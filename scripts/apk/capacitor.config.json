@@ -1,0 +1,21 @@
+{
+  "appId": "com.sarisensei.jlpt",
+  "appName": "Sari Sensei JLPT",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": [
+      "*.run.app",
+      "ntfy.sh",
+      "*.ntfy.sh"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true,
+    "backgroundColor": "#fcf9f2"
+  }
+}
