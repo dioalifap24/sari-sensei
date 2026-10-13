@@ -78,17 +78,17 @@ const MangaGutterSeparator: React.FC<{ label: string; jpLabel: string }> = ({ la
 );
 
 export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ currentUser }) => {
-  const [subTab, setSubTab] = useState<'all' | 'student_list' | 'live_scores'>('all');
+  const [subTab, setSubTab] = useState<'all' | 'student_list' | 'live_scores' | 'meet_sync'>('all');
   const [showRegisteredStudentsTable, setShowRegisteredStudentsTable] = useState<boolean>(true);
   const [pageTurnDirection, setPageTurnDirection] = useState<'next' | 'prev'>('next');
   const [pageTurnKey, setPageTurnKey] = useState<number>(0);
   const [komaFlipKey, setKomaFlipKey] = useState<number>(0);
   const [isTurningPage, setIsTurningPage] = useState<boolean>(false);
 
-  const MANGA_TAB_ORDER: ('all' | 'student_list' | 'live_scores')[] = ['all', 'student_list', 'live_scores'];
+  const MANGA_TAB_ORDER: ('all' | 'student_list' | 'live_scores' | 'meet_sync')[] = ['all', 'student_list', 'live_scores', 'meet_sync'];
 
   const handleMangaPageChange = (
-    targetTab: 'all' | 'student_list' | 'live_scores',
+    targetTab: 'all' | 'student_list' | 'live_scores' | 'meet_sync',
     forcedDir?: 'next' | 'prev'
   ) => {
     if (targetTab === subTab && !forcedDir) {
@@ -131,10 +131,16 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           jpChapter: '【第弐話】生徒名簿・最終学習時刻録',
           sfx: 'バサッ!! (Hal. 03-04)',
         }
-      : {
+      : subTab === 'live_scores'
+      ? {
           folio: '頁 05 — 06 (CHAPTER: KUIS & RANKING LIVE)',
           jpChapter: '【第参話】試験実況・順位決定戦',
           sfx: 'シュッ!! (Hal. 05-06)',
+        }
+      : {
+          folio: '頁 07 — 08 (CHAPTER: GOOGLE MEET & DURASI)',
+          jpChapter: '【第四話】ビデオ会議出席・時間同期',
+          sfx: 'ドンドン!! (Hal. 07-08)',
         };
   
   // Live records, presence map, and students data
@@ -170,6 +176,14 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   const [newStuEmail, setNewStuEmail] = useState('');
   const [newStuPassword, setNewStuPassword] = useState('');
   const [addStudentError, setAddStudentError] = useState('');
+  const [meetSyncData, setMeetSyncData] = useState(() => storageService.getMeetSyncRecord());
+
+  const handlePerformMeetSync = () => {
+    const res = storageService.syncMeetAttendanceAndDuration();
+    setMeetSyncData(storageService.getMeetSyncRecord());
+    setNotificationMsg(`Berhasil menyinkronkan ${res.syncedStudentsCount} murid dari ${res.totalSessions} sesi Google Meet ke Laporan Murid! 🌸`);
+    setTimeout(() => setNotificationMsg(null), 4500);
+  };
 
   // Load all data from storageService
   const loadData = () => {
@@ -199,6 +213,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     setPresenceMap(storageService.getOnlinePresenceMap());
     setQuizControl(storageService.getQuizControlState());
     setAllScores(storageService.getAllScores());
+    setMeetSyncData(storageService.getMeetSyncRecord());
   };
 
   const handleManualSyncAndReload = async () => {
@@ -783,6 +798,18 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 }`}>
                   {activeRecords.length} Sesi
                 </span>
+              </button>
+
+              <button
+                onClick={() => handleMangaPageChange('meet_sync')}
+                className={`flex items-center gap-2 px-4 py-2 border-[3px] border-black text-xs sm:text-sm font-black transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
+                  subTab === 'meet_sync'
+                    ? 'bg-[#881337] text-white'
+                    : 'bg-white text-black hover:bg-[#fae8eb]'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                <span>頁 07: Sesi Meet & Durasi</span>
               </button>
             </div>
 
@@ -1851,6 +1878,116 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     <span className="w-3 h-3 rounded-full bg-emerald-600 border border-black" />
                     <span><strong>71 – 100:</strong> Berwarna Hijau</span>
                   </span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* =========================================================================
+            KOMA 07 (PANEL GOOGLE MEET ATTENDANCE & DURATION SYNC)
+            ========================================================================= */}
+        {(subTab === 'all' || subTab === 'meet_sync') && (
+          <>
+            <MangaGutterSeparator label="MANGA GUTTER 04.5 · PEMISAH PANEL GOOGLE MEET & DURASI" jpLabel="【コマ間・ビデオ会議同期区画】" />
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="manga-koma-panel relative bg-white p-6 sm:p-8 overflow-hidden shadow-sm">
+                <MangaCornerTicks />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b-2 border-black">
+                  <div>
+                    <span className="px-2.5 py-1 bg-[#881337] text-white font-mono text-[10px] font-black uppercase tracking-wider border-2 border-black">
+                      頁 07 · GOOGLE MEET DURATION SYNC
+                    </span>
+                    <h3 className="text-xl font-black text-black font-japanese mt-1">
+                      Sinkronisasi Kehadiran & Durasi Partisipasi Google Meet
+                    </h3>
+                    <p className="text-xs text-stone-700 mt-0.5">
+                      Sinkronkan daftar kehadiran murid secara otomatis ke rapor mereka berdasarkan durasi kehadiran dalam sesi Google Meet yang diselenggarakan Master.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handlePerformMeetSync}
+                    className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs border-[3px] border-black shadow-[4px_4px_0px_#000000] flex items-center gap-2 cursor-pointer transition-all transform hover:scale-105"
+                  >
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>🔄 Sinkronkan Kehadiran & Durasi ke Raporan Murid</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="p-4 bg-[#fdf5ea] border-2 border-black shadow-[3px_3px_0px_#000000]">
+                    <div className="text-xs font-black text-[#8c6b4b] uppercase tracking-wider mb-1">Total Sesi Meet Berlangsung</div>
+                    <div className="text-2xl font-black text-[#881337] font-mono">{storageService.getVirtualSessions().length} Sesi</div>
+                  </div>
+                  <div className="p-4 bg-[#fdf5ea] border-2 border-black shadow-[3px_3px_0px_#000000]">
+                    <div className="text-xs font-black text-[#8c6b4b] uppercase tracking-wider mb-1">Murid Tersinkronisasi</div>
+                    <div className="text-2xl font-black text-emerald-800 font-mono">{Object.keys(meetSyncData.students || {}).length} Murid</div>
+                  </div>
+                  <div className="p-4 bg-[#fdf5ea] border-2 border-black shadow-[3px_3px_0px_#000000]">
+                    <div className="text-xs font-black text-[#8c6b4b] uppercase tracking-wider mb-1">Terakhir Disinkronkan</div>
+                    <div className="text-xs font-mono font-bold text-stone-900 mt-1">{meetSyncData.updatedAt || 'Belum pernah'}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-sm font-black text-black uppercase tracking-wider font-japanese border-l-4 border-[#881337] pl-2.5">
+                    Rincian Partisipasi Durasi Murid (*Estimasi 30 Menit / Sesi)
+                  </h4>
+
+                  {studentsList.length === 0 ? (
+                    <p className="text-xs text-stone-600 italic">Belum ada murid terdaftar.</p>
+                  ) : (
+                    <div className="overflow-x-auto border-[3px] border-black shadow-[4px_4px_0px_#000000]">
+                      <table className="w-full text-left text-xs bg-white">
+                        <thead className="bg-[#f1ebe0] font-black uppercase text-[11px] text-stone-900 border-b-[3px] border-black">
+                          <tr>
+                            <th className="py-3 px-4 border-r-2 border-black">Nama Murid</th>
+                            <th className="py-3 px-4 border-r-2 border-black">Email</th>
+                            <th className="py-3 px-4 border-r-2 border-black">Sesi Diikuti</th>
+                            <th className="py-3 px-4 border-r-2 border-black">Total Durasi Partisipasi</th>
+                            <th className="py-3 px-4">Status Sinkronisasi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y-2 divide-black">
+                          {studentsList.map((stu) => {
+                            const emailL = stu.email.toLowerCase();
+                            const syncInfo = meetSyncData.students[emailL];
+                            const attendedCount = syncInfo?.attendanceCount || 0;
+                            const totalMins = syncInfo?.totalMinutes || 0;
+                            return (
+                              <tr key={stu.email} className="hover:bg-amber-50/50 transition-colors">
+                                <td className="py-3 px-4 font-black text-stone-950 flex items-center gap-2 border-r-2 border-black">
+                                  <span className="w-6 h-6 rounded-full bg-[#881337] text-white flex items-center justify-center text-[10px] font-bold">
+                                    {(stu.nickname || stu.fullName || 'M').charAt(0).toUpperCase()}
+                                  </span>
+                                  <span>{stu.fullName || stu.nickname || stu.email}</span>
+                                </td>
+                                <td className="py-3 px-4 font-mono text-stone-700 border-r-2 border-black">{stu.email}</td>
+                                <td className="py-3 px-4 font-bold text-[#881337] border-r-2 border-black">
+                                  {attendedCount} Sesi Meet
+                                </td>
+                                <td className="py-3 px-4 font-mono font-extrabold text-emerald-800 border-r-2 border-black">
+                                  {totalMins} Menit ({Math.floor(totalMins / 60)} Jam {totalMins % 60} Menit)
+                                </td>
+                                <td className="py-3 px-4">
+                                  {attendedCount > 0 ? (
+                                    <span className="px-2 py-1 bg-emerald-100 text-emerald-950 border border-black font-black text-[10px] rounded">
+                                      🟢 Aktif & Tersinkron
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-1 bg-stone-100 text-stone-700 border border-stone-400 font-bold text-[10px] rounded">
+                                      ⚪ Belum Hadir
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

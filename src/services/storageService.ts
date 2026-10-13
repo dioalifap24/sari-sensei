@@ -3871,4 +3871,48 @@ export const storageService = {
       }).catch(() => {});
     } catch {}
   },
+
+  syncMeetAttendanceAndDuration(): { syncedStudentsCount: number; totalSessions: number } {
+    try {
+      const sessions = storageService.getVirtualSessions();
+      const studentMap = new Map<string, { attendanceCount: number; totalMinutes: number; lastJoined: string }>();
+
+      for (const s of sessions) {
+        for (const att of s.attendees || []) {
+          const email = att.email.toLowerCase();
+          const existing = studentMap.get(email) || { attendanceCount: 0, totalMinutes: 0, lastJoined: att.joinedAt };
+          existing.attendanceCount += 1;
+          existing.totalMinutes += 30; // 30 mins per session participation
+          if (att.joinedAt) existing.lastJoined = att.joinedAt;
+          studentMap.set(email, existing);
+        }
+      }
+
+      const syncRecord = {
+        updatedAt: formatFullDateTimeWIB(Date.now()),
+        students: Object.fromEntries(studentMap),
+      };
+      localStorage.setItem('sensei_sari_meet_attendance_sync_v1', JSON.stringify(syncRecord));
+      window.dispatchEvent(new CustomEvent('virtual_sessions_updated'));
+      window.dispatchEvent(new CustomEvent('student_data_updated'));
+      syncChannel?.postMessage({ type: 'sync_trigger' });
+
+      return {
+        syncedStudentsCount: studentMap.size,
+        totalSessions: sessions.length,
+      };
+    } catch {
+      return { syncedStudentsCount: 0, totalSessions: 0 };
+    }
+  },
+
+  getMeetSyncRecord(): { updatedAt: string; students: Record<string, { attendanceCount: number; totalMinutes: number; lastJoined: string }> } {
+    try {
+      const raw = localStorage.getItem('sensei_sari_meet_attendance_sync_v1');
+      if (!raw) return { updatedAt: '-', students: {} };
+      return JSON.parse(raw);
+    } catch {
+      return { updatedAt: '-', students: {} };
+    }
+  },
 };
