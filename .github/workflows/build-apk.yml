@@ -62,16 +62,25 @@ jobs:
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: "🌸 Sari Sensei JLPT Android APK (Build #${{ github.run_number }})"
+          name: "🌸 Sari Sensei JLPT Android APK & iOS App (Build #${{ github.run_number }})"
           body: |
-            ## 📱 File Instalasi Android APK — Sari Sensei (Belajar JLPT N5–N2)
+            ## 📱 Panduan Instalasi Aplikasi Sari Sensei (Android & iPhone / iOS)
             
+            ### 🤖 1. Pengguna Android (Install APK)
             Unduh file **`Sari-Sensei-JLPT.apk`** di bawah ini (pada bagian **Assets**) lalu pasang langsung di HP Android Murid maupun Master.
             
-            ### ✨ Fitur yang Sudah Aktif di Dalam APK:
-            - **Sinkronisasi Real-Time Otomatis**: Murid yang mendaftar dari APK langsung masuk ke daftar murid di Akun Master secara *real-time*.
-            - **Kontrol Sesi Kuis & Tugas Harian Live**: Buka/tutup sesi kuis dan hitung mundur lembar tugas harian tersinkronisasi langsung.
-            - **Materi Lengkap JLPT N5–N2**: Kanji, Kotoba (Kosakata), Bunpou, Latihan Membaca, dan Kuis.
+            ### 🍏 2. Pengguna iPhone / iOS (Install Web App / PWA)
+            Karena keterbatasan iOS, pengguna iPhone/iPad dapat memasang aplikasi langsung melalui browser **Safari**:
+            1. Buka URL aplikasi Sari Sensei di Safari.
+            2. Ketuk tombol **Bagikan (Share)** lalu pilih **"Tambahkan ke Layar Utama" (Add to Home Screen)**.
+            3. Sari Sensei akan terpasang di layar utama iPhone Anda layaknya aplikasi native App Store!
+            
+            ### ✨ Fitur Terbaru di Update Ini:
+            - **Catatan Pinggir (Post-it Memo)** pada setiap halaman materi belajar.
+            - **Efek Suara Manga (SFX)** interaktif saat murid menyelesaikan tugas harian.
+            - **Terjemahan Langsung Google** yang akurat untuk Master & Murid.
+            - **Ejaan Huruf Jepang (Kana & Kanji)** yang disesuaikan secara presisi.
+            - **Sinkronisasi Real-Time & Kontrol Kuis Live**.
           files: |
             output_apk/Sari-Sensei-JLPT.apk
           prerelease: false
