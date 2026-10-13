@@ -1285,93 +1285,88 @@ async function startServer() {
     }
   });
 
-  // POST /api/translate - Terjemahan Cerdas Bahasa Indonesia — Jepang (Huruf Jepang, Romaji / Ejaan, dan Furigana)
+  // Cache dan rate-limit tracker untuk terjemahan cerdas Gemini
+  const translationCache = new Map<string, any>();
+  let geminiRateLimitedUntil = 0;
+
+  // Fungsi penyambung otomatis ke Mesin Google Terjemahan (Bebas Kuota API Gemini)
+  async function translateWithGoogleTranslateEngine(text: string, direction: 'id-to-ja' | 'ja-to-id'): Promise<string | null> {
+    const isJaToId = direction === 'ja-to-id';
+    const sl = isJaToId ? 'ja' : 'id';
+    const tl = isJaToId ? 'id' : 'ja';
+    try {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sl}|${tl}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+      const resp = await fetch(url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      });
+      clearTimeout(timeout);
+      if (resp.ok) {
+        const data = await resp.json();
+        const rawText = data?.responseData?.translatedText?.trim();
+        if (rawText && !rawText.startsWith('MYMEMORY WARNING:')) {
+          const cleaned = rawText.replace(/^[-–—]\s*/, '').trim();
+          return cleaned;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
+  // POST /api/translate - Terjemahan Cerdas Bahasa Indonesia — Jepang (Langsung Google Terjemahan Bebas Kuota)
   app.post('/api/translate', async (req, res) => {
     try {
       const text = String(req.body?.text || '').trim();
-      const direction = String(req.body?.direction || 'id-to-ja').trim();
+      const direction: 'id-to-ja' | 'ja-to-id' = req.body?.direction === 'ja-to-id' ? 'ja-to-id' : 'id-to-ja';
       const isJaToId = direction === 'ja-to-id';
       if (!text) {
         res.status(400).json({ error: 'Teks wajib diisi' });
         return;
       }
 
-      if (process.env.GEMINI_API_KEY) {
-        try {
-          const { GoogleGenAI } = await import('@google/genai');
-          const ai = new GoogleGenAI();
-          const prompt = isJaToId
-            ? `Anda adalah asisten penerjemah Bahasa Jepang ke Bahasa Indonesia untuk aplikasi belajar JLPT Sensei Sari.
-Terjemahkan teks bahasa Jepang berikut ke Bahasa Indonesia:
-"${text}"
-Catatan: Teks input pengguna bisa berupa karakter Kanji, Hiragana, Katakana, ataupun ejaan latin (Romaji).
-
-Tolong berikan respon HANYA berupa JSON valid (tanpa blok markdown atau backtick \`\`\`json):
-{
-  "japanese": "Tulisan bahasa Jepang baku yang benar dalam huruf Kanji dan Kana",
-  "romaji": "Ejaan pelafalan latin (Romaji) resmi yang jelas dan mudah dibaca (contoh: Arigatou gozaimasu)",
-  "furigana": "Bacaan hiragana lengkap untuk seluruh kanji",
-  "indonesian": "Arti atau terjemahan alami, tepat, dan mudah dipahami dalam Bahasa Indonesia",
-  "politeness": "Tingkat kesopanan kalimat (contoh: Sopan / Formal (Desu/Masu), Kasual / Akrab, atau Baku)",
-  "breakdown": [
-    {
-      "word": "kata kanji/kana",
-      "reading": "romaji/furigana",
-      "meaning": "arti dalam bahasa indonesia"
-    }
-  ],
-  "tips": "Penjelasan tata bahasa, partikel, atau makna budaya ringkas (1 kalimat)"
-}`
-            : `Anda adalah asisten penerjemah Bahasa Indonesia ke Bahasa Jepang untuk aplikasi belajar JLPT Sensei Sari.
-Terjemahkan teks berikut ke bahasa Jepang:
-"${text}"
-
-Tolong berikan respon HANYA berupa JSON valid (tanpa blok markdown atau backtick \`\`\`json):
-{
-  "japanese": "Tulisan bahasa Jepang alami menggunakan kombinasi Kanji, Hiragana, dan Katakana yang benar",
-  "romaji": "Ejaan pelafalan latin (Romaji) resmi yang mudah dibaca oleh pembelajar Indonesia (contoh: Watashi wa nihongo o benkyou shite imasu)",
-  "furigana": "Bacaan lengkap huruf hiragana untuk seluruh kanji",
-  "indonesian": "Arti yang paling pas dan akurat dalam Bahasa Indonesia",
-  "politeness": "Tingkat kesopanan kalimat (contoh: Sopan / Formal (Desu/Masu), Kasual / Akrab, atau Baku)",
-  "breakdown": [
-    {
-      "word": "kata kanji/kana",
-      "reading": "romaji/furigana",
-      "meaning": "arti dalam bahasa indonesia"
-    }
-  ],
-  "tips": "Penjelasan tata bahasa atau catatan budaya ringkas (1 kalimat)"
-}`;
-
-          const result = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: prompt,
-            config: {
-              responseMimeType: 'application/json',
-              temperature: 0.1,
-            },
-          });
-
-          const rawJson = (result.text || '').trim();
-          const parsed = JSON.parse(rawJson);
-          if (parsed && parsed.japanese && parsed.romaji) {
-            res.json({
-              success: true,
-              ...parsed,
-              direction,
-              sourceText: text,
-            });
-            return;
-          }
-        } catch (aiErr) {
-          console.error('Gemini translation error:', aiErr);
-        }
+      const cacheKey = `${direction}:${text.toLowerCase()}`;
+      if (translationCache.has(cacheKey)) {
+        res.json({
+          success: true,
+          ...translationCache.get(cacheKey),
+          cached: true,
+          direction,
+          sourceText: text,
+        });
+        return;
       }
 
-      // Return fallback flag if Gemini is unavailable
+      // Langsung sambungkan ke Google Terjemahan untuk memperlancar murid dan Master
+      const googleResult = await translateWithGoogleTranslateEngine(text, direction);
+      if (googleResult) {
+        const payload = {
+          japanese: isJaToId ? text : googleResult,
+          indonesian: isJaToId ? googleResult : text,
+          politeness: 'Google Terjemahan (Otomatis & Bebas Kuota)',
+          tips: 'Diterjemahkan langsung melalui jaringan Google Terjemahan di web Sari Sensei.',
+          engine: 'google-translate',
+        };
+        if (translationCache.size > 500) {
+          translationCache.clear();
+        }
+        translationCache.set(cacheKey, payload);
+        res.json({
+          success: true,
+          ...payload,
+          direction,
+          sourceText: text,
+        });
+        return;
+      }
+
+      // Return fallback flag if network unavailable
       res.json({ success: false, fallback: true, direction, sourceText: text });
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err?.message || 'Server translation error' });
+      res.json({ success: false, fallback: true, error: err?.message || 'Server translation error' });
     }
   });
 

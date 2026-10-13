@@ -11,6 +11,7 @@ import {
 } from '../data/jepangOrgVocab';
 import { RUANGGURU_HIRAGANA, RUANGGURU_KATAKANA } from '../data/ruangguruKanaData';
 import { Volume2, Search, BookOpen, Layers, Type, Sparkles } from 'lucide-react';
+import { CatatanPinggirWidget } from './CatatanPinggirWidget';
 
 interface MateriViewProps {
   activeLevel: JLPTLevel;
@@ -517,6 +518,9 @@ export const MateriView: React.FC<MateriViewProps> = ({ activeLevel, setActiveLe
           </div>
         </div>
       )}
+
+      {/* 📌 FITUR CATATAN PINGGIR (POST-IT MEMO) */}
+      <CatatanPinggirWidget activeLevel={activeLevel} />
 
       {/* ──────────────────────────────────────────────────────────
           SUMBER DI POJOK KIRI BAWAH

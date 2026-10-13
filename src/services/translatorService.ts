@@ -15,6 +15,7 @@ export interface TranslationResult {
   }[];
   tips?: string;
   isOffline?: boolean;
+  engine?: 'gemini' | 'google-translate' | 'offline';
 }
 
 // Kamus percakapan sehari-hari bahasa Indonesia - Jepang yang akurat dengan Kanji & Romaji (Ejaan)
@@ -333,79 +334,231 @@ const COMMON_CONVERSATIONS: {
   },
 ];
 
-// Tabel konversi Hiragana / Katakana ke Romaji sederhana
-const KANA_TO_ROMAJI: Record<string, string> = {
-  あ: 'a', い: 'i', う: 'u', え: 'e', お: 'o',
-  か: 'ka', き: 'ki', く: 'ku', け: 'ke', こ: 'ko',
-  さ: 'sa', し: 'shi', す: 'su', せ: 'se', そ: 'so',
-  た: 'ta', ち: 'chi', つ: 'tsu', て: 'te', と: 'to',
-  な: 'na', に: 'ni', ぬ: 'nu', ね: 'ne', の: 'no',
-  は: 'ha', ひ: 'hi', ふ: 'fu', へ: 'he', ほ: 'ho',
-  ま: 'ma', み: 'mi', む: 'mu', め: 'me', も: 'mo',
-  や: 'ya', ゆ: 'yu', よ: 'yo',
-  ら: 'ra', り: 'ri', る: 'ru', れ: 're', ろ: 'ro',
-  わ: 'wa', を: 'wo', ん: 'n',
-  が: 'ga', ぎ: 'gi', ぐ: 'gu', げ: 'ge', ご: 'go',
-  ざ: 'za', じ: 'ji', ず: 'zu', ぜ: 'ze', ぞ: 'zo',
-  だ: 'da', ぢ: 'ji', づ: 'zu', で: 'de', ど: 'do',
-  ば: 'ba', び: 'bi', ぶ: 'bu', べ: 'be', ぼ: 'bo',
-  ぱ: 'pa', ぴ: 'pi', ぷ: 'pu', ぺ: 'pe', ぽ: 'po',
-  きゃ: 'kya', きゅ: 'kyu', きょ: 'kyo',
-  しゃ: 'sha', しゅ: 'shu', しょ: 'sho',
-  ちゃ: 'cha', ちゅ: 'chu', ちょ: 'cho',
-  にゃ: 'nya', にゅ: 'nyu', にょ: 'nyo',
-  ひゃ: 'hya', ひゅ: 'hyu', ひょ: 'hyo',
-  みゃ: 'mya', みゅ: 'myu', みょ: 'myo',
-  りゃ: 'rya', りゅ: 'ryu', りょ: 'ryo',
-  ぎゃ: 'gya', ぎゅ: 'gyu', ぎょ: 'gyo',
-  じゃ: 'ja', じゅ: 'ju', じょ: 'jo',
-  びゃ: 'bya', びゅ: 'byu', びょ: 'byo',
-  ぴゃ: 'pya', ぴゅ: 'pyu', ぴょ: 'pyo',
-  ア: 'a', イ: 'i', ウ: 'u', エ: 'e', オ: 'o',
-  カ: 'ka', キ: 'ki', ク: 'ku', ケ: 'ke', コ: 'ko',
-  サ: 'sa', シ: 'shi', ス: 'su', セ: 'se', ソ: 'so',
-  タ: 'ta', チ: 'chi', ツ: 'tsu', テ: 'te', ト: 'to',
-  ナ: 'na', ニ: 'ni', ヌ: 'nu', ネ: 'ne', ノ: 'no',
-  ハ: 'ha', ヒ: 'hi', フ: 'fu', ヘ: 'he', ホ: 'ho',
-  マ: 'ma', ミ: 'mi', ム: 'mu', メ: 'me', モ: 'mo',
-  ヤ: 'ya', ユ: 'yu', ヨ: 'yo',
-  ラ: 'ra', リ: 'ri', ル: 'ru', レ: 're', ロ: 'ro',
-  ワ: 'wa', ヲ: 'wo', ン: 'n',
-  ガ: 'ga', ギ: 'gi', グ: 'gu', ゲ: 'ge', ゴ: 'go',
-  ザ: 'za', ジ: 'ji', ズ: 'zu', ゼ: 'ze', ゾ: 'zo',
-  ダ: 'da', ヂ: 'ji', ヅ: 'zu', デ: 'de', ド: 'do',
-  バ: 'ba', ビ: 'bi', ブ: 'bu', ベ: 'be', ボ: 'bo',
-  パ: 'pa', ピ: 'pi', プ: 'pu', ペ: 'pe', ポ: 'po',
-};
+import * as wanakana from 'wanakana';
 
-export function convertKanaToRomaji(kanaText: string): string {
-  let result = '';
-  let i = 0;
-  while (i < kanaText.length) {
-    const twoChars = kanaText.slice(i, i + 2);
-    if (KANA_TO_ROMAJI[twoChars]) {
-      result += KANA_TO_ROMAJI[twoChars];
-      i += 2;
-      continue;
+function containsKanji(text: string): boolean {
+  return /[\u4e00-\u9faf\u3400-\u4dbf]/.test(text);
+}
+
+// Basis data pencocokan kanji berfrekuensi tinggi & konjugasi kata kerja baku
+const HIGH_FREQ_KANJI_MAP: { kanji: string; kana: string }[] = [
+  // Salam & ungkapan sehari-hari
+  { kanji: '有難うございます', kana: 'ありがとう ございます' },
+  { kanji: '有難う', kana: 'ありがとう' },
+  { kanji: '御馳走様でした', kana: 'ごちそうさま でした' },
+  { kanji: '御馳走様', kana: 'ごちそうさま' },
+  { kanji: 'お早うございます', kana: 'おはよう ございます' },
+  { kanji: 'お早う', kana: 'おはよう' },
+  { kanji: 'お元気ですか', kana: 'おげんき ですか' },
+  { kanji: 'お元気', kana: 'おげんき' },
+  { kanji: '元気', kana: 'げんき' },
+  { kanji: '初めまして', kana: 'はじめまして' },
+  { kanji: '始めまして', kana: 'はじめまして' },
+
+  // Subjek & orang
+  { kanji: '私', kana: 'わたし' },
+  { kanji: '僕', kana: 'ぼく' },
+  { kanji: '俺', kana: 'おれ' },
+  { kanji: '貴方', kana: 'あなた' },
+  { kanji: '先生', kana: 'せんせい' },
+  { kanji: '学生', kana: 'がくせい' },
+  { kanji: '友達', kana: 'ともだち' },
+  { kanji: '家族', kana: 'かぞく' },
+
+  // Negara & Bahasa
+  { kanji: '日本', kana: 'にほん' },
+  { kanji: '日本語', kana: 'にほんご' },
+  { kanji: '日本人', kana: 'にほんじん' },
+  { kanji: '英語', kana: 'えいご' },
+
+  // Tempat & Lingkungan
+  { kanji: '学校', kana: 'がっこう' },
+  { kanji: '大学', kana: 'だいがく' },
+  { kanji: '病院', kana: 'びょういん' },
+  { kanji: '会社', kana: 'かいしゃ' },
+  { kanji: '駅', kana: 'えき' },
+  { kanji: '部屋', kana: 'へや' },
+  { kanji: '家', kana: 'いえ' },
+  { kanji: '店', kana: 'みせ' },
+
+  // Makanan & Benda
+  { kanji: '朝ご飯', kana: 'あさごはん' },
+  { kanji: '昼ご飯', kana: 'ひるごはん' },
+  { kanji: '晩ご飯', kana: 'ばんごはん' },
+  { kanji: 'ご飯', kana: 'ごはん' },
+  { kanji: 'お水', kana: 'おみず' },
+  { kanji: '水', kana: 'みず' },
+  { kanji: 'お茶', kana: 'おちゃ' },
+  { kanji: '魚', kana: 'さかな' },
+  { kanji: '肉', kana: 'にく' },
+  { kanji: '野菜', kana: 'やさい' },
+  { kanji: '料理', kana: 'ryouri' },
+  { kanji: '本', kana: 'ほん' },
+  { kanji: '車', kana: 'くるま' },
+  { kanji: '電車', kana: 'でんしゃ' },
+  { kanji: 'お名前', kana: 'おなまえ' },
+  { kanji: '名前', kana: 'なまえ' },
+  { kanji: 'お金', kana: 'おかね' },
+
+  // Waktu
+  { kanji: '今日', kana: 'きょう' },
+  { kanji: '明日', kana: 'あした' },
+  { kanji: '昨日', kana: 'きのう' },
+  { kanji: '毎日', kana: 'まいにち' },
+  { kanji: '今', kana: 'いま' },
+
+  // Kata Sifat
+  { kanji: '美味しいです', kana: 'おいしい です' },
+  { kanji: '美味しい', kana: 'おいしい' },
+  { kanji: '大きいです', kana: 'おおきい です' },
+  { kanji: '大きい', kana: 'おおきい' },
+  { kanji: '小さい', kana: 'ちいさい' },
+  { kanji: '好きです', kana: 'すき です' },
+  { kanji: '好き', kana: 'すき' },
+  { kanji: '大好き', kana: 'だいすき' },
+
+  // Kata Kerja & Konjugasi
+  { kanji: '食べたいです', kana: 'たべたい です' },
+  { kanji: '食べたい', kana: 'たべたい' },
+  { kanji: '食べます', kana: 'たべます' },
+  { kanji: '食べました', kana: 'たべました' },
+  { kanji: '食べています', kana: 'たべて います' },
+  { kanji: '食べて', kana: 'たべて' },
+  { kanji: '食べた', kana: 'たべた' },
+  { kanji: '食べる', kana: 'たべる' },
+
+  { kanji: '飲みたいです', kana: 'のみたい です' },
+  { kanji: '飲みたい', kana: 'のみたい' },
+  { kanji: '飲みます', kana: 'のみます' },
+  { kanji: '飲みました', kana: 'のみました' },
+  { kanji: '飲んで', kana: 'のんで' },
+  { kanji: '飲んだ', kana: 'のんだ' },
+  { kanji: '飲む', kana: 'のむ' },
+
+  { kanji: '行きたいです', kana: 'いきたい です' },
+  { kanji: '行きたい', kana: 'いきたい' },
+  { kanji: '行きます', kana: 'いきます' },
+  { kanji: '行きました', kana: 'いきました' },
+  { kanji: '行って', kana: 'いって' },
+  { kanji: '行った', kana: 'いった' },
+  { kanji: '行く', kana: 'いく' },
+
+  { kanji: '来ます', kana: 'きます' },
+  { kanji: '来ました', kana: 'きました' },
+  { kanji: '来て', kana: 'きて' },
+  { kanji: '来る', kana: 'くる' },
+
+  { kanji: '勉強しています', kana: 'べんきょう して います' },
+  { kanji: '勉強します', kana: 'べんきょう します' },
+  { kanji: '勉強しました', kana: 'べんきょう しました' },
+  { kanji: '勉強して', kana: 'べんきょう して' },
+  { kanji: '勉強する', kana: 'べんきょう する' },
+  { kanji: '勉強', kana: 'べんきょう' },
+
+  { kanji: '見たい', kana: 'みたい' },
+  { kanji: '見ます', kana: 'みます' },
+  { kanji: '見て', kana: 'みて' },
+  { kanji: '見た', kana: 'みた' },
+  { kanji: '見る', kana: 'みる' },
+
+  { kanji: '買いたい', kana: 'かいたい' },
+  { kanji: '買います', kana: 'かいます' },
+  { kanji: '買う', kana: 'かう' },
+
+  { kanji: '分かりました', kana: 'わかりました' },
+  { kanji: '分かりません', kana: 'わかりません' },
+  { kanji: '分かる', kana: 'わかる' },
+
+  { kanji: '手伝ってください', kana: 'てつだって ください' },
+  { kanji: '手伝って', kana: 'てつだって' },
+  { kanji: '手伝います', kana: 'てつだいます' },
+
+  { kanji: '頑張ってください', kana: 'がんばって ください' },
+  { kanji: '頑張って', kana: 'がんばって' },
+  { kanji: '頑張ります', kana: 'がんばります' },
+  { kanji: '頑張る', kana: 'がんばる' },
+
+  { kanji: '愛しています', kana: 'あいして います' },
+  { kanji: '住んでいます', kana: 'すんで います' },
+  { kanji: '知っています', kana: 'しって います' },
+  { kanji: '知りません', kana: 'しりません' },
+];
+
+// Masukkan ribuan kosakata resmi yang BENAR-BENAR mengandung Kanji
+for (const v of VOCAB_MAZII_DICTIONARY) {
+  if (v.japanese && v.kana && containsKanji(v.japanese)) {
+    let cleanKana = v.kana.replace(/\(.*?\)/g, '').split('/')[0].trim();
+    if (cleanKana.includes('·')) cleanKana = cleanKana.split('·')[1] || cleanKana.split('·')[0];
+    if (cleanKana && cleanKana.length > 0) {
+      HIGH_FREQ_KANJI_MAP.push({ kanji: v.japanese, kana: cleanKana });
     }
-    const oneChar = kanaText[i];
-    if (oneChar === 'っ' || oneChar === 'ッ') {
-      const nextOne = kanaText.slice(i + 1, i + 2);
-      const nextRom = KANA_TO_ROMAJI[nextOne] || '';
-      if (nextRom) {
-        result += nextRom[0];
-      }
-      i += 1;
-      continue;
-    }
-    if (KANA_TO_ROMAJI[oneChar]) {
-      result += KANA_TO_ROMAJI[oneChar];
-    } else {
-      result += oneChar;
-    }
-    i += 1;
   }
-  return result;
+}
+
+// Masukkan 900 kanji tunggal Sensei Sari dengan bacaan bersih
+for (const k of KANJI_SENSEI_SARI) {
+  if (k.kanji && containsKanji(k.kanji)) {
+    let kun = (k.bacaanKun || '').replace(/\(.*?\)/g, '').replace(/[\-.]/g, '').split(/[,/ ]/)[0].trim();
+    let on = (k.bacaanOn || '').replace(/\(.*?\)/g, '').replace(/[\-.]/g, '').split(/[,/ ]/)[0].trim();
+    const kana = kun || on;
+    if (kana) {
+      HIGH_FREQ_KANJI_MAP.push({ kanji: k.kanji, kana });
+    }
+  }
+}
+
+// Urutkan dari kanji terpanjang ke terpendek agar frasa majemuk dicocokkan terlebih dahulu
+HIGH_FREQ_KANJI_MAP.sort((a, b) => b.kanji.length - a.kanji.length);
+
+/**
+ * Konversi teks bahasa Jepang (Kanji & Kana) menjadi Furigana (Kana) dan Romaji (Ejaan Latin) yang bersih dan persis pelafalannya
+ */
+export function generateFuriganaAndRomaji(jpText: string): {
+  furigana: string;
+  romaji: string;
+} {
+  if (!jpText || !jpText.trim()) {
+    return { furigana: '', romaji: '' };
+  }
+
+  let furigana = jpText.trim();
+  for (const item of HIGH_FREQ_KANJI_MAP) {
+    if (furigana.includes(item.kanji)) {
+      furigana = furigana.split(item.kanji).join(' ' + item.kana + ' ');
+    }
+  }
+
+  // Pisahkan partikel dengan rapi sesuai kaidah baca
+  furigana = furigana.replace(/([ァ-ヴーa-zA-Z0-9])([をはがにへでとも])(?=[^\s]|$)/g, '$1 $2 ');
+  furigana = furigana.replace(/\s+/g, ' ').trim();
+
+  // Konversi aksara Kana ke Romaji secara langsung dan konsisten
+  const rawRomaji = wanakana.toRomaji(furigana);
+  let cleaned = rawRomaji
+    .replace(/\bkonnichiha\b/gi, 'konnichiwa')
+    .replace(/\bkonbanha\b/gi, 'konbanwa');
+
+  const words = cleaned.split(/\s+/).map((w, idx) => {
+    if (w === 'ha') return 'wa';
+    if (w === 'wo') return 'o';
+    if (w === 'he' && idx > 0) return 'e';
+    return w;
+  });
+
+  let romaji = words.join(' ').trim();
+  if (romaji.length > 0) {
+    romaji = romaji.charAt(0).toUpperCase() + romaji.slice(1);
+  }
+
+  return { furigana, romaji };
+}
+
+/**
+ * Konversi langsung aksara Kana ke Romaji yang baku
+ */
+export function convertKanaToRomaji(kanaText: string): string {
+  if (!kanaText) return '';
+  return generateFuriganaAndRomaji(kanaText).romaji;
 }
 
 const REMOTE_SERVER_ORIGIN = 'https://ais-pre-3tf33r2hbiuxyzlcjj7wbn-272271852625.asia-southeast1.run.app';
@@ -423,9 +576,53 @@ function resolveApiUrl(apiPath: string): string {
   return apiPath;
 }
 
+const clientTranslationCache = new Map<string, TranslationResult>();
+
+export function extractRomajiAndBreakdown(jpText: string): {
+  romaji: string;
+  furigana: string;
+  breakdown: { word: string; reading: string; meaning: string }[];
+} {
+  const { furigana, romaji } = generateFuriganaAndRomaji(jpText);
+  const breakdown: { word: string; reading: string; meaning: string }[] = [];
+
+  // Cari kecocokan kata dari kamus resmi Mazii Sensei Sari
+  for (const v of VOCAB_MAZII_DICTIONARY) {
+    if (v.japanese && v.japanese.length > 1 && jpText.includes(v.japanese)) {
+      if (!breakdown.some(b => b.word === v.japanese)) {
+        breakdown.push({
+          word: v.japanese,
+          reading: v.romaji || v.reading || v.kana || '',
+          meaning: v.indonesian,
+        });
+      }
+    }
+    if (breakdown.length >= 4) break;
+  }
+
+  // Tambahkan komponen Kanji jika masih kurang
+  if (breakdown.length < 3) {
+    for (const k of KANJI_SENSEI_SARI) {
+      if (jpText.includes(k.kanji)) {
+        if (!breakdown.some(b => b.word === k.kanji)) {
+          breakdown.push({
+            word: k.kanji,
+            reading: k.romaji || k.ejaan || `${k.bacaanOn} / ${k.bacaanKun}`,
+            meaning: k.arti,
+          });
+        }
+      }
+      if (breakdown.length >= 4) break;
+    }
+  }
+
+  return { romaji, furigana, breakdown };
+}
+
 export const translatorService = {
   /**
-   * Terjemahan dwiarah (ID -> JP atau JP -> ID)
+   * Terjemahan dwiarah (ID -> JP atau JP -> ID) dengan dukungan Google Terjemahan otomatis
+   * Terjemahan dwiarah (ID -> JP atau JP -> ID) langsung tersambung ke Google Terjemahan
    */
   translate: async (
     text: string,
@@ -443,8 +640,65 @@ export const translatorService = {
 
     const lower = cleanText.toLowerCase();
     const isJaToId = direction === 'ja-to-id';
+    const cacheKey = `${direction}:${lower}`;
 
-    // 1. Coba panggil server backend /api/translate (didukung model cerdas Gemini)
+    // 1. Cek cache lokal client terlebih dahulu (instan 0ms)
+    if (clientTranslationCache.has(cacheKey)) {
+      return clientTranslationCache.get(cacheKey)!;
+    }
+
+    // 2. Pencocokan Cepat Frasa & Percakapan Sehari-hari (instan tanpa membebani kuota API)
+    if (isJaToId) {
+        for (const item of COMMON_CONVERSATIONS) {
+          const jpLower = item.japanese.toLowerCase();
+          const romLower = item.romaji.toLowerCase();
+          const furiLower = (item.furigana || '').toLowerCase();
+          if (
+            lower === jpLower ||
+            lower === romLower ||
+            lower.includes(jpLower) ||
+            jpLower.includes(lower) ||
+            lower.includes(romLower) ||
+            furiLower.includes(lower)
+          ) {
+            const res: TranslationResult = {
+              sourceText: cleanText,
+              japanese: item.japanese,
+              romaji: item.romaji,
+              furigana: item.furigana,
+              indonesian: item.indonesian,
+              politeness: item.politeness,
+              breakdown: item.breakdown,
+              engine: 'offline',
+              isOffline: true,
+            };
+            clientTranslationCache.set(cacheKey, res);
+            return res;
+          }
+        }
+      } else {
+        for (const item of COMMON_CONVERSATIONS) {
+          for (const pat of item.patterns) {
+            if (lower === pat || lower.includes(pat) || pat.includes(lower)) {
+              const res: TranslationResult = {
+                sourceText: cleanText,
+                japanese: item.japanese,
+                romaji: item.romaji,
+                furigana: item.furigana,
+                indonesian: item.indonesian,
+                politeness: item.politeness,
+                breakdown: item.breakdown,
+                engine: 'offline',
+                isOffline: true,
+              };
+              clientTranslationCache.set(cacheKey, res);
+              return res;
+            }
+          }
+        }
+      }
+
+    // 3. Panggil server backend /api/translate (didukung Gemini & Mesin Google Terjemahan)
     try {
       const response = await fetch(resolveApiUrl('/api/translate'), {
         method: 'POST',
@@ -454,25 +708,69 @@ export const translatorService = {
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.success && data.japanese) {
-          return {
+        if (data && data.success && (data.japanese || data.indonesian)) {
+          const isGoogle = data.engine === 'google-translate';
+          const jpText = data.japanese || cleanText;
+          const { romaji: derivedRomaji, breakdown: derivedBreakdown } =
+            isGoogle ? extractRomajiAndBreakdown(jpText) : { romaji: '', breakdown: [] };
+
+          const res: TranslationResult = {
             sourceText: cleanText,
-            japanese: data.japanese,
-            romaji: data.romaji || convertKanaToRomaji(data.furigana || data.japanese),
+            japanese: jpText,
+            romaji: data.romaji || derivedRomaji || convertKanaToRomaji(data.furigana || jpText),
             furigana: data.furigana,
             indonesian: data.indonesian || cleanText,
-            politeness: data.politeness || (isJaToId ? 'Terjemahan Akurat' : 'Standar (Sopan)'),
-            breakdown: data.breakdown,
+            politeness:
+              data.politeness ||
+              (isGoogle ? 'Google Terjemahan (Otomatis & Bebas Kuota)' : isJaToId ? 'Terjemahan Akurat' : 'Standar (Sopan)'),
+            breakdown: data.breakdown && data.breakdown.length > 0 ? data.breakdown : derivedBreakdown,
             tips: data.tips,
+            engine: isGoogle ? 'google-translate' : 'gemini',
             isOffline: false,
           };
+          clientTranslationCache.set(cacheKey, res);
+          return res;
         }
       }
     } catch {
-      // Lanjut ke pencarian kamus offline jika server sedang tidak merespons
+      // Jika server offline / gagal dihubungi, coba langsung sambungan Google Terjemahan dari sisi browser pengguna
     }
 
-    // 2. Pencarian Kamus Luring (Offline)
+    // 4. Cadangan Langsung Google Terjemahan (Client-Side Direct Fetch)
+    try {
+      const sl = isJaToId ? 'ja' : 'id';
+      const tl = isJaToId ? 'id' : 'ja';
+      const googleUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanText)}&langpair=${sl}|${tl}`;
+      const gResp = await fetch(googleUrl);
+      if (gResp.ok) {
+        const gData = await gResp.json();
+        const rawTranslated = gData?.responseData?.translatedText?.trim();
+        if (rawTranslated && !rawTranslated.startsWith('MYMEMORY WARNING:')) {
+          const cleanedResult = rawTranslated.replace(/^[-–—]\s*/, '').trim();
+          const finalJp = isJaToId ? cleanText : cleanedResult;
+          const finalId = isJaToId ? cleanedResult : cleanText;
+          const { romaji: directRomaji, breakdown: directBreakdown } = extractRomajiAndBreakdown(finalJp);
+
+          const res: TranslationResult = {
+            sourceText: cleanText,
+            japanese: finalJp,
+            romaji: directRomaji || convertKanaToRomaji(finalJp),
+            indonesian: finalId,
+            politeness: 'Google Terjemahan (Langsung Klien)',
+            tips: 'Tersambung langsung ke jaringan mesin Google Terjemahan tanpa membebani API Gemini.',
+            breakdown: directBreakdown,
+            engine: 'google-translate',
+            isOffline: false,
+          };
+          clientTranslationCache.set(cacheKey, res);
+          return res;
+        }
+      }
+    } catch {
+      // Lanjut ke kamus luring lokal
+    }
+
+    // 5. Pencarian Kamus Luring (Offline) Lanjutan jika server & internet offline
     if (isJaToId) {
       // ==== JEPANG KE INDONESIA ====
       // a. Frasa & percakapan sehari-hari

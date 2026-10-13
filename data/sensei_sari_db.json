@@ -14,15 +14,29 @@
     },
     {
       "user": {
-        "email": "kingugik@gmail.com",
-        "fullName": "king ugik",
-        "nickname": "king ugik",
-        "name": "king ugik",
-        "registeredAt": "2026-10-01 06:52",
+        "email": "dananggarassi@gmail.com",
+        "fullName": "Danang",
+        "nickname": "Dana",
+        "name": "Danang",
+        "registeredAt": "2026-10-12 16:13",
+        "isMaster": false,
+        "role": "student",
+        "lastOnlineTimestamp": 1791821698586,
+        "lastOnlineAt": "12 Okt 2026 · 23.14.58 WIB"
+      },
+      "password": "alkhalid"
+    },
+    {
+      "user": {
+        "email": "dwinuranggrainipuspitasari@gmail.com",
+        "fullName": "dwi nur anggraini puspitasari",
+        "nickname": "puspitasari",
+        "name": "dwi nur anggraini puspitasari",
+        "registeredAt": "2026-10-04 08:42",
         "isMaster": false,
         "role": "student"
       },
-      "password": "1234"
+      "password": "nuranggraini320"
     }
   ],
   "scores": [],
@@ -32,30 +46,36 @@
     "updatedAt": 1791109403307
   },
   "onlinePresence": {
-    "kingugik@gmail.com": {
-      "email": "kingugik@gmail.com",
-      "name": "king ugik",
-      "nickname": "king ugik",
-      "lastSeen": 1791252402086,
-      "currentTab": "laporan",
-      "currentActivity": "📊 Melihat Rapor & Riwayat Nilai Pribadi",
+    "dananggarassi@gmail.com": {
+      "email": "dananggarassi@gmail.com",
+      "name": "Danang",
+      "nickname": "Dana",
+      "lastSeen": 1791821698586,
+      "lastOnlineTimestamp": 1791821698586,
+      "lastOnlineAt": "12 Okt 2026 · 23.14.58 WIB",
+      "updatedAt": 1791821698586,
+      "currentTab": "materi",
+      "currentActivity": "📖 Mempelajari Materi JLPT N5",
       "activeLevel": "N5",
-      "lastActionAt": "09.02.22"
+      "lastActionAt": "23.14.58",
+      "screenshotAttempts": 0,
+      "aiTranslateAttempts": 0
     }
   },
   "dailyTasks": [
     {
-      "id": "task-lembar-1-sensei",
-      "title": "Lembar 1: Tabel Latihan Soal Terjemahan & Kalimat Bahasa Jepang (25 Soal)",
-      "description": "Isi kolom名前 (Nama) di atas tabel, lalu ketik terjemahan bahasa Jepang pada kolom tabel kosong di sebelah kanan setiap pertanyaan (Nomor 1 sampai 25). Klik Simpan / Kumpulkan setelah selesai.",
-      "level": "N5",
+      "id": "task-1791261128688-77jj",
+      "title": "Pelajari Materi Tata Bahasa (Bunpou) Kelas Sensei",
+      "description": "Buka menu Materi, baca dan catat rumus pola kalimat tata bahasa hari ini beserta contoh kalimatnya. Tuliskan 1 contoh kalimat buatanmu di kolom catatan penyelesaian tugas!",
+      "level": "ALL",
       "category": "materi",
-      "dueDate": "2026-10-06",
-      "dueTime": "00:17",
-      "durationMinutes": 60,
-      "timerStatus": "running",
-      "createdAt": "2026-10-05 08:00",
-      "createdAtTimestamp": 1000,
+      "dueDate": "2026-10-07",
+      "dueTime": "22:20",
+      "deadlineTimestamp": 1791386407009,
+      "durationMinutes": 30,
+      "timerStatus": "idle",
+      "createdAt": "2026-10-06 11.32",
+      "createdAtTimestamp": 1791261128688,
       "createdBy": "skywalker",
       "isActive": true,
       "worksheetQuestions": [
@@ -87,59 +107,36 @@
       ],
       "completions": [
         {
-          "studentEmail": "kingugik@gmail.com",
-          "studentName": "king ugik",
-          "studentNickname": "king ugik",
-          "completedAt": "2026-10-05 23.20",
-          "completedAtTimestamp": 1791217339414,
-          "isCompleted": true,
+          "studentEmail": "dioalifap24@gmail.com",
+          "studentName": "GLOSTER GLADIATOR",
+          "studentNickname": "skywalker",
+          "completedAt": "2026-10-06 12.30",
+          "completedAtTimestamp": 1791264648948,
+          "isCompleted": false,
           "autoSubmittedByTimer": false,
-          "studentNameField": "king ugik",
+          "studentNameField": "GLOSTER GLADIATOR",
           "worksheetAnswers": {
-            "1": "s",
-            "2": "s",
-            "3": "x",
-            "4": "z",
-            "5": "z",
-            "6": "s",
-            "7": "s",
-            "8": "dudus",
-            "9": "sjsusu",
-            "10": "aususu",
-            "11": "ajajsu",
-            "12": "sjsjsusj",
-            "13": "ajajsus",
-            "14": "sjsjsjsj",
-            "15": "shsjsjs",
-            "16": "shshsj",
-            "17": "z",
-            "18": "z",
-            "19": "s",
-            "20": "z",
-            "21": "z",
-            "22": "w",
-            "23": "s",
-            "24": "s",
-            "25": "dio"
+            "1": ""
           },
-          "answeredCount": 25,
-          "note": "selesai sensei",
-          "teacherComment": "selamat"
+          "answeredCount": 1,
+          "screenshotAttempts": 0,
+          "aiTranslateAttempts": 0,
+          "securityViolationLogs": []
         }
       ],
-      "updatedAt": 1791217339414,
-      "deadlineTimestamp": 1791220624369,
-      "timerStartedAt": 1791217024369,
-      "timerEndTimestamp": 1791220624369
+      "updatedAt": 1791384627953
     }
   ],
-  "deletedTaskIds": [],
+  "deletedTaskIds": [
+    "task-lembar-1-sensei"
+  ],
   "deletedEmails": [
     "budi.santoso@gmail.com",
     "anisa.dewi@gmail.com",
     "rizky.pratama@gmail.com",
-    "putri.ayu@gmail.com"
+    "putri.ayu@gmail.com",
+    "kingugik@gmail.com"
   ],
   "rankingResetAt": 0,
-  "updatedAt": 1791252408370
+  "updatedAt": 1791861525819
 }

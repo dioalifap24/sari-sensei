@@ -11,6 +11,7 @@ import {
   DEFAULT_LEMBAR_1_QUESTIONS,
   DAILY_TASK_DURATION_OPTIONS,
 } from '../services/storageService';
+import { MangaSfxPopup } from './MangaSfxPopup';
 import {
   FolderOpen,
   Plus,
@@ -229,6 +230,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
   >({});
   const [studentNameFieldByTask, setStudentNameFieldByTask] = useState<Record<string, string>>({});
   const [saveToastByTask, setSaveToastByTask] = useState<Record<string, string>>({});
+  const [showMangaSfx, setShowMangaSfx] = useState<boolean>(false);
 
   // Master Monitoring State
   const [expandedTaskStudents, setExpandedTaskStudents] = useState<Record<string, boolean>>({});
@@ -991,6 +993,9 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
       markCompleted,
       note
     );
+    if (markCompleted) {
+      setShowMangaSfx(true);
+    }
     refreshFolderData();
 
     const answeredCount = Object.values(answers).filter(v => String(v || '').trim().length > 0).length;
@@ -1023,6 +1028,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
       currentUser,
       forceNoteUpdate ? (noteVal ?? '') : noteVal
     );
+    setShowMangaSfx(true);
     refreshFolderData();
   };
 
@@ -2930,6 +2936,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
           </button>
         </div>
       </div>
+      {showMangaSfx && <MangaSfxPopup onComplete={() => setShowMangaSfx(false)} />}
     </div>
   );
 };

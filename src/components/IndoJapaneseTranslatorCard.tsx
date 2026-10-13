@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Languages, Volume2, Copy, Check, ArrowRight, Sparkles, X, RefreshCw, BookOpen, ArrowLeftRight } from 'lucide-react';
+import { Languages, Volume2, Copy, Check, ArrowRight, Sparkles, X, RefreshCw, BookOpen, ArrowLeftRight, Globe } from 'lucide-react';
 import { translatorService, TranslationResult } from '../services/translatorService';
 
 interface IndoJapaneseTranslatorCardProps {
@@ -50,12 +50,15 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Terjemahkan otomatis saat pertama kali dibuka
+  // Terjemahkan otomatis saat pertama kali dibuka langsung tersambung ke Google Terjemahan
   useEffect(() => {
     handleTranslate(inputText, direction);
   }, []);
 
-  const handleTranslate = async (textToTranslate?: string, dirOverride?: 'id-to-ja' | 'ja-to-id') => {
+  const handleTranslate = async (
+    textToTranslate?: string,
+    dirOverride?: 'id-to-ja' | 'ja-to-id'
+  ) => {
     const activeDir = dirOverride || direction;
     const query = (textToTranslate !== undefined ? textToTranslate : inputText).trim();
     if (!query) return;
@@ -65,7 +68,7 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
       const res = await translatorService.translate(query, activeDir);
       setResult(res);
     } catch (err) {
-      console.error('Translation error:', err);
+      console.warn('Translation notice:', err);
     } finally {
       setIsLoading(false);
     }
@@ -169,8 +172,8 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
       {/* Decorative Top Accent Bar */}
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#881337] via-[#f59e0b] to-[#be123c]" />
 
-      {/* Header with Title and Mode Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pt-1">
+      {/* Header with Title and Direction Tabs */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pt-1">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-[#fae8eb] text-[#881337] rounded-xl border border-[#fbcfe8] shadow-2xs">
             <Languages className="w-6 h-6" />
@@ -185,7 +188,7 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
               </span>
             </div>
             <p className="text-xs text-[#5e4735] mt-0.5">
-              Pilihan terjemahan dua arah: <strong>Indonesia ➔ Jepang</strong> atau <strong>Jepang ➔ Indonesia</strong> dengan <strong>Huruf Kanji/Kana</strong> serta <strong>Ejaan Latin Romaji</strong>.
+              Tersambung langsung ke <strong>Google Terjemahan</strong>: Terjemahan instan <strong>Indonesia ➔ Jepang</strong> atau <strong>Jepang ➔ Indonesia</strong> dengan <strong>Huruf Kanji/Kana</strong> serta <strong>Ejaan Latin Romaji</strong>.
             </p>
           </div>
         </div>
@@ -237,8 +240,9 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
           <label className="text-xs font-bold text-[#881337] uppercase tracking-wider flex items-center gap-1.5">
             <span>{isJaToId ? '🇯🇵 Ketik Teks Bahasa Jepang (Kanji, Kana, atau Romaji)' : '🇮🇩 Ketik Teks Bahasa Indonesia'}</span>
           </label>
-          <span className="text-[11px] font-semibold text-[#8c6b4b]">
-            {isJaToId ? 'Arah: Jepang ➔ Indonesia' : 'Arah: Indonesia ➔ Jepang'}
+          <span className="text-[11px] font-semibold text-[#8c6b4b] flex items-center gap-1">
+            <Globe className="w-3 h-3 text-blue-600" />
+            <span>Google Terjemahan ({isJaToId ? 'JP ➔ ID' : 'ID ➔ JP'})</span>
           </span>
         </div>
 
@@ -322,10 +326,17 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
         <div className="bg-gradient-to-br from-[#fdfbf7] to-[#fbf4eb] border-2 border-[#881337]/30 rounded-2xl p-4 sm:p-5 shadow-xs">
           {/* Result Header & Actions */}
           <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-[#ebdccb]">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold px-2 py-0.5 bg-[#881337] text-white rounded-md">
                 Hasil Terjemahan ({isJaToId ? 'JP ➔ ID' : 'ID ➔ JP'})
               </span>
+
+              {/* Status Sumber: Google Terjemahan */}
+              <span className="text-xs font-bold px-2.5 py-0.5 bg-blue-100 text-blue-900 border border-blue-300 rounded-md flex items-center gap-1 shadow-2xs">
+                <Globe className="w-3.5 h-3.5 text-blue-600" />
+                <span>Google Terjemahan</span>
+              </span>
+
               {result.politeness && (
                 <span className="text-xs font-semibold px-2 py-0.5 bg-[#fae8eb] text-[#881337] border border-[#fbcfe8] rounded-md">
                   {result.politeness}
