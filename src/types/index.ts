@@ -148,6 +148,19 @@ export interface VirtualSession {
   attendees: MeetAttendee[];
 }
 
+export interface MeetChatMessage {
+  id: string;
+  sessionId?: string;
+  senderName: string;
+  senderEmail: string;
+  isMaster: boolean;
+  message: string;
+  isReaction?: boolean;
+  reactionEmoji?: string;
+  timestamp: number;
+  timeFormatted: string;
+}
+
 export interface QuizQuestion {
   id: number;
   level: JLPTLevel;

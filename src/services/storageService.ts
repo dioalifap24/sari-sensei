@@ -1,4 +1,4 @@
-import { JLPTLevel, QuizResult, User, ActiveQuizRecord, QuizControlState, VocabCard, StudentPresenceInfo, DailyTask, DailyTaskCompletion, DailyTaskCategory, LevelStudyProgress, VirtualSession } from '../types';
+import { JLPTLevel, QuizResult, User, ActiveQuizRecord, QuizControlState, VocabCard, StudentPresenceInfo, DailyTask, DailyTaskCompletion, DailyTaskCategory, LevelStudyProgress, VirtualSession, MeetChatMessage } from '../types';
 import { VOCAB_MAZII_DICTIONARY } from '../data/vocabData';
 import { KANJI_SENSEI_SARI } from '../data/kanjiSenseiSari';
 
@@ -800,6 +800,16 @@ function applyIncomingSyncData(serverData: any) {
     }
   }
 
+  // 10. Virtual Google Meet Sessions
+  if (Array.isArray(serverData.virtualSessions)) {
+    const currentSessionsStr = localStorage.getItem('sensei_sari_virtual_sessions_v1');
+    const nextSessionsStr = JSON.stringify(serverData.virtualSessions);
+    if (currentSessionsStr !== nextSessionsStr) {
+      localStorage.setItem('sensei_sari_virtual_sessions_v1', nextSessionsStr);
+      window.dispatchEvent(new CustomEvent('virtual_sessions_updated'));
+    }
+  }
+
   if (hasUserChanges) {
     window.dispatchEvent(
       new CustomEvent('student_data_updated', {
@@ -812,6 +822,13 @@ function applyIncomingSyncData(serverData: any) {
 // Tangani event real-time dari ntfy.sh SSE atau polling
 function handleRealtimeCloudPacket(packet: any) {
   if (!packet || typeof packet !== 'object') return;
+
+  if (packet.type === 'virtual_session_started' && packet.session) {
+    storageService.saveVirtualSession(packet.session, true);
+  }
+  if (packet.type === 'virtual_session_ended' && packet.sessionId) {
+    storageService.endVirtualSession(packet.sessionId, true);
+  }
 
   if (packet.quizControl && typeof packet.quizControl.isActive === 'boolean') {
     applyIncomingSyncData({ quizControl: packet.quizControl });
@@ -3801,7 +3818,7 @@ export const storageService = {
     }
   },
 
-  saveVirtualSession(session: VirtualSession) {
+  saveVirtualSession(session: VirtualSession, isRemote = false) {
     try {
       const list = storageService.getVirtualSessions();
       const idx = list.findIndex(s => s.id === session.id);
@@ -3811,13 +3828,16 @@ export const storageService = {
         list.unshift(session);
       }
       localStorage.setItem('sensei_sari_virtual_sessions_v1', JSON.stringify(list));
-      window.dispatchEvent(new CustomEvent('virtual_sessions_updated'));
-      syncChannel?.postMessage({ type: 'sync_trigger' });
-      fetch(resolveApiUrl('/api/virtual-sessions'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session }),
-      }).catch(() => {});
+      window.dispatchEvent(new CustomEvent('virtual_sessions_updated', { detail: { session } }));
+      syncChannel?.postMessage({ type: 'sync_trigger', session });
+      if (!isRemote) {
+        broadcastCloudRealtimeEvent({ type: 'virtual_session_started', session });
+        fetch(resolveApiUrl('/api/virtual-sessions'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session }),
+        }).catch(() => {});
+      }
     } catch {}
   },
 
@@ -3825,7 +3845,7 @@ export const storageService = {
     const now = Date.now();
     const newSession: VirtualSession = {
       id: 'meet-' + now + '-' + Math.random().toString(36).substring(2, 6),
-      title: title || 'Sesi Belajar Interaktif Google Meet',
+      title: title || 'Sesi Belajar Langsung Google Meet (Sari Sensei)',
       meetingUri,
       meetingCode,
       createdAt: formatFullDateTimeWIB(now),
@@ -3855,20 +3875,28 @@ export const storageService = {
       });
     }
     storageService.saveVirtualSession(session);
+    fetch(resolveApiUrl('/api/virtual-sessions/attend'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, user }),
+    }).catch(() => {});
   },
 
-  endVirtualSession(sessionId: string) {
+  endVirtualSession(sessionId: string, isRemote = false) {
     try {
       const list = storageService.getVirtualSessions();
       const updated = list.filter(s => s.id !== sessionId);
       localStorage.setItem('sensei_sari_virtual_sessions_v1', JSON.stringify(updated));
       window.dispatchEvent(new CustomEvent('virtual_sessions_updated', { detail: { endedId: sessionId } }));
       syncChannel?.postMessage({ type: 'sync_trigger', endedId: sessionId });
-      fetch(resolveApiUrl('/api/virtual-sessions/end'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-      }).catch(() => {});
+      if (!isRemote) {
+        broadcastCloudRealtimeEvent({ type: 'virtual_session_ended', sessionId });
+        fetch(resolveApiUrl('/api/virtual-sessions/end'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId }),
+        }).catch(() => {});
+      }
     } catch {}
   },
 
@@ -3914,5 +3942,76 @@ export const storageService = {
     } catch {
       return { updatedAt: '-', students: {} };
     }
+  },
+
+  getMeetChatMessages(sessionId?: string): MeetChatMessage[] {
+    try {
+      const raw = localStorage.getItem('sensei_sari_meet_chat_messages_v1');
+      if (!raw) return [];
+      const all: MeetChatMessage[] = JSON.parse(raw);
+      if (!Array.isArray(all)) return [];
+      const normalized = all.map(m => {
+        if (m.isMaster || m.senderName === 'Sensei Sari') {
+          return { ...m, senderName: 'Sari Sensei' };
+        }
+        return m;
+      });
+      if (sessionId) {
+        return normalized.filter(m => !m.sessionId || m.sessionId === sessionId);
+      }
+      return normalized;
+    } catch {
+      return [];
+    }
+  },
+
+  sendMeetChatMessage(
+    message: string,
+    user: User | null,
+    sessionId?: string,
+    isReaction?: boolean,
+    reactionEmoji?: string
+  ): MeetChatMessage {
+    const isMaster = storageService.isMaster(user);
+    const now = Date.now();
+    const d = new Date(now);
+    const timeFormatted = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+    const newMsg: MeetChatMessage = {
+      id: 'chat-' + now + '-' + Math.random().toString(36).substring(2, 6),
+      sessionId,
+      senderName: isMaster ? 'Sari Sensei' : user?.fullName || user?.nickname || user?.email?.split('@')[0] || 'Murid',
+      senderEmail: user?.email || (isMaster ? 'master@sarisensei.com' : 'anonymous@murid.com'),
+      isMaster,
+      message,
+      isReaction,
+      reactionEmoji,
+      timestamp: now,
+      timeFormatted,
+    };
+
+    try {
+      const list = storageService.getMeetChatMessages();
+      list.push(newMsg);
+      const trimmed = list.slice(-100);
+      localStorage.setItem('sensei_sari_meet_chat_messages_v1', JSON.stringify(trimmed));
+      window.dispatchEvent(new CustomEvent('meet_chat_updated', { detail: newMsg }));
+      syncChannel?.postMessage({ type: 'sync_trigger', action: 'meet_chat', detail: newMsg });
+    } catch {}
+
+    return newMsg;
+  },
+
+  clearMeetChat(sessionId?: string): void {
+    try {
+      if (sessionId) {
+        const list = storageService.getMeetChatMessages().filter(m => m.sessionId !== sessionId);
+        localStorage.setItem('sensei_sari_meet_chat_messages_v1', JSON.stringify(list));
+      } else {
+        localStorage.removeItem('sensei_sari_meet_chat_messages_v1');
+      }
+      window.dispatchEvent(new CustomEvent('meet_chat_updated'));
+      syncChannel?.postMessage({ type: 'sync_trigger', action: 'meet_chat' });
+    } catch {}
   },
 };

@@ -45,13 +45,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
   }, [virtualSessions, currentUser, lastNotifiedMeetId]);
 
   useEffect(() => {
-    const refreshHomeData = () => {
+    const refreshHomeData = (ev?: Event) => {
       setQuizControl(storageService.getQuizControlState());
       setDailyTasks(storageService.getDailyTasks());
-      setVirtualSessions(storageService.getVirtualSessions());
+      const currentSessions = storageService.getVirtualSessions();
+      setVirtualSessions(currentSessions);
+
+      const customEv = ev as CustomEvent<{ endedId?: string }> | undefined;
+      if (customEv?.detail?.endedId || currentSessions.length === 0) {
+        setModalMeet(prev => {
+          if (!prev) return null;
+          if (customEv?.detail?.endedId && prev.id === customEv.detail.endedId) return null;
+          if (currentSessions.length === 0) return null;
+          return prev;
+        });
+      }
     };
     refreshHomeData();
-    storageService.syncWithServer().then(refreshHomeData);
+    storageService.syncWithServer().then(() => refreshHomeData());
 
     const clockInterval = window.setInterval(() => {
       setNowMs(Date.now());

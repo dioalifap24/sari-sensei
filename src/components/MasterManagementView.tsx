@@ -3,6 +3,7 @@ import { User, ActiveQuizRecord, QuizControlState, QuizResult, StudentPresenceIn
 import { storageService } from '../services/storageService';
 import { Users, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Shield, ShieldAlert, UserX, Clock, Calendar, Activity, RotateCcw, Trophy, KeyRound, Eye, EyeOff, Mail, UserPlus, Radio, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
+import { GoogleMeetRoom } from './GoogleMeetRoom';
 
 interface MasterManagementViewProps {
   currentUser: User | null;
@@ -1891,6 +1892,11 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           <>
             <MangaGutterSeparator label="MANGA GUTTER 04.5 · PEMISAH PANEL GOOGLE MEET & DURASI" jpLabel="【コマ間・ビデオ会議同期区画】" />
             <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Kontrol Sesi Tatap Muka Google Meet Master & Chat Reaksi Manga */}
+              <div className="mb-4">
+                <GoogleMeetRoom isMasterUser={true} currentUser={currentUser} />
+              </div>
+
               <div className="manga-koma-panel relative bg-white p-6 sm:p-8 overflow-hidden shadow-sm">
                 <MangaCornerTicks />
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b-2 border-black">

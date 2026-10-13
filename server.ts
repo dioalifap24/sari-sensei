@@ -142,6 +142,7 @@ interface ServerDatabase {
   quizControl: { isActive: boolean; startedAt?: string; startedBy?: string; updatedAt?: number };
   onlinePresence: Record<string, PresenceEntry>;
   dailyTasks: any[];
+  virtualSessions: any[];
   deletedTaskIds: string[];
   deletedEmails: string[];
   rankingResetAt: number;
@@ -218,6 +219,7 @@ function loadDatabase(): ServerDatabase {
         quizControl: parsed.quizControl || { isActive: false, updatedAt: 0 },
         onlinePresence: filteredPresence,
         dailyTasks: filteredTasks,
+        virtualSessions: Array.isArray(parsed.virtualSessions) ? parsed.virtualSessions : [],
         deletedTaskIds: Array.from(deletedTasksSet),
         deletedEmails: Array.from(deletedSet),
         rankingResetAt: parsed.rankingResetAt || 0,
@@ -235,6 +237,7 @@ function loadDatabase(): ServerDatabase {
     quizControl: { isActive: false, updatedAt: 0 },
     onlinePresence: {},
     dailyTasks: [{ ...DEFAULT_WORKSHEET_TASK }],
+    virtualSessions: [],
     deletedTaskIds: [],
     deletedEmails: Array.from(SAMPLE_EMAILS),
     rankingResetAt: 0,
@@ -691,6 +694,12 @@ function mergeExternalPayloadIntoDb(
     db.dailyTasks.sort((a, b) => (b.createdAtTimestamp || 0) - (a.createdAtTimestamp || 0));
   }
 
+  // 10. Virtual Google Meet Sessions
+  if (Array.isArray(payload.virtualSessions)) {
+    db.virtualSessions = payload.virtualSessions;
+    changed = true;
+  }
+
   sortDbUsers();
   return changed;
 }
@@ -834,6 +843,7 @@ function broadcastRealtimeStateToClients() {
     quizControl: db.quizControl,
     onlinePresence: db.onlinePresence,
     dailyTasks: db.dailyTasks,
+    virtualSessions: db.virtualSessions || [],
     deletedTaskIds: db.deletedTaskIds,
     deletedEmails: db.deletedEmails,
     rankingResetAt: db.rankingResetAt,
@@ -906,6 +916,7 @@ async function startServer() {
         quizControl: db.quizControl,
         onlinePresence: db.onlinePresence,
         dailyTasks: db.dailyTasks,
+        virtualSessions: db.virtualSessions || [],
         deletedTaskIds: db.deletedTaskIds,
         deletedEmails: db.deletedEmails,
         rankingResetAt: db.rankingResetAt,
@@ -938,6 +949,7 @@ async function startServer() {
       quizControl: db.quizControl,
       onlinePresence: db.onlinePresence,
       dailyTasks: db.dailyTasks,
+      virtualSessions: db.virtualSessions || [],
       deletedTaskIds: db.deletedTaskIds,
       deletedEmails: db.deletedEmails,
       rankingResetAt: db.rankingResetAt,
@@ -1230,6 +1242,67 @@ async function startServer() {
       saveDatabase(db);
     }
     res.json({ success: true, dailyTasks: db.dailyTasks, deletedTaskIds: db.deletedTaskIds });
+  });
+
+  // GET /api/virtual-sessions - Daftar sesi Google Meet aktif
+  app.get('/api/virtual-sessions', (_req, res) => {
+    res.json({ virtualSessions: db.virtualSessions || [] });
+  });
+
+  // POST /api/virtual-sessions - Simpan / mulai sesi virtual Google Meet
+  app.post('/api/virtual-sessions', (req, res) => {
+    const { session } = req.body || {};
+    if (session && session.id) {
+      if (!Array.isArray(db.virtualSessions)) db.virtualSessions = [];
+      const idx = db.virtualSessions.findIndex((s: any) => s.id === session.id);
+      if (idx >= 0) {
+        db.virtualSessions[idx] = session;
+      } else {
+        db.virtualSessions.unshift(session);
+      }
+      saveDatabase(db);
+      broadcastLocalSSE({ type: 'virtual_session_started', session });
+    }
+    res.json({ success: true, virtualSessions: db.virtualSessions || [] });
+  });
+
+  // POST /api/virtual-sessions/end - Akhiri sesi Google Meet (otomatis keluarkan semua peserta)
+  app.post('/api/virtual-sessions/end', (req, res) => {
+    const { sessionId } = req.body || {};
+    if (sessionId) {
+      if (Array.isArray(db.virtualSessions)) {
+        db.virtualSessions = db.virtualSessions.filter((s: any) => s.id !== sessionId);
+      }
+      saveDatabase(db);
+      broadcastLocalSSE({ type: 'virtual_session_ended', sessionId });
+    }
+    res.json({ success: true, virtualSessions: db.virtualSessions || [] });
+  });
+
+  // POST /api/virtual-sessions/attend - Catat kehadiran murid dalam Google Meet
+  app.post('/api/virtual-sessions/attend', (req, res) => {
+    const { sessionId, user } = req.body || {};
+    if (sessionId && user && Array.isArray(db.virtualSessions)) {
+      const ses = db.virtualSessions.find((s: any) => s.id === sessionId);
+      if (ses) {
+        if (!Array.isArray(ses.attendees)) ses.attendees = [];
+        const emailL = String(user.email || '').toLowerCase();
+        const existIdx = ses.attendees.findIndex((a: any) => String(a.email || '').toLowerCase() === emailL);
+        const nowStr = new Date().toLocaleString('id-ID');
+        if (existIdx >= 0) {
+          ses.attendees[existIdx].joinedAt = nowStr;
+        } else {
+          ses.attendees.push({
+            email: user.email,
+            name: user.fullName || user.nickname || user.email.split('@')[0],
+            joinedAt: nowStr,
+          });
+        }
+        saveDatabase(db);
+        broadcastLocalSSE({ type: 'virtual_session_updated', session: ses });
+      }
+    }
+    res.json({ success: true, virtualSessions: db.virtualSessions || [] });
   });
 
   // Global One Piece Logout Quote Counter (pastikan setiap murid yang logout selalu mendapat kutipan berbeda)
