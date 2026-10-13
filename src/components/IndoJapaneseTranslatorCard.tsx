@@ -398,18 +398,18 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
                 </div>
               </div>
 
-              {/* 2. Huruf Jepang Baku (Kanji & Kana) */}
+              {/* 2. Huruf Jepang: Fokus Huruf Kana di Atas & Kanji di Bawah */}
               <div className="mb-4">
                 <span className="block text-[11px] font-bold text-[#735338] uppercase tracking-wider mb-1">
-                  Huruf Jepang Baku (Kanji & Kana)
+                  Huruf Jepang (Fokus Kana Utama & Kanji di Bawah)
                 </span>
                 <div className="p-3.5 bg-white border border-[#ebdccb] rounded-xl shadow-2xs">
                   <p className="text-2xl sm:text-3xl font-extrabold text-[#881337] font-japanese leading-relaxed select-all">
-                    {result.japanese}
+                    {result.furigana || result.japanese}
                   </p>
-                  {result.furigana && result.furigana !== result.japanese && (
-                    <p className="text-xs font-japanese text-[#8c6b50] mt-1">
-                      Cara baca (Furigana): <span className="font-bold text-[#881337]">{result.furigana}</span>
+                  {result.japanese && result.japanese !== (result.furigana || result.japanese) && (
+                    <p className="text-sm font-japanese text-[#5c3e29] mt-1.5 font-bold">
+                      Kanji: <span className="text-[#881337]">{result.japanese}</span>
                     </p>
                   )}
                 </div>
@@ -434,18 +434,18 @@ export const IndoJapaneseTranslatorCard: React.FC<IndoJapaneseTranslatorCardProp
             </>
           ) : (
             <>
-              {/* 1. Huruf Jepang (Kanji & Kana) */}
+              {/* 1. Huruf Jepang: Fokus Huruf Kana di Atas & Kanji di Bawah */}
               <div className="mb-4">
                 <span className="block text-[11px] font-bold text-[#735338] uppercase tracking-wider mb-1">
-                  Huruf Jepang (Kanji & Kana)
+                  Huruf Jepang (Fokus Kana Utama & Kanji di Bawah)
                 </span>
                 <div className="p-3.5 bg-white border border-[#ebdccb] rounded-xl shadow-2xs">
                   <p className="text-2xl sm:text-3xl font-extrabold text-[#881337] font-japanese leading-relaxed select-all">
-                    {result.japanese}
+                    {result.furigana || result.japanese}
                   </p>
-                  {result.furigana && result.furigana !== result.japanese && (
-                    <p className="text-xs font-japanese text-[#8c6b50] mt-1">
-                      Cara baca (Furigana): <span className="font-bold text-[#881337]">{result.furigana}</span>
+                  {result.japanese && result.japanese !== (result.furigana || result.japanese) && (
+                    <p className="text-sm font-japanese text-[#5c3e29] mt-1.5 font-bold">
+                      Kanji: <span className="text-[#881337]">{result.japanese}</span>
                     </p>
                   )}
                 </div>
