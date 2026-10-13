@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, JLPTLevel, QuizControlState } from '../types';
 import { storageService } from '../services/storageService';
-import { LogOut, User as UserIcon, BookOpen, FileQuestion, Layers, Award, Users, Crown, Play, Square, Shield, ShieldAlert } from 'lucide-react';
+import { LogOut, User as UserIcon, BookOpen, FileQuestion, Layers, Award, Users, Crown, Play, Square, Shield, ShieldAlert, Languages } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 
 interface NavbarProps {
@@ -202,6 +202,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Award className="w-4 h-4 text-[#881337]" />
             <span>Laporan</span>
+          </button>
+
+          <button
+            onClick={() => handleTabClick('terjemahan')}
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              activeTab === 'terjemahan'
+                ? 'bg-[#f8ede0] text-[#881337] font-semibold'
+                : 'hover:text-[#881337] hover:bg-[#fcf3e8]'
+            } ${isStudentQuizRunning && !isMasterUser && activeTab !== 'terjemahan' ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <Languages className="w-4 h-4 text-[#881337]" />
+            <span>Terjemahan</span>
           </button>
 
           {/* TAB NILAI SEMUA MURID: HANYA MUNCUL KETIKA MASUK MENGGUNAKAN AKUN MASTER */}

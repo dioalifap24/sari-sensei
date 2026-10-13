@@ -2642,7 +2642,7 @@ export const DailyTasksFolderModal: React.FC<DailyTasksFolderModalProps> = ({
                                       : comp
                                       ? 100
                                       : 0;
-                                  const isSubmittedFinal = Boolean(comp?.isSubmitted);
+                                  const isSubmittedFinal = Boolean(comp?.isCompleted);
                                   const isActivelyWorking =
                                     Boolean(comp) && !isSubmittedFinal && stuAnsweredCount > 0;
                                   const isInspectingThis =

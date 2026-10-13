@@ -1285,6 +1285,96 @@ async function startServer() {
     }
   });
 
+  // POST /api/translate - Terjemahan Cerdas Bahasa Indonesia — Jepang (Huruf Jepang, Romaji / Ejaan, dan Furigana)
+  app.post('/api/translate', async (req, res) => {
+    try {
+      const text = String(req.body?.text || '').trim();
+      const direction = String(req.body?.direction || 'id-to-ja').trim();
+      const isJaToId = direction === 'ja-to-id';
+      if (!text) {
+        res.status(400).json({ error: 'Teks wajib diisi' });
+        return;
+      }
+
+      if (process.env.GEMINI_API_KEY) {
+        try {
+          const { GoogleGenAI } = await import('@google/genai');
+          const ai = new GoogleGenAI();
+          const prompt = isJaToId
+            ? `Anda adalah asisten penerjemah Bahasa Jepang ke Bahasa Indonesia untuk aplikasi belajar JLPT Sensei Sari.
+Terjemahkan teks bahasa Jepang berikut ke Bahasa Indonesia:
+"${text}"
+Catatan: Teks input pengguna bisa berupa karakter Kanji, Hiragana, Katakana, ataupun ejaan latin (Romaji).
+
+Tolong berikan respon HANYA berupa JSON valid (tanpa blok markdown atau backtick \`\`\`json):
+{
+  "japanese": "Tulisan bahasa Jepang baku yang benar dalam huruf Kanji dan Kana",
+  "romaji": "Ejaan pelafalan latin (Romaji) resmi yang jelas dan mudah dibaca (contoh: Arigatou gozaimasu)",
+  "furigana": "Bacaan hiragana lengkap untuk seluruh kanji",
+  "indonesian": "Arti atau terjemahan alami, tepat, dan mudah dipahami dalam Bahasa Indonesia",
+  "politeness": "Tingkat kesopanan kalimat (contoh: Sopan / Formal (Desu/Masu), Kasual / Akrab, atau Baku)",
+  "breakdown": [
+    {
+      "word": "kata kanji/kana",
+      "reading": "romaji/furigana",
+      "meaning": "arti dalam bahasa indonesia"
+    }
+  ],
+  "tips": "Penjelasan tata bahasa, partikel, atau makna budaya ringkas (1 kalimat)"
+}`
+            : `Anda adalah asisten penerjemah Bahasa Indonesia ke Bahasa Jepang untuk aplikasi belajar JLPT Sensei Sari.
+Terjemahkan teks berikut ke bahasa Jepang:
+"${text}"
+
+Tolong berikan respon HANYA berupa JSON valid (tanpa blok markdown atau backtick \`\`\`json):
+{
+  "japanese": "Tulisan bahasa Jepang alami menggunakan kombinasi Kanji, Hiragana, dan Katakana yang benar",
+  "romaji": "Ejaan pelafalan latin (Romaji) resmi yang mudah dibaca oleh pembelajar Indonesia (contoh: Watashi wa nihongo o benkyou shite imasu)",
+  "furigana": "Bacaan lengkap huruf hiragana untuk seluruh kanji",
+  "indonesian": "Arti yang paling pas dan akurat dalam Bahasa Indonesia",
+  "politeness": "Tingkat kesopanan kalimat (contoh: Sopan / Formal (Desu/Masu), Kasual / Akrab, atau Baku)",
+  "breakdown": [
+    {
+      "word": "kata kanji/kana",
+      "reading": "romaji/furigana",
+      "meaning": "arti dalam bahasa indonesia"
+    }
+  ],
+  "tips": "Penjelasan tata bahasa atau catatan budaya ringkas (1 kalimat)"
+}`;
+
+          const result = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          });
+
+          const rawJson = (result.text || '').trim();
+          const parsed = JSON.parse(rawJson);
+          if (parsed && parsed.japanese && parsed.romaji) {
+            res.json({
+              success: true,
+              ...parsed,
+              direction,
+              sourceText: text,
+            });
+            return;
+          }
+        } catch (aiErr) {
+          console.error('Gemini translation error:', aiErr);
+        }
+      }
+
+      // Return fallback flag if Gemini is unavailable
+      res.json({ success: false, fallback: true, direction, sourceText: text });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || 'Server translation error' });
+    }
+  });
+
   // Vite middleware for development or static serving for production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

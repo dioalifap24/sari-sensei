@@ -9,6 +9,7 @@ import { KanjiCardsView } from './components/KanjiCardsView';
 import { QuizView } from './components/QuizView';
 import { PersonalReportView } from './components/PersonalReportView';
 import { MasterManagementView } from './components/MasterManagementView';
+import { TranslationView } from './components/TranslationView';
 import { AuthPage } from './components/AuthPage';
 import { SakuraEffect } from './components/SakuraEffect';
 import { RocketTakeoffEffect } from './components/RocketTakeoffEffect';
@@ -120,6 +121,8 @@ export function App() {
         return `📝 Di Halaman Persiapan Kuis JLPT ${lvl}`;
       case 'laporan':
         return `📊 Melihat Rapor & Riwayat Nilai Pribadi`;
+      case 'terjemahan':
+        return `🈳 Membuka Terjemahan Indonesia — Jepang`;
       default:
         return `🌸 Aktif Belajar (JLPT ${lvl})`;
     }
@@ -470,6 +473,14 @@ export function App() {
               handleSetActiveLevel(lvl);
               setActiveTab(tab);
             }}
+          />
+        )}
+
+        {activeTab === 'terjemahan' && (
+          <TranslationView
+            onNavigateHome={() => setActiveTab('home')}
+            onNavigateTab={setActiveTab}
+            activeLevel={activeLevel}
           />
         )}
 

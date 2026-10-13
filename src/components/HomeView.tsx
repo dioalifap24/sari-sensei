@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { JLPTLevel, User, QuizControlState, DailyTask } from '../types';
 import { storageService } from '../services/storageService';
-import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown, FolderOpen, CheckCircle2, Clock, Plus } from 'lucide-react';
+import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown, FolderOpen, CheckCircle2, Clock, Plus, Languages } from 'lucide-react';
 import { senseiSariMascot } from '../assets';
 import { DailyTasksFolderModal } from './DailyTasksFolderModal';
 import { JapaneseShrineSakuraScene } from './JapaneseShrineSakuraScene';
@@ -431,7 +431,39 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </button>
 
-          {/* 6. DAFTAR NILAI SEMUA MURID: HANYA MUNCUL KETIKA MASUK MENGGUNAKAN AKUN MASTER */}
+          {/* 6. Terjemahan ID - JP */}
+          <button
+            onClick={() => onNavigate('terjemahan')}
+            className="group p-5 bg-[#fffdfa] hover:bg-[#fbf4eb] border-2 border-[#dfc7aa] hover:border-[#881337] rounded-2xl text-left shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-3 bg-[#fae8eb] text-[#881337] rounded-xl group-hover:scale-105 transition-transform">
+                <Languages className="w-6 h-6" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md font-bold">
+                  ID ⇄ JP
+                </span>
+                <span className="text-xs font-semibold px-2 py-0.5 bg-[#fae8eb] text-[#881337] border border-[#fbcfe8] rounded-md font-bold">
+                  Huruf & Ejaan
+                </span>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-[#881337] font-japanese flex items-center gap-1.5">
+                🈳 Terjemahan ID - JP
+              </h3>
+              <p className="text-xs text-[#5e4735] mt-1 leading-relaxed">
+                Pilihan terjemahan dua arah <strong>ID ➔ JP</strong> atau <strong>JP ➔ ID</strong> lengkap dengan <strong>Huruf Jepang (Kanji & Kana)</strong> serta <strong>Ejaan Latin (Romaji)</strong>.
+              </p>
+            </div>
+            <div className="mt-4 flex items-center gap-1 text-xs font-semibold text-[#881337] group-hover:translate-x-1 transition-transform">
+              <span>Masuk ke Halaman Terjemahan</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+
+          {/* 7. DAFTAR NILAI SEMUA MURID: HANYA MUNCUL KETIKA MASUK MENGGUNAKAN AKUN MASTER */}
           {isMasterUser && (
             <button
               onClick={() => onNavigate('master_management')}
