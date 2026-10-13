@@ -25,6 +25,7 @@ import {
   Maximize,
   Minimize
 } from 'lucide-react';
+import { MangaSfxPopup } from './MangaSfxPopup';
 
 interface QuizViewProps {
   activeLevel: JLPTLevel;
@@ -74,6 +75,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
   const [finalResult, setFinalResult] = useState<QuizResult | null>(null);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [showConfirmExit, setShowConfirmExit] = useState(false);
+  const [showMangaSfx, setShowMangaSfx] = useState<boolean>(false);
 
   // =========================================================================
   // KEAMANAN KHUSUS KUIS (ANTI-KECURANGAN)
@@ -501,6 +503,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
     setShowConfirmExit(false);
     setSecurityAlertModal(false);
     setQuizStep('result');
+    setShowMangaSfx(true);
 
     // If score >= 90 and not forced submit, trigger blooming cherry blossom storm
     if (finalScore >= 90 && !isForcedSubmit) {
@@ -602,6 +605,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 animate-in fade-in zoom-in duration-300">
+        {!isMasterUser && <MangaSfxPopup />}
         <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl p-6 sm:p-8 shadow-xl text-center">
           <div className="text-4xl sm:text-5xl mb-3">
             {finalResult.score >= 90 ? '🏆🌸' : isPass ? '🎉' : '📖'}
