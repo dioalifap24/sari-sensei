@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Video, Plus, ExternalLink, Copy, Check, Shield, Sparkles, Users, Calendar, MessageSquare, Send, Smile, Trash2, Radio, CheckCircle2 } from 'lucide-react';
+import { Video, ExternalLink, Copy, Check, MessageSquare, Send, Smile, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { User, MeetChatMessage, VirtualSession } from '../types';
 
@@ -21,14 +21,55 @@ const MANGA_REACTIONS = [
 ];
 
 /**
- * Generator kode Google Meet otentik (format: 3 huruf - 4 huruf - 3 huruf)
- * contoh: "abc-defg-hij" -> https://meet.google.com/abc-defg-hij
+ * Mendeteksi platform & membersihkan format tautan rapat (Zoom vs Google Meet)
  */
-function generateOfficialMeetCode(): string {
-  const letters = 'abcdefghijklmnopqrstuvwxyz';
-  const rand = (len: number) =>
-    Array.from({ length: len }, () => letters[Math.floor(Math.random() * letters.length)]).join('');
-  return `${rand(3)}-${rand(4)}-${rand(3)}`;
+function parseMeetingInput(rawInput: string, preferredPlatform: 'google_meet' | 'zoom'): {
+  platform: 'google_meet' | 'zoom';
+  uri: string;
+  code: string;
+} {
+  const trimmed = rawInput.trim();
+
+  // 1. Zoom Detection
+  const isZoomUrl = trimmed.toLowerCase().includes('zoom.us');
+  // Zoom ID biasanya berupa 9-11 digit angka
+  const numericOnly = trimmed.replace(/[^0-9]/g, '');
+  const isNumericZoomId = numericOnly.length >= 9 && numericOnly.length <= 11 && !trimmed.includes('meet.google');
+
+  if (isZoomUrl || isNumericZoomId || (preferredPlatform === 'zoom' && trimmed)) {
+    if (trimmed.startsWith('http')) {
+      return {
+        platform: 'zoom',
+        uri: trimmed,
+        code: numericOnly || trimmed.split('/').pop() || 'Zoom Meeting',
+      };
+    }
+    const cleanId = numericOnly || trimmed.replace(/\s+/g, '');
+    return {
+      platform: 'zoom',
+      uri: `https://zoom.us/j/${cleanId}`,
+      code: cleanId,
+    };
+  }
+
+  // 2. Google Meet Detection
+  if (trimmed.startsWith('http')) {
+    const match = trimmed.match(/meet\.google\.com\/([a-z0-9-]+)/i);
+    const code = match ? match[1] : trimmed.split('/').pop() || 'Google Meet';
+    return {
+      platform: 'google_meet',
+      uri: trimmed,
+      code,
+    };
+  }
+
+  // Raw Google Meet code (misal: "abc-defg-hij")
+  const cleanCode = trimmed.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  return {
+    platform: 'google_meet',
+    uri: `https://meet.google.com/${cleanCode}`,
+    code: cleanCode,
+  };
 }
 
 export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = false, currentUser }) => {
@@ -52,18 +93,18 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     return list.length > 0 ? list[0].id : null;
   });
 
-  const [loading, setLoading] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sessionEndedNotice, setSessionEndedNotice] = useState<string | null>(null);
 
-  // Master inputs
-  const [customLinkInput, setCustomLinkInput] = useState<string>('');
-  const [sessionTitleInput, setSessionTitleInput] = useState<string>('Sesi Belajar Langsung Google Meet (Sari Sensei)');
-  const [showCustomLinkOption, setShowCustomLinkOption] = useState<boolean>(false);
+  // Master platform & link inputs
+  const [platformChoice, setPlatformChoice] = useState<'google_meet' | 'zoom'>('google_meet');
+  const [meetingCodeOrLinkInput, setMeetingCodeOrLinkInput] = useState<string>('');
+  const [sessionTitleInput, setSessionTitleInput] = useState<string>('Sesi Belajar Langsung Virtual (Sari Sensei)');
 
-  // Student input
-  const [studentJoinCode, setStudentJoinCode] = useState<string>('');
+  // Student manual input
+  const [studentJoinInput, setStudentJoinInput] = useState<string>('');
 
   // Chat
   const [messages, setMessages] = useState<MeetChatMessage[]>(() =>
@@ -79,14 +120,13 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
       const customEv = ev as CustomEvent<{ endedId?: string; session?: VirtualSession }> | undefined;
       const list = storageService.getVirtualSessions();
 
-      // Check if the current session was ended
       if (customEv?.detail?.endedId && activeSessionId === customEv.detail.endedId) {
         setMeetUri('');
         setMeetingCode('');
         setActiveSessionId(null);
         setActiveSession(null);
         if (!isMasterUser) {
-          setSessionEndedNotice('🔴 Sensei Sari telah mengakhiri sesi Google Meet. Peserta otomatis keluar dari sesi.');
+          setSessionEndedNotice('🔴 Sari Sensei telah mengakhiri sesi belajar virtual. Peserta otomatis keluar dari sesi.');
         }
         return;
       }
@@ -100,7 +140,7 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
         setSessionEndedNotice(null);
       } else {
         if (!isMasterUser && activeSessionId) {
-          setSessionEndedNotice('🔴 Sensei Sari telah mengakhiri sesi Google Meet. Peserta otomatis keluar dari sesi.');
+          setSessionEndedNotice('🔴 Sari Sensei telah mengakhiri sesi belajar virtual. Peserta otomatis keluar dari sesi.');
         }
         setActiveSession(null);
         setActiveSessionId(null);
@@ -156,29 +196,26 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
   };
 
   /**
-   * Master memulai sesi belajar Google Meet secara instan:
-   * 100% bebas dari popup browser / auth popup-blocked!
-   * Menggunakan URL resmi Google Meet yang valid dan mengabari semua murid seketika.
+   * Master memulai sesi belajar virtual:
+   * Menggunakan kode/tautan asli (Zoom atau Google Meet) yang dimiliki Sensei,
+   * sehingga murid tidak mengalami error "Tidak ada rapat di Google".
    */
-  const handleStartMeetSession = (useCustom = false) => {
-    setLoading(true);
+  const handleStartMeetSession = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setErrorMsg(null);
     setSessionEndedNotice(null);
 
-    let targetCode = generateOfficialMeetCode();
-    let targetUri = `https://meet.google.com/${targetCode}`;
-
-    if (useCustom && customLinkInput.trim()) {
-      const raw = customLinkInput.trim();
-      if (raw.startsWith('http')) {
-        targetUri = raw;
-        const match = raw.match(/meet\.google\.com\/([a-z0-9-]+)/i);
-        targetCode = match ? match[1] : raw.split('/').pop() || 'meet-live';
-      } else {
-        const cleanCode = raw.replace(/[^a-zA-Z0-9-]/g, '');
-        targetCode = cleanCode;
-        targetUri = `https://meet.google.com/${cleanCode}`;
-      }
+    const rawInput = meetingCodeOrLinkInput.trim();
+    if (!rawInput) {
+      setErrorMsg(
+        platformChoice === 'zoom'
+          ? 'Silakan masukkan Tautan atau ID Rapat Zoom Anda terlebih dahulu agar murid bisa bergabung!'
+          : 'Silakan masukkan Tautan atau Kode Google Meet resmi Anda (atau klik tombol "Buat Rapat Baru di meet.google.com/new" di bawah) agar tidak muncul "Tidak ada rapat"!'
+      );
+      return;
     }
+
+    const parsed = parseMeetingInput(rawInput, platformChoice);
 
     const masterUser: User = currentUser || {
       email: 'dioalifap24@gmail.com',
@@ -190,24 +227,29 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
       role: 'master',
     };
 
-    const finalTitle = sessionTitleInput.trim() || 'Sesi Belajar Langsung Google Meet (Sari Sensei)';
-    const newSession = storageService.createVirtualSession(finalTitle, targetUri, targetCode, masterUser);
+    const platformLabel = parsed.platform === 'zoom' ? 'Zoom' : 'Google Meet';
+    const finalTitle = sessionTitleInput.trim() || `Sesi Belajar Langsung ${platformLabel} (Sari Sensei)`;
+
+    const newSession = storageService.createVirtualSession(
+      finalTitle,
+      parsed.uri,
+      parsed.code,
+      masterUser,
+      parsed.platform
+    );
 
     setActiveSession(newSession);
     setActiveSessionId(newSession.id);
-    setMeetUri(targetUri);
-    setMeetingCode(targetCode);
+    setMeetUri(parsed.uri);
+    setMeetingCode(parsed.code);
     storageService.recordMeetAttendance(newSession.id, masterUser);
 
-    setLoading(false);
-    setSuccessMsg('🎉 Sesi Google Meet Berhasil Dimulai! Tautan telah otomatis dikirimkan ke Dashboard seluruh murid secara real-time.');
-    setTimeout(() => setSuccessMsg(null), 5000);
+    setSuccessMsg(
+      `🎉 Sesi ${platformLabel} Berhasil Dimulai! Tautan resmi telah disebarkan ke Dashboard murid secara langsung.`
+    );
+    setTimeout(() => setSuccessMsg(null), 6000);
   };
 
-  /**
-   * Master mengakhiri sesi Google Meet:
-   * Ketika Master mengakhiri sesi, seluruh murid otomatis langsung keluar dari sesi meet.
-   */
   const handleEndMeetSession = () => {
     if (activeSessionId) {
       storageService.endVirtualSession(activeSessionId);
@@ -216,7 +258,7 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     setActiveSessionId(null);
     setMeetUri('');
     setMeetingCode('');
-    setSuccessMsg('🔴 Sesi Google Meet telah resmi diakhiri. Seluruh murid otomatis keluar dari sesi ruang tatap muka.');
+    setSuccessMsg('🔴 Sesi belajar virtual telah resmi diakhiri. Seluruh murid otomatis keluar dari sesi.');
     setTimeout(() => setSuccessMsg(null), 5000);
   };
 
@@ -237,35 +279,39 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
 
   const handleStudentJoinManual = (e: React.FormEvent) => {
     e.preventDefault();
-    const raw = studentJoinCode.trim();
+    const raw = studentJoinInput.trim();
     if (!raw) return;
-    let target = raw;
-    if (!raw.startsWith('http')) {
-      const clean = raw.replace(/[^a-zA-Z0-9-]/g, '');
-      target = `https://meet.google.com/${clean}`;
-    }
+    const parsed = parseMeetingInput(raw, 'google_meet');
     if (activeSessionId && currentUser) {
       storageService.recordMeetAttendance(activeSessionId, currentUser);
     }
-    window.open(target, '_blank', 'noopener,noreferrer');
+    window.open(parsed.uri, '_blank', 'noopener,noreferrer');
   };
+
+  const isCurrentZoom = activeSession?.platform === 'zoom' || meetUri.includes('zoom.us');
 
   return (
     <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl p-6 sm:p-8 shadow-xl max-w-2xl mx-auto my-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-white shadow-md">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md ${
+          isCurrentZoom ? 'bg-gradient-to-tr from-sky-600 to-blue-500' : 'bg-gradient-to-tr from-rose-600 to-pink-500'
+        }`}>
           <Video className="w-6 h-6" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-[#881337]">
-              Sesi Belajar Langsung Google Meet
+              Sesi Belajar Virtual (Google Meet / Zoom)
             </h2>
             {meetUri ? (
-              <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                LIVE
+              <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold border animate-pulse ${
+                isCurrentZoom
+                  ? 'bg-blue-100 text-blue-900 border-blue-300'
+                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+              }`}>
+                <span className={`w-2 h-2 rounded-full animate-ping ${isCurrentZoom ? 'bg-blue-600' : 'bg-emerald-500'}`} />
+                {isCurrentZoom ? 'LIVE ZOOM' : 'LIVE MEET'}
               </span>
             ) : (
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 font-semibold border border-stone-200">
@@ -275,8 +321,8 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
           </div>
           <p className="text-sm text-[#8c6b4b] mt-0.5">
             {isMasterUser
-              ? 'Panel Master: Mulai & akhiri sesi Google Meet. Saat Master mengakhiri sesi, murid otomatis keluar.'
-              : 'Ruang belajar video Google Meet interaktif bersama Sensei Sari & sesama murid.'}
+              ? 'Panel Master: Masukkan tautan atau kode Zoom / Google Meet aktif Anda, lalu bagikan ke semua murid.'
+              : 'Ruang tatap muka virtual bersama Sari Sensei & sesama murid (Mendukung Google Meet & Zoom).'}
           </p>
         </div>
       </div>
@@ -286,6 +332,14 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
         <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 text-xs sm:text-sm font-bold flex items-center gap-3 shadow-xs animate-fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {errorMsg && (
+        <div className="mb-6 p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs sm:text-sm font-bold flex items-center gap-3 shadow-xs animate-fade-in">
+          <AlertCircle className="w-5 h-5 text-rose-700 shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
@@ -308,14 +362,22 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
       {/* Active Meet View (Ketika Sesi Sedang Berlangsung) */}
       {meetUri ? (
         <div className="space-y-6 animate-in fade-in duration-300">
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-[#fcf3e8] to-[#fbebe0] border-2 border-[#ebdccb] text-center space-y-3.5 shadow-xs">
-            <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#881337] bg-rose-100 px-3 py-1 rounded-full border border-rose-300">
-              <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
-              <span>Sesi Belajar Google Meet Sedang Berlangsung</span>
+          <div className={`p-6 rounded-2xl border-2 text-center space-y-3.5 shadow-xs ${
+            isCurrentZoom
+              ? 'bg-gradient-to-br from-sky-50 to-blue-50 border-sky-300'
+              : 'bg-gradient-to-br from-[#fcf3e8] to-[#fbebe0] border-[#ebdccb]'
+          }`}>
+            <div className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider px-3.5 py-1 rounded-full border ${
+              isCurrentZoom
+                ? 'bg-blue-100 text-blue-900 border-blue-300'
+                : 'bg-rose-100 text-[#881337] border-rose-300'
+            }`}>
+              <span className={`w-2 h-2 rounded-full animate-ping ${isCurrentZoom ? 'bg-blue-600' : 'bg-rose-600'}`} />
+              <span>Sesi {isCurrentZoom ? 'Zoom' : 'Google Meet'} Sedang Berlangsung</span>
             </div>
 
             <h3 className="text-lg sm:text-xl font-extrabold text-[#881337] font-japanese">
-              {activeSession?.title || 'Sesi Belajar Langsung Google Meet (Sari Sensei)'}
+              {activeSession?.title || 'Sesi Belajar Langsung Virtual (Sari Sensei)'}
             </h3>
 
             <div className="font-mono text-base sm:text-lg font-bold text-[#654d38] break-all bg-white p-3.5 rounded-xl border-2 border-[#ebdccb] shadow-inner">
@@ -324,7 +386,7 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
 
             {meetingCode && (
               <p className="text-xs text-[#8c6b4b] font-semibold">
-                Kode Rapat: <span className="font-mono font-bold text-[#881337] bg-rose-50 px-2 py-0.5 rounded border border-rose-200">{meetingCode}</span>
+                Kode / ID Rapat: <span className="font-mono font-bold text-[#881337] bg-white px-2 py-0.5 rounded border border-[#ebdccb]">{meetingCode}</span>
                 {activeSession?.createdByName && (
                   <span> • Host: <strong>{activeSession.createdByName}</strong></span>
                 )}
@@ -335,10 +397,14 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
               <button
                 type="button"
                 onClick={handleOpenMeetInNewTab}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm shadow-md flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 cursor-pointer border border-emerald-500"
+                className={`px-6 py-3 rounded-xl text-white font-black text-sm shadow-md flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 cursor-pointer border ${
+                  isCurrentZoom
+                    ? 'bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 border-blue-500'
+                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 border-emerald-500'
+                }`}
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Buka Google Meet</span>
+                <span>Buka {isCurrentZoom ? 'Zoom Meeting' : 'Google Meet'}</span>
                 <span>🚀</span>
               </button>
 
@@ -353,105 +419,163 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
             </div>
           </div>
 
-          {/* Master Controls: Akhiri Sesi Google Meet */}
+          {/* Master Controls: Akhiri Sesi */}
           {isMasterUser && (
             <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-center space-y-2">
               <div className="text-xs font-bold text-rose-900">
-                Kontrol Master: Akhiri Sesi Belajar Google Meet
+                Kontrol Master: Akhiri Sesi Belajar
               </div>
               <p className="text-[11px] text-rose-700">
-                Ketika Anda mengakhiri sesi, seluruh murid otomatis langsung keluar dari sesi meet dan rapor mereka diperbarui.
+                Ketika Anda mengakhiri sesi, seluruh murid otomatis langsung keluar dari sesi tatap muka dan rapor kehadiran mereka tersinkronisasi.
               </p>
               <button
                 type="button"
                 onClick={handleEndMeetSession}
                 className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md flex items-center gap-2 mx-auto transition-all transform hover:scale-105 cursor-pointer"
               >
-                <span>🔴 Akhiri Sesi Google Meet Sekarang</span>
+                <span>🔴 Akhiri Sesi Belajar Sekarang (Keluarkan Semua Murid)</span>
               </button>
             </div>
           )}
         </div>
       ) : (
-        /* Standby View: Belum ada sesi aktif */
+        /* Standby View: Master membuat ruang dengan kode/link miliknya */
         <div className="space-y-6">
           {isMasterUser ? (
-            /* Master: Mulai Sesi Belajar Google Meet */
-            <div className="text-center py-6 px-4 bg-[#fcf3e8] rounded-2xl border-2 border-[#ebdccb] space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-rose-100 flex items-center justify-center text-[#881337] text-3xl shadow-inner animate-bounce">
-                👩‍🏫
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[#881337]">
-                  Mulai Sesi Belajar Google Meet (Master)
+            <div className="py-6 px-4 sm:px-6 bg-[#fcf3e8] rounded-2xl border-2 border-[#ebdccb] space-y-5 text-left">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto rounded-full bg-rose-100 flex items-center justify-center text-[#881337] text-3xl shadow-inner mb-3">
+                  👩‍🏫
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-[#881337]">
+                  Mulai Sesi Belajar Virtual (Master)
                 </h3>
-                <p className="text-xs sm:text-sm text-[#8c6b4b] max-w-md mx-auto mt-1">
-                  Mulai ruang Google Meet resmi secara instan tanpa popup browser. Notifikasi push akan otomatis muncul seketika di dashboard seluruh murid.
+                <p className="text-xs sm:text-sm text-[#8c6b4b] max-w-lg mx-auto mt-1">
+                  Pilih platform rapat (Google Meet atau Zoom) dan masukkan tautan/kode rapat aktif Anda agar murid dapat langsung bergabung tanpa masalah <em>"Tidak ada rapat di Google"</em>.
                 </p>
               </div>
 
-              {/* Title input */}
-              <div className="max-w-md mx-auto text-left space-y-1">
-                <label className="text-[11px] font-bold text-[#881337]">Judul Pertemuan (Opsional):</label>
-                <input
-                  type="text"
-                  value={sessionTitleInput}
-                  onChange={(e) => setSessionTitleInput(e.target.value)}
-                  placeholder="Contoh: Sesi Belajar Langsung Google Meet (Sari Sensei)"
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#ebdccb] bg-white text-xs text-[#654d38] font-bold focus:outline-none focus:ring-2 focus:ring-rose-400"
-                />
-              </div>
-
-              {/* Option to paste existing link */}
-              <div className="max-w-md mx-auto text-left">
+              {/* Platform Selector Tabs */}
+              <div className="flex items-center justify-center gap-2 p-1.5 bg-white border-2 border-[#ebdccb] rounded-2xl max-w-sm mx-auto shadow-xs">
                 <button
                   type="button"
-                  onClick={() => setShowCustomLinkOption(!showCustomLinkOption)}
-                  className="text-[11px] font-bold text-[#881337] hover:underline flex items-center gap-1 cursor-pointer"
+                  onClick={() => setPlatformChoice('google_meet')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    platformChoice === 'google_meet'
+                      ? 'bg-[#881337] text-white shadow-xs'
+                      : 'text-stone-700 hover:text-black hover:bg-stone-50'
+                  }`}
                 >
-                  <span>{showCustomLinkOption ? '▼ Sembunyikan Opsi Tempel Link' : '▶ Atau Tempel Link Google Meet Sendiri (Google Calendar / Workspace)'}</span>
+                  <span>🎥</span>
+                  <span>Google Meet</span>
                 </button>
-                {showCustomLinkOption && (
-                  <div className="mt-2 space-y-2 p-3 bg-white rounded-xl border border-[#ebdccb]">
-                    <input
-                      type="text"
-                      value={customLinkInput}
-                      onChange={(e) => setCustomLinkInput(e.target.value)}
-                      placeholder="Contoh: https://meet.google.com/abc-defg-hij atau kode rapat"
-                      className="w-full px-3 py-2 rounded-lg border border-[#ebdccb] text-xs text-[#654d38] focus:outline-none focus:ring-2 focus:ring-rose-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleStartMeetSession(true)}
-                      disabled={!customLinkInput.trim() || loading}
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-xs rounded-lg transition-all"
-                    >
-                      Gunakan Link Ini & Mulai Sesi Belajar
-                    </button>
+                <button
+                  type="button"
+                  onClick={() => setPlatformChoice('zoom')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    platformChoice === 'zoom'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-stone-700 hover:text-black hover:bg-stone-50'
+                  }`}
+                >
+                  <span>📹</span>
+                  <span>Zoom Meeting</span>
+                </button>
+              </div>
+
+              {/* Form Input */}
+              <form onSubmit={handleStartMeetSession} className="space-y-4 max-w-lg mx-auto">
+                {/* Meeting Code / URL Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-black text-stone-900 flex items-center gap-1">
+                      <span>{platformChoice === 'zoom' ? 'ID Rapat atau Link Zoom:' : 'Kode atau Tautan Google Meet:'}</span>
+                      <span className="text-red-500">*</span>
+                    </label>
+
+                    {/* Quick Button to generate real room in new tab if Master doesn't have one yet */}
+                    {platformChoice === 'google_meet' ? (
+                      <a
+                        href="https://meet.google.com/new"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-black text-[#881337] hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-[#ebdccb]"
+                        title="Buka Google Meet untuk membuat ruang rapat baru resmi, lalu salin kodenya ke sini"
+                      >
+                        <span>🌐 Buat di meet.google.com/new ↗</span>
+                      </a>
+                    ) : (
+                      <a
+                        href="https://zoom.us/start/videomeeting"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-black text-blue-700 hover:underline flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-[#ebdccb]"
+                        title="Buka Zoom untuk memulai rapat instan"
+                      >
+                        <span>🌐 Buka Zoom ↗</span>
+                      </a>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {/* Main Instant Start Button */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleStartMeetSession(false)}
-                  disabled={loading}
-                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-rose-600 via-[#881337] to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 mx-auto transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer border border-rose-400"
-                >
-                  {loading ? (
-                    <span className="animate-spin text-lg">⏳</span>
-                  ) : (
-                    <Plus className="w-5 h-5" />
-                  )}
-                  <span>{loading ? 'Memulai Sesi...' : 'Mulai Sesi Belajar (Google Meet)'}</span>
-                  <span>🚀</span>
-                </button>
-                <p className="text-[11px] text-stone-500 mt-2">
-                  ✓ Tanpa popup browser • Otomatis sinkron ke seluruh murid • Pencatatan kehadiran real-time
-                </p>
-              </div>
+                  <input
+                    type="text"
+                    value={meetingCodeOrLinkInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMeetingCodeOrLinkInput(val);
+                      // Auto-detect platform jika input jelas-jelas Zoom atau Meet
+                      if (val.toLowerCase().includes('zoom.us') || (val.replace(/[^0-9]/g, '').length >= 9 && !val.includes('meet.google'))) {
+                        setPlatformChoice('zoom');
+                      } else if (val.toLowerCase().includes('meet.google') || /[a-z]{3}-[a-z]{4}-[a-z]{3}/.test(val)) {
+                        setPlatformChoice('google_meet');
+                      }
+                    }}
+                    placeholder={
+                      platformChoice === 'zoom'
+                        ? 'Contoh: 839 1234 5678 atau https://zoom.us/j/83912345678'
+                        : 'Contoh: abc-defg-hij atau https://meet.google.com/abc-defg-hij'
+                    }
+                    className="w-full px-4 py-3 bg-white border-2 border-stone-950 rounded-xl text-sm font-mono font-bold text-stone-900 shadow-[2px_2px_0px_#1c1917] focus:outline-none focus:ring-2 focus:ring-[#881337]"
+                    autoFocus
+                  />
+                  <span className="text-[11px] text-stone-600 block mt-1">
+                    {platformChoice === 'zoom'
+                      ? '💡 Masukkan 9–11 digit nomor ID Rapat Zoom Anda, atau tempel tautan undangan Zoom lengkap.'
+                      : '💡 Masukkan kode 10 huruf Google Meet Anda (misal: "abc-defg-hij") atau tempel link meet lengkap.'}
+                  </span>
+                </div>
+
+                {/* Session Title Input */}
+                <div>
+                  <label className="text-xs font-black text-stone-900 mb-1 block">
+                    Judul Sesi (Opsional):
+                  </label>
+                  <input
+                    type="text"
+                    value={sessionTitleInput}
+                    onChange={(e) => setSessionTitleInput(e.target.value)}
+                    placeholder="Contoh: Sesi Belajar Langsung Bersama Sari Sensei"
+                    className="w-full px-3.5 py-2.5 bg-white border-2 border-stone-950 rounded-xl text-xs font-bold text-stone-900 shadow-[2px_2px_0px_#1c1917] focus:outline-none focus:ring-2 focus:ring-[#881337]"
+                  />
+                </div>
+
+                {/* Submit Start Button */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className={`w-full py-3.5 px-6 rounded-xl text-white font-black text-sm shadow-[3px_3px_0px_#1c1917] border-2 border-stone-950 transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 ${
+                      platformChoice === 'zoom'
+                        ? 'bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700'
+                        : 'bg-gradient-to-r from-rose-700 via-[#881337] to-amber-700 hover:from-rose-800 hover:to-amber-800'
+                    }`}
+                  >
+                    <span>🚀 Mulai Sesi Belajar & Bagikan ke Seluruh Murid</span>
+                  </button>
+                  <p className="text-[11px] text-center text-stone-500 mt-2 font-medium">
+                    ✓ Link otomatis tersinkron ke dashboard murid • Pop-up notifikasi instan • Kehadiran tercatat otomatis
+                  </p>
+                </div>
+              </form>
             </div>
           ) : (
             /* Student: Menunggu Sensei Memulai Sesi */
@@ -461,25 +585,25 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
               </div>
               <div>
                 <h3 className="text-lg font-bold text-[#881337]">
-                  Ruang Belajar Google Meet Sensei Sari
+                  Ruang Belajar Virtual Sari Sensei
                 </h3>
                 <p className="text-xs sm:text-sm text-[#8c6b4b] max-w-md mx-auto mt-1">
-                  Saat Sensei Sari memulai sesi belajar tatap muka, notifikasi beserta link bergabung akan langsung muncul seketika di layar Anda.
+                  Saat Sari Sensei memulai sesi tatap muka (Google Meet / Zoom), notifikasi beserta tombol gabung akan langsung muncul seketika di layar Anda.
                 </p>
               </div>
 
-              {/* Manual code input fallback */}
+              {/* Manual join fallback */}
               <form onSubmit={handleStudentJoinManual} className="max-w-sm mx-auto flex items-center gap-2 pt-2">
                 <input
                   type="text"
-                  value={studentJoinCode}
-                  onChange={(e) => setStudentJoinCode(e.target.value)}
-                  placeholder="Kode rapat atau tautan meet..."
+                  value={studentJoinInput}
+                  onChange={(e) => setStudentJoinInput(e.target.value)}
+                  placeholder="Kode rapat atau link Zoom/Meet..."
                   className="flex-1 px-4 py-2.5 rounded-xl border border-[#ebdccb] bg-white text-xs text-[#654d38] focus:outline-none focus:ring-2 focus:ring-rose-400"
                 />
                 <button
                   type="submit"
-                  disabled={!studentJoinCode.trim()}
+                  disabled={!studentJoinInput.trim()}
                   className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
                 >
                   Gabung

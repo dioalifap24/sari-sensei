@@ -3841,13 +3841,14 @@ export const storageService = {
     } catch {}
   },
 
-  createVirtualSession(title: string, meetingUri: string, meetingCode: string, user: User): VirtualSession {
+  createVirtualSession(title: string, meetingUri: string, meetingCode: string, user: User, platform?: 'google_meet' | 'zoom' | 'other'): VirtualSession {
     const now = Date.now();
     const newSession: VirtualSession = {
       id: 'meet-' + now + '-' + Math.random().toString(36).substring(2, 6),
-      title: title || 'Sesi Belajar Langsung Google Meet (Sari Sensei)',
+      title: title || 'Sesi Belajar Langsung Virtual (Sari Sensei)',
       meetingUri,
       meetingCode,
+      platform: platform || (meetingUri.includes('zoom.us') ? 'zoom' : 'google_meet'),
       createdAt: formatFullDateTimeWIB(now),
       createdTimestamp: now,
       createdByName: user.fullName || user.nickname || user.email.split('@')[0],

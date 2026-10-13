@@ -142,6 +142,7 @@ export interface VirtualSession {
   title: string;
   meetingUri: string;
   meetingCode: string;
+  platform?: 'google_meet' | 'zoom' | 'other';
   createdAt: string;
   createdTimestamp?: number;
   createdByName: string;
