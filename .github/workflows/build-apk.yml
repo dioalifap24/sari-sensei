@@ -31,25 +31,28 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 4. Install Dependencies Proyek
+      - name: 4. Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 5. Install Dependencies Proyek
         run: npm install
 
-      - name: 5. Setup Proyek Android Native & Ikon Sari Sensei (Capacitor)
+      - name: 6. Setup Proyek Android Native & Ikon Sari Sensei (Capacitor)
         run: node scripts/apk/setup-capacitor.cjs
 
-      - name: 6. Compile File Android APK (Gradle Assemble)
+      - name: 7. Compile File Android APK (Gradle Assemble)
         working-directory: ./android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: 7. Siapkan File Output Sari-Sensei-JLPT.apk
+      - name: 8. Siapkan File Output Sari-Sensei-JLPT.apk
         run: |
           mkdir -p output_apk
           cp android/app/build/outputs/apk/debug/app-debug.apk output_apk/Sari-Sensei-JLPT.apk
           ls -lh output_apk/Sari-Sensei-JLPT.apk
 
-      - name: 8. Upload File APK ke GitHub Actions Artifacts
+      - name: 9. Upload File APK ke GitHub Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Sari-Sensei-JLPT-APK
@@ -57,7 +60,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: 9. Publikasikan File APK ke Menu GitHub Releases
+      - name: 10. Publikasikan File APK ke Menu GitHub Releases
         uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         with:
