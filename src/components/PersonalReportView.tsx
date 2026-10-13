@@ -1,7 +1,7 @@
 import React from 'react';
-import { User, QuizResult, JLPTLevel } from '../types';
+import { User, QuizResult, JLPTLevel, VirtualSession } from '../types';
 import { storageService } from '../services/storageService';
-import { Award, Clock, Calendar, CheckCircle2, User as UserIcon, BookOpen } from 'lucide-react';
+import { Award, Clock, Calendar, CheckCircle2, User as UserIcon, BookOpen, ExternalLink, Users } from 'lucide-react';
 import { UchihaClanLogo } from './UchihaClanLogo';
 import { JLPTStudyProgressSection } from './JLPTStudyProgressSection';
 
@@ -23,6 +23,7 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
   const [scores, setScores] = React.useState<QuizResult[]>(() =>
     currentUser ? storageService.getUserScores(currentUser.email) : []
   );
+  const [virtualSessions, setVirtualSessions] = React.useState<VirtualSession[]>(() => storageService.getVirtualSessions());
 
   React.useEffect(() => {
     const refreshScores = () => {
@@ -32,14 +33,23 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
         setScores([]);
       }
     };
+    const refreshSessions = () => {
+      setVirtualSessions(storageService.getVirtualSessions());
+    };
     refreshScores();
-    storageService.syncWithServer().then(refreshScores);
+    refreshSessions();
+    storageService.syncWithServer().then(() => {
+      refreshScores();
+      refreshSessions();
+    });
 
     window.addEventListener('scores_updated', refreshScores);
     window.addEventListener('storage', refreshScores);
+    window.addEventListener('virtual_sessions_updated', refreshSessions);
     return () => {
       window.removeEventListener('scores_updated', refreshScores);
       window.removeEventListener('storage', refreshScores);
+      window.removeEventListener('virtual_sessions_updated', refreshSessions);
     };
   }, [currentUser]);
 
@@ -81,6 +91,10 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
   const highestScore = totalQuizzes > 0
     ? Math.max(...scores.map((s) => s.score))
     : 0;
+  const userEmailLower = (currentUser?.email || '').toLowerCase();
+  const attendedVirtualSessionsCount = virtualSessions.filter(s =>
+    (s.attendees || []).some(a => a.email.toLowerCase() === userEmailLower)
+  ).length;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -128,8 +142,8 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
           </button>
         </div>
 
-        {/* 3 Summary Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {/* 4 Summary Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <div className="p-4 bg-[#fdf5ea] rounded-2xl border border-[#ebdccb]">
             <div className="text-xs font-bold text-[#8c6b4b] uppercase tracking-wider mb-1">
               Total Kuis Dikerjakan
@@ -154,6 +168,16 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
             </div>
             <div className="text-2xl font-extrabold text-[#d4af37] font-mono">
               {highestScore} <span className="text-xs font-normal text-[#553b26]">poin</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-[#fdf5ea] rounded-2xl border border-[#ebdccb]">
+            <div className="text-xs font-bold text-[#8c6b4b] uppercase tracking-wider mb-1 flex items-center gap-1">
+              <span>📹</span>
+              <span>Sesi Virtual Meet</span>
+            </div>
+            <div className="text-2xl font-extrabold text-emerald-700 font-mono">
+              {attendedVirtualSessionsCount} <span className="text-xs font-normal text-[#553b26]">/ {virtualSessions.length} sesi</span>
             </div>
           </div>
         </div>
@@ -227,6 +251,116 @@ export const PersonalReportView: React.FC<PersonalReportViewProps> = ({
             </table>
           </div>
         )}
+
+        {/* Riwayat Sesi Virtual & Kehadiran Google Meet */}
+        <div className="mt-10 pt-8 border-t-2 border-[#ebdccb]">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-xl bg-rose-100 text-[#881337] flex items-center justify-center font-bold">
+              📹
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-[#881337] font-japanese">
+                Riwayat Sesi Virtual & Kehadiran Google Meet
+              </h3>
+              <p className="text-xs text-[#735338]">
+                {storageService.isMaster(currentUser)
+                  ? 'Daftar semua sesi belajar Google Meet dan kehadiran murid yang telah berlangsung.'
+                  : 'Riwayat kehadiran Anda pada sesi belajar virtual bersama Sari Sensei.'}
+              </p>
+            </div>
+          </div>
+
+          {virtualSessions.length === 0 ? (
+            <div className="p-6 text-center bg-[#fdfbf7] rounded-2xl border border-dashed border-[#ebdccb]">
+              <div className="text-2xl mb-2">🎥</div>
+              <p className="text-sm font-semibold text-[#553b26] mb-1">
+                Belum ada sesi virtual Google Meet yang tercatat
+              </p>
+              <p className="text-xs text-[#735338]">
+                Sari Sensei atau murid dapat memulai sesi belajar live dari Halaman Beranda.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {virtualSessions.map((session) => {
+                const isUserAttended = (session.attendees || []).some(
+                  a => a.email.toLowerCase() === userEmailLower
+                );
+                return (
+                <div key={session.id} className="p-5 bg-white rounded-2xl border border-[#ebdccb] shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#f5ede1] pb-3">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-0.5 bg-rose-100 text-[#881337] text-[10px] font-bold rounded">
+                          Live Meet
+                        </span>
+                        {isUserAttended ? (
+                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-full flex items-center gap-1 border border-emerald-300">
+                            <span>🟢</span> Hadir & Aktif
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 bg-amber-50 text-amber-800 text-[10px] font-medium rounded-full border border-amber-200">
+                            ⚪ Belum Hadir
+                          </span>
+                        )}
+                        <h4 className="font-bold text-sm text-[#881337]">{session.title}</h4>
+                      </div>
+                      <p className="text-xs text-[#735338] mt-0.5">
+                        Dibuat oleh: <span className="font-bold">{session.createdByName}</span> · {session.createdAt}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {session.meetingCode && (
+                        <span className="font-mono text-xs bg-[#fbf0e6] px-2 py-1 rounded border border-[#ebdccb]">
+                          Kode: {session.meetingCode}
+                        </span>
+                      )}
+                      <a
+                        href={session.meetingUri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => storageService.recordMeetAttendance(session.id, currentUser)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Buka Meet</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-bold text-[#624734] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#881337]" />
+                      <span>Kehadiran Murid ({session.attendees.length} orang bergabung):</span>
+                    </div>
+
+                    {session.attendees.length === 0 ? (
+                      <p className="text-xs text-[#a88a70] italic">Belum ada murid yang mencatatkan kehadiran di sesi ini.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {session.attendees.map((att, idx) => (
+                          <div key={idx} className="p-2.5 bg-[#fdf5ea] rounded-xl border border-[#ebdccb] text-xs flex items-center justify-between gap-2">
+                            <div>
+                              <div className="font-bold text-[#553b26]">{att.name}</div>
+                              <div className="text-[10px] text-[#8c6b4b] font-mono">{att.email}</div>
+                            </div>
+                            <div className="text-right">
+                              <span className="inline-block px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">
+                                Hadir
+                              </span>
+                              <div className="text-[9px] text-[#a88a70] mt-0.5">{att.joinedAt}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

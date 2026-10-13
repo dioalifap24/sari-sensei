@@ -1,4 +1,4 @@
-import { JLPTLevel, QuizResult, User, ActiveQuizRecord, QuizControlState, VocabCard, StudentPresenceInfo, DailyTask, DailyTaskCompletion, DailyTaskCategory, LevelStudyProgress } from '../types';
+import { JLPTLevel, QuizResult, User, ActiveQuizRecord, QuizControlState, VocabCard, StudentPresenceInfo, DailyTask, DailyTaskCompletion, DailyTaskCategory, LevelStudyProgress, VirtualSession } from '../types';
 import { VOCAB_MAZII_DICTIONARY } from '../data/vocabData';
 import { KANJI_SENSEI_SARI } from '../data/kanjiSenseiSari';
 
@@ -3788,5 +3788,87 @@ export const storageService = {
     }
 
     return autoSubmittedTasks;
+  },
+
+  getVirtualSessions(): VirtualSession[] {
+    try {
+      const raw = localStorage.getItem('sensei_sari_virtual_sessions_v1');
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveVirtualSession(session: VirtualSession) {
+    try {
+      const list = storageService.getVirtualSessions();
+      const idx = list.findIndex(s => s.id === session.id);
+      if (idx >= 0) {
+        list[idx] = session;
+      } else {
+        list.unshift(session);
+      }
+      localStorage.setItem('sensei_sari_virtual_sessions_v1', JSON.stringify(list));
+      window.dispatchEvent(new CustomEvent('virtual_sessions_updated'));
+      syncChannel?.postMessage({ type: 'sync_trigger' });
+      fetch(resolveApiUrl('/api/virtual-sessions'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session }),
+      }).catch(() => {});
+    } catch {}
+  },
+
+  createVirtualSession(title: string, meetingUri: string, meetingCode: string, user: User): VirtualSession {
+    const now = Date.now();
+    const newSession: VirtualSession = {
+      id: 'meet-' + now + '-' + Math.random().toString(36).substring(2, 6),
+      title: title || 'Sesi Belajar Interaktif Google Meet',
+      meetingUri,
+      meetingCode,
+      createdAt: formatFullDateTimeWIB(now),
+      createdTimestamp: now,
+      createdByName: user.fullName || user.nickname || user.email.split('@')[0],
+      attendees: [],
+    };
+    storageService.saveVirtualSession(newSession);
+    return newSession;
+  },
+
+  recordMeetAttendance(sessionId: string, user: User) {
+    if (!user) return;
+    const list = storageService.getVirtualSessions();
+    const session = list.find(s => s.id === sessionId);
+    if (!session) return;
+    const emailLower = user.email.toLowerCase();
+    const existingAttendeeIndex = session.attendees.findIndex(a => a.email.toLowerCase() === emailLower);
+    const nowStr = formatFullDateTimeWIB(Date.now());
+    if (existingAttendeeIndex >= 0) {
+      session.attendees[existingAttendeeIndex].joinedAt = nowStr;
+    } else {
+      session.attendees.push({
+        email: user.email,
+        name: user.fullName || user.nickname || user.email.split('@')[0],
+        joinedAt: nowStr,
+      });
+    }
+    storageService.saveVirtualSession(session);
+  },
+
+  endVirtualSession(sessionId: string) {
+    try {
+      const list = storageService.getVirtualSessions();
+      const updated = list.filter(s => s.id !== sessionId);
+      localStorage.setItem('sensei_sari_virtual_sessions_v1', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('virtual_sessions_updated', { detail: { endedId: sessionId } }));
+      syncChannel?.postMessage({ type: 'sync_trigger', endedId: sessionId });
+      fetch(resolveApiUrl('/api/virtual-sessions/end'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      }).catch(() => {});
+    } catch {}
   },
 };

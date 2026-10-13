@@ -131,6 +131,23 @@ export interface LevelStudyProgress {
   totalPercent: number;
 }
 
+export interface MeetAttendee {
+  email: string;
+  name: string;
+  joinedAt: string;
+}
+
+export interface VirtualSession {
+  id: string;
+  title: string;
+  meetingUri: string;
+  meetingCode: string;
+  createdAt: string;
+  createdTimestamp?: number;
+  createdByName: string;
+  attendees: MeetAttendee[];
+}
+
 export interface QuizQuestion {
   id: number;
   level: JLPTLevel;

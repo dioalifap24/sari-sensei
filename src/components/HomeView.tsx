@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { JLPTLevel, User, QuizControlState, DailyTask } from '../types';
+import { JLPTLevel, User, QuizControlState, DailyTask, VirtualSession } from '../types';
 import { storageService } from '../services/storageService';
 import { BookOpen, FileQuestion, Layers, Award, Users, ChevronRight, Shield, Crown, FolderOpen, CheckCircle2, Clock, Plus, Languages } from 'lucide-react';
 import { senseiSariMascot } from '../assets';
 import { DailyTasksFolderModal } from './DailyTasksFolderModal';
 import { JapaneseShrineSakuraScene } from './JapaneseShrineSakuraScene';
+import { GoogleMeetRoom } from './GoogleMeetRoom';
 
 interface HomeViewProps {
   activeLevel: JLPTLevel;
@@ -23,13 +24,31 @@ export const HomeView: React.FC<HomeViewProps> = ({
 }) => {
   const [quizControl, setQuizControl] = useState<QuizControlState>({ isActive: false });
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>(() => storageService.getDailyTasks());
+  const [virtualSessions, setVirtualSessions] = useState<VirtualSession[]>(() => storageService.getVirtualSessions());
+  const [dismissedMeetId, setDismissedMeetId] = useState<string | null>(null);
+  const [modalMeet, setModalMeet] = useState<VirtualSession | null>(null);
+  const [lastNotifiedMeetId, setLastNotifiedMeetId] = useState<string | null>(() => {
+    const list = storageService.getVirtualSessions();
+    return list.length > 0 ? list[0].id : null;
+  });
   const [isDailyTasksFolderOpen, setIsDailyTasksFolderOpen] = useState<boolean>(false);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    if (!storageService.isMaster(currentUser) && virtualSessions.length > 0) {
+      const topMeet = virtualSessions[0];
+      if (topMeet.id !== lastNotifiedMeetId) {
+        setLastNotifiedMeetId(topMeet.id);
+        setModalMeet(topMeet);
+      }
+    }
+  }, [virtualSessions, currentUser, lastNotifiedMeetId]);
 
   useEffect(() => {
     const refreshHomeData = () => {
       setQuizControl(storageService.getQuizControlState());
       setDailyTasks(storageService.getDailyTasks());
+      setVirtualSessions(storageService.getVirtualSessions());
     };
     refreshHomeData();
     storageService.syncWithServer().then(refreshHomeData);
@@ -40,17 +59,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
     window.addEventListener('quiz_control_changed', refreshHomeData);
     window.addEventListener('daily_tasks_updated', refreshHomeData);
+    window.addEventListener('virtual_sessions_updated', refreshHomeData);
     window.addEventListener('storage', refreshHomeData);
 
     return () => {
       clearInterval(clockInterval);
       window.removeEventListener('quiz_control_changed', refreshHomeData);
       window.removeEventListener('daily_tasks_updated', refreshHomeData);
+      window.removeEventListener('virtual_sessions_updated', refreshHomeData);
       window.removeEventListener('storage', refreshHomeData);
     };
   }, []);
 
   const isMasterUser = storageService.isMaster(currentUser);
+  const latestMeet = (!isMasterUser && virtualSessions.length > 0) ? virtualSessions[0] : null;
+  const isMeetActive = latestMeet && latestMeet.id !== dismissedMeetId;
   const activeDailyTasks = dailyTasks.filter(t => t.isActive);
   const myEmail = (currentUser?.email || '').toLowerCase();
   const myCompletedCount = activeDailyTasks.filter(t => {
@@ -108,6 +131,59 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <JapaneseShrineSakuraScene />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4">
+        {/* Notifikasi Real-Time Sesi Google Meet Sensei Sari */}
+        {isMeetActive && latestMeet && (
+          <div className="mb-6 bg-gradient-to-r from-rose-900 via-[#881337] to-amber-900 text-white rounded-2xl p-4 sm:p-5 shadow-xl border-2 border-amber-300 animate-pulse relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-amber-400/20 rounded-full blur-xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+              <div className="flex items-start gap-3">
+                <div className="p-3 bg-white/10 rounded-xl border border-white/20 shrink-0 text-2xl">
+                  📹
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-600 text-white text-xs font-black rounded-full uppercase tracking-wider animate-bounce">
+                      <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                      LIVE GOOGLE MEET
+                    </span>
+                    <span className="text-xs text-amber-200 font-medium">
+                      {latestMeet.createdAt}
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-amber-100 mb-0.5">
+                    {latestMeet.createdByName || 'Sensei Sari'} memulai sesi: "{latestMeet.title}"
+                  </h3>
+                  <p className="text-xs sm:text-sm text-rose-100">
+                    Kode Ruang: <span className="font-mono bg-black/30 px-2 py-0.5 rounded text-amber-300 font-bold">{latestMeet.meetingCode || 'Sesi Live'}</span> • Mari bergabung bersama Sensei dan teman-teman!
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <button
+                  onClick={() => {
+                    if (currentUser) {
+                      storageService.recordMeetAttendance(latestMeet.id, currentUser);
+                    }
+                    window.open(latestMeet.meetingUri, '_blank');
+                  }}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-[#881337] font-black text-sm shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 border border-amber-200"
+                >
+                  <span>Gabung Google Meet Sekarang</span>
+                  <span>🚀</span>
+                </button>
+                <button
+                  onClick={() => setDismissedMeetId(latestMeet.id)}
+                  className="px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/20"
+                  title="Tutup Notifikasi"
+                >
+                  ✕ Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Hero Section */}
         <div className="text-center pt-2 pb-6 sm:pb-8">
           {/* Sari Sensei Portrait Avatar dengan Mahkota Gerbang Torii & Bunga Sakura */}
@@ -492,6 +568,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           )}
         </div>
+
+        {/* Google Meet Live Study Session Section */}
+        <div className="mt-8">
+          <GoogleMeetRoom isMasterUser={isMasterUser} currentUser={currentUser} />
+        </div>
       </div>
 
       {/* Modal Folder Tugas Harian Sensei */}
@@ -507,6 +588,63 @@ export const HomeView: React.FC<HomeViewProps> = ({
           onNavigate(tab);
         }}
       />
+
+      {/* Instant Push Overlay Modal Saat Sensei Memulai Sesi Belajar Google Meet */}
+      {modalMeet && !isMasterUser && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in">
+          <div className="bg-[#fffdfa] border-4 border-amber-300 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center">
+            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-red-600 via-amber-400 to-[#881337]" />
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-200/40 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 text-red-600 rounded-2xl text-3xl mb-4 shadow-inner animate-bounce">
+              📹
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-600 text-white text-xs font-black rounded-full uppercase tracking-wider mb-2 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+              SENSEI SARI MEMULAI SESI LIVE!
+            </div>
+
+            <h3 className="text-xl sm:text-2xl font-extrabold text-[#881337] font-japanese mb-2">
+              {modalMeet.title}
+            </h3>
+
+            <p className="text-xs sm:text-sm text-[#735338] mb-6">
+              Sensei baru saja membuka ruang belajar virtual interaktif Google Meet. Segera bergabung untuk belajar bersama Sensei dan teman-teman! 🌸
+            </p>
+
+            <div className="bg-[#fdf5ea] border border-[#ebdccb] rounded-2xl p-4 mb-6 text-left space-y-1">
+              <div className="text-xs text-[#8c6b4b] font-bold">INFO SESI:</div>
+              <div className="text-xs sm:text-sm text-[#553b26] flex justify-between">
+                <span>Pembuat: <strong className="text-[#881337]">{modalMeet.createdByName}</strong></span>
+                <span className="font-mono bg-white px-2 py-0.5 rounded border border-[#ebdccb]">Kode: {modalMeet.meetingCode || 'Live'}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => {
+                  if (currentUser) {
+                    storageService.recordMeetAttendance(modalMeet.id, currentUser);
+                  }
+                  window.open(modalMeet.meetingUri, '_blank');
+                  setModalMeet(null);
+                }}
+                className="flex-1 py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+              >
+                <span>Gabung Google Meet Sekarang</span>
+                <span>🚀</span>
+              </button>
+              <button
+                onClick={() => setModalMeet(null)}
+                className="py-3 px-5 rounded-xl bg-[#f5ede1] hover:bg-[#ebdccb] text-[#553b26] font-bold text-xs transition-all"
+              >
+                Nanti Saja
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
