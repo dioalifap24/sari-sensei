@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="50%" stop-color="#312e81" />
+      <stop offset="100%" stop-color="#831843" />
+    </linearGradient>
+    <linearGradient id="sakuraGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f472b6" />
+      <stop offset="100%" stop-color="#fb7185" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background with rounded app icon shape -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bgGrad)" />
+
+  <!-- Decorative Japanese Circle (En) -->
+  <circle cx="512" cy="512" r="380" fill="none" stroke="#fef08a" stroke-width="12" stroke-opacity="0.25" />
+
+  <!-- Sakura Petals Background Accents -->
+  <path d="M 250 250 Q 280 200 320 230 Q 290 280 250 250 Z" fill="url(#sakuraGrad)" opacity="0.6" />
+  <path d="M 750 300 Q 780 250 820 280 Q 790 330 750 300 Z" fill="url(#sakuraGrad)" opacity="0.6" />
+  <path d="M 280 750 Q 310 700 350 730 Q 320 780 280 750 Z" fill="url(#sakuraGrad)" opacity="0.6" />
+
+  <!-- Main Content: Open Book & Kanji 'Sensei' (先生) / 'Sari' -->
+  <g filter="url(#shadow)">
+    <!-- Book Base -->
+    <path d="M 200 420 C 350 360, 500 400, 512 680 C 500 400, 650 360, 800 420 L 800 700 C 650 640, 500 670, 512 720 C 500 670, 350 640, 200 700 Z" fill="#f8fafc" />
+    <!-- Book Spine & Pages Divider -->
+    <path d="M 512 680 L 512 720" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round" />
+  </g>
+
+  <!-- Kanji 先生 (Sensei) -->
+  <text x="512" y="550" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="220" fill="#fb7185" text-anchor="middle">先生</text>
+
+  <!-- Subtitle Badge: JLPT -->
+  <g transform="translate(512, 780)">
+    <rect x="-160" y="-45" width="320" height="90" rx="45" fill="#fef08a" />
+    <text x="0" y="12" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="42" fill="#713f12" text-anchor="middle">JLPT N5-N2</text>
+  </g>
+</svg>

@@ -36,3 +36,11 @@ Aplikasi **Sari Sensei** di iPhone / iOS bersifat **Online sekaligus Offline (Hy
 - **Koneksi Langsung Online:** Saat perangkat terhubung ke internet (Wi-Fi / Seluler), aplikasi terhubung secara *real-time* ke server dan layanan eksternal (seperti Google Terjemahan, pembaruan materi terbaru, dan sinkronisasi tugas Master).
 - **Dukungan Mode Offline:** Berkat teknologi PWA (*Progressive Web App*), materi pelajaran dan kuis yang sudah pernah dimuat tetap dapat diakses meskipun iPhone Anda sedang tidak ada sinyal internet.
 - **Penyimpanan Lokal (Local Storage):** Catatan pinggir (*Post-it Memo*) dan kemajuan belajar disimpan secara lokal di perangkat iPhone Anda sehingga aman dan tetap bisa dibaca kapanpun. Saat kembali terhubung ke internet, aplikasi akan langsung aktif dan tersinkronisasi kembali secara otomatis.
+
+---
+
+## 🛠️ 4. Panduan Build & Packaging Native (Capacitor for Android & iOS)
+Bagi pengembang atau Master yang ingin mengemas aplikasi ini menjadi aplikasi *native* App Store / Play Store menggunakan **Capacitor** (lengkap dengan ikon dan *splash screen* kustom):
+- Lihat panduan lengkap di file **[`CAPACITOR_BUILD_GUIDE.md`](./CAPACITOR_BUILD_GUIDE.md)**.
+- Aset ikon (`icon.svg`) dan *splash screen* (`splash.svg`) tersedia di folder `/resources`.
+
