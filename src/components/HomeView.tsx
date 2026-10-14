@@ -146,7 +146,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {isMeetActive && latestMeet && (() => {
           const isZoom = latestMeet.platform === 'zoom' || latestMeet.meetingUri.includes('zoom.us');
           return (
-            <div className={`mb-6 text-white rounded-2xl p-4 sm:p-5 shadow-xl border-2 animate-pulse relative overflow-hidden ${
+            <div className={`mb-6 text-white rounded-2xl p-4 sm:p-5 shadow-xl border-2 relative overflow-hidden ${
               isZoom
                 ? 'bg-gradient-to-r from-blue-900 via-sky-800 to-indigo-900 border-sky-300'
                 : 'bg-gradient-to-r from-rose-900 via-[#881337] to-amber-900 border-amber-300'

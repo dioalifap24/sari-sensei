@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Real-time chat message or reaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "isMaster": { "type": "boolean" },
+        "message": { "type": "string" },
+        "isReaction": { "type": "boolean" },
+        "reactionEmoji": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "timeFormatted": { "type": "string" }
+      },
+      "required": ["id", "senderName", "senderEmail", "message", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/chat_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Collection of all chat messages across sessions"
+    }
+  }
+}

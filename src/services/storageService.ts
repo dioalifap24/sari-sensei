@@ -3998,6 +3998,12 @@ export const storageService = {
       localStorage.setItem('sensei_sari_meet_chat_messages_v1', JSON.stringify(trimmed));
       window.dispatchEvent(new CustomEvent('meet_chat_updated', { detail: newMsg }));
       syncChannel?.postMessage({ type: 'sync_trigger', action: 'meet_chat', detail: newMsg });
+      
+      fetch(resolveApiUrl('/api/virtual-sessions/chat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: newMsg }),
+      }).catch(() => {});
     } catch {}
 
     return newMsg;

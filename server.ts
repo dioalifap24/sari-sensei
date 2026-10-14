@@ -143,6 +143,7 @@ interface ServerDatabase {
   onlinePresence: Record<string, PresenceEntry>;
   dailyTasks: any[];
   virtualSessions: any[];
+  meetChatMessages: any[];
   deletedTaskIds: string[];
   deletedEmails: string[];
   rankingResetAt: number;
@@ -220,6 +221,7 @@ function loadDatabase(): ServerDatabase {
         onlinePresence: filteredPresence,
         dailyTasks: filteredTasks,
         virtualSessions: Array.isArray(parsed.virtualSessions) ? parsed.virtualSessions : [],
+        meetChatMessages: Array.isArray(parsed.meetChatMessages) ? parsed.meetChatMessages : [],
         deletedTaskIds: Array.from(deletedTasksSet),
         deletedEmails: Array.from(deletedSet),
         rankingResetAt: parsed.rankingResetAt || 0,
@@ -238,6 +240,7 @@ function loadDatabase(): ServerDatabase {
     onlinePresence: {},
     dailyTasks: [{ ...DEFAULT_WORKSHEET_TASK }],
     virtualSessions: [],
+    meetChatMessages: [],
     deletedTaskIds: [],
     deletedEmails: Array.from(SAMPLE_EMAILS),
     rankingResetAt: 0,
@@ -700,6 +703,25 @@ function mergeExternalPayloadIntoDb(
     changed = true;
   }
 
+  // 11. Meet Chat Messages & Manga Reactions
+  if (Array.isArray(payload.meetChatMessages)) {
+    if (!Array.isArray(db.meetChatMessages)) db.meetChatMessages = [];
+    const existingIds = new Set(db.meetChatMessages.map((m: any) => m.id));
+    for (const msg of payload.meetChatMessages) {
+      if (msg && msg.id && !existingIds.has(msg.id)) {
+        if (msg.isMaster) {
+          msg.senderName = 'Sari Sensei';
+        }
+        db.meetChatMessages.push(msg);
+        existingIds.add(msg.id);
+        changed = true;
+      }
+    }
+    if (db.meetChatMessages.length > 100) {
+      db.meetChatMessages = db.meetChatMessages.slice(-100);
+    }
+  }
+
   sortDbUsers();
   return changed;
 }
@@ -844,6 +866,7 @@ function broadcastRealtimeStateToClients() {
     onlinePresence: db.onlinePresence,
     dailyTasks: db.dailyTasks,
     virtualSessions: db.virtualSessions || [],
+    meetChatMessages: db.meetChatMessages || [],
     deletedTaskIds: db.deletedTaskIds,
     deletedEmails: db.deletedEmails,
     rankingResetAt: db.rankingResetAt,
@@ -917,6 +940,7 @@ async function startServer() {
         onlinePresence: db.onlinePresence,
         dailyTasks: db.dailyTasks,
         virtualSessions: db.virtualSessions || [],
+        meetChatMessages: db.meetChatMessages || [],
         deletedTaskIds: db.deletedTaskIds,
         deletedEmails: db.deletedEmails,
         rankingResetAt: db.rankingResetAt,
@@ -950,6 +974,7 @@ async function startServer() {
       onlinePresence: db.onlinePresence,
       dailyTasks: db.dailyTasks,
       virtualSessions: db.virtualSessions || [],
+      meetChatMessages: db.meetChatMessages || [],
       deletedTaskIds: db.deletedTaskIds,
       deletedEmails: db.deletedEmails,
       rankingResetAt: db.rankingResetAt,
@@ -1303,6 +1328,48 @@ async function startServer() {
       }
     }
     res.json({ success: true, virtualSessions: db.virtualSessions || [] });
+  });
+
+  // GET /api/virtual-sessions/chat - Ambil pesan chat sesi & reaksi manga
+  app.get('/api/virtual-sessions/chat', (_req, res) => {
+    res.json({ messages: db.meetChatMessages || [] });
+  });
+
+  // POST /api/virtual-sessions/chat - Kirim pesan chat atau reaksi manga real-time
+  app.post('/api/virtual-sessions/chat', (req, res) => {
+    const { message } = req.body || {};
+    if (message && message.id) {
+      if (!Array.isArray(db.meetChatMessages)) db.meetChatMessages = [];
+      // Normalize sender name jika master
+      if (message.isMaster) {
+        message.senderName = 'Sari Sensei';
+      }
+      const existingIdx = db.meetChatMessages.findIndex((m: any) => m.id === message.id);
+      if (existingIdx >= 0) {
+        db.meetChatMessages[existingIdx] = message;
+      } else {
+        db.meetChatMessages.push(message);
+      }
+      if (db.meetChatMessages.length > 100) {
+        db.meetChatMessages = db.meetChatMessages.slice(-100);
+      }
+      saveDatabase(db);
+      broadcastLocalSSE({ type: 'meet_chat_message', message });
+    }
+    res.json({ success: true, message, messages: db.meetChatMessages || [] });
+  });
+
+  // POST /api/virtual-sessions/chat/clear - Bersihkan pesan chat sesi
+  app.post('/api/virtual-sessions/chat/clear', (req, res) => {
+    const { sessionId } = req.body || {};
+    if (sessionId && Array.isArray(db.meetChatMessages)) {
+      db.meetChatMessages = db.meetChatMessages.filter((m: any) => m.sessionId !== sessionId);
+    } else {
+      db.meetChatMessages = [];
+    }
+    saveDatabase(db);
+    broadcastLocalSSE({ type: 'meet_chat_cleared', sessionId });
+    res.json({ success: true, messages: db.meetChatMessages || [] });
   });
 
   // Global One Piece Logout Quote Counter (pastikan setiap murid yang logout selalu mendapat kutipan berbeda)

@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isValidChatMessage(data) {
+      return data.senderName is string && data.senderName.size() <= 100 &&
+             data.senderEmail is string && data.senderEmail.size() <= 255 &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.timestamp is number && data.timestamp <= request.time.toMillis();
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(messageId) && isValidChatMessage(request.resource.data) && request.resource.data.senderEmail == request.auth.token.email;
+      allow update, delete: if false; // Immutable
+    }
+  }
+}

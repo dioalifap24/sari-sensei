@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Video, ExternalLink, Copy, Check, MessageSquare, Send, Smile, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { storageService } from '../services/storageService';
+import * as firebaseService from '../services/firebaseService';
 import { User, MeetChatMessage, VirtualSession } from '../types';
 
 interface GoogleMeetRoomProps {
@@ -159,18 +160,17 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     };
   }, [activeSessionId, isMasterUser]);
 
-  // Chat synchronization
+  // Chat synchronization (Firestore)
   useEffect(() => {
-    const refreshChat = () => {
-      setMessages(storageService.getMeetChatMessages(activeSessionId || undefined));
-    };
-    refreshChat();
-    window.addEventListener('meet_chat_updated', refreshChat);
-    window.addEventListener('storage', refreshChat);
-    return () => {
-      window.removeEventListener('meet_chat_updated', refreshChat);
-      window.removeEventListener('storage', refreshChat);
-    };
+    const unsubscribe = firebaseService.subscribeToChatMessages((newMessages) => {
+      // Filter by sessionId if needed
+      if (activeSessionId) {
+        setMessages(newMessages.filter(m => m.sessionId === activeSessionId));
+      } else {
+        setMessages(newMessages);
+      }
+    });
+    return () => unsubscribe();
   }, [activeSessionId]);
 
   useEffect(() => {
@@ -179,16 +179,36 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     }
   }, [messages]);
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = inputText.trim();
     if (!trimmed) return;
-    storageService.sendMeetChatMessage(trimmed, currentUser || null, activeSessionId || undefined);
+    
+    await firebaseService.sendChatMessage({
+      sessionId: activeSessionId || 'general',
+      senderName: isMasterUser ? 'Sari Sensei' : currentUser?.fullName || currentUser?.nickname || currentUser?.email?.split('@')[0] || 'Murid',
+      senderEmail: currentUser?.email || 'anonymous@murid.com',
+      isMaster: isMasterUser,
+      message: trimmed,
+      isReaction: false,
+      timestamp: Date.now(),
+      timeFormatted: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    });
     setInputText('');
   };
 
-  const handleSendReaction = (emoji: string, label: string) => {
-    storageService.sendMeetChatMessage(label, currentUser || null, activeSessionId || undefined, true, emoji);
+  const handleSendReaction = async (emoji: string, label: string) => {
+    await firebaseService.sendChatMessage({
+      sessionId: activeSessionId || 'general',
+      senderName: isMasterUser ? 'Sari Sensei' : currentUser?.fullName || currentUser?.nickname || currentUser?.email?.split('@')[0] || 'Murid',
+      senderEmail: currentUser?.email || 'anonymous@murid.com',
+      isMaster: isMasterUser,
+      message: label,
+      isReaction: true,
+      reactionEmoji: emoji,
+      timestamp: Date.now(),
+      timeFormatted: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    });
   };
 
   const handleClearChat = () => {
@@ -536,7 +556,6 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
                         : 'Contoh: abc-defg-hij atau https://meet.google.com/abc-defg-hij'
                     }
                     className="w-full px-4 py-3 bg-white border-2 border-stone-950 rounded-xl text-sm font-mono font-bold text-stone-900 shadow-[2px_2px_0px_#1c1917] focus:outline-none focus:ring-2 focus:ring-[#881337]"
-                    autoFocus
                   />
                   <span className="text-[11px] text-stone-600 block mt-1">
                     {platformChoice === 'zoom'
