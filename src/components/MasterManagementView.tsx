@@ -835,8 +835,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 Seluruh akun murid terdaftar
               </p>
             </div>
-            <div className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-amber-950/50 border-2 border-amber-500/70 rounded-xl flex items-center justify-center text-amber-400 overflow-hidden shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.25)] backdrop-blur-xs">
-              <BlackBullsLogo className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-amber-950/50 border-2 border-amber-500/70 rounded-xl flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.25)] backdrop-blur-xs">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
             </div>
           </div>
 
