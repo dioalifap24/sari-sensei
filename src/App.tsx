@@ -46,7 +46,20 @@ export function App() {
   }, []);
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => storageService.getCurrentUser());
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTabState] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sensei_sari_active_tab') || 'home';
+    } catch {
+      return 'home';
+    }
+  });
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    try {
+      localStorage.setItem('sensei_sari_active_tab', tab);
+    } catch {}
+  };
   const [activeLevel, setActiveLevelState] = useState<JLPTLevel>(() => storageService.getActiveLevel());
   const [quizControl, setQuizControl] = useState<QuizControlState>(() => storageService.getQuizControlState());
   const [isStudentQuizRunning, setIsStudentQuizRunning] = useState<boolean>(false);
