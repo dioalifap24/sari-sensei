@@ -498,7 +498,11 @@ export function App() {
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-md border-t py-1.5 px-2 flex justify-around items-center bg-[#fffdfa]/95 border-[#ebdccb]">
+      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 backdrop-blur-md border-t py-1.5 px-1.5 flex justify-around items-center transition-colors ${
+        activeTab === 'master_management'
+          ? 'bg-stone-950/95 border-amber-500/30 text-stone-400'
+          : 'bg-[#fffdfa]/95 border-[#ebdccb] text-[#735338]'
+      }`}>
         <button
           onClick={() => {
             if (isStudentQuizRunning && !isMasterUser) {
@@ -508,8 +512,12 @@ export function App() {
             }
             setActiveTab('home');
           }}
-          className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
-            activeTab === 'home' ? 'text-[#881337]' : 'text-[#735338]'
+          className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-semibold transition-colors cursor-pointer ${
+            activeTab === 'master_management'
+              ? 'text-stone-400 hover:text-amber-200'
+              : activeTab === 'home'
+              ? 'text-[#881337] font-bold'
+              : 'text-[#735338] hover:text-[#881337]'
           }`}
         >
           <span className="text-base">🏠</span>
@@ -525,8 +533,12 @@ export function App() {
             }
             setActiveTab('materi');
           }}
-          className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
-            activeTab === 'materi' ? 'text-[#881337]' : 'text-[#735338]'
+          className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-semibold transition-colors cursor-pointer ${
+            activeTab === 'master_management'
+              ? 'text-stone-400 hover:text-amber-200'
+              : activeTab === 'materi'
+              ? 'text-[#881337] font-bold'
+              : 'text-[#735338] hover:text-[#881337]'
           }`}
         >
           <span className="text-base">📖</span>
@@ -535,8 +547,12 @@ export function App() {
 
         <button
           onClick={() => setActiveTab('kuis')}
-          className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors relative ${
-            activeTab === 'kuis' ? 'text-[#881337]' : 'text-[#735338]'
+          className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-semibold transition-colors relative cursor-pointer ${
+            activeTab === 'master_management'
+              ? 'text-stone-400 hover:text-amber-200'
+              : activeTab === 'kuis'
+              ? 'text-[#881337] font-bold'
+              : 'text-[#735338] hover:text-[#881337]'
           }`}
         >
           <span className="text-base relative">
@@ -547,9 +563,7 @@ export function App() {
               }`} 
             />
           </span>
-          <span className="flex items-center gap-0.5">
-            <span>Kuis</span>
-          </span>
+          <span>Kuis</span>
         </button>
 
         <button
@@ -561,8 +575,12 @@ export function App() {
             }
             setActiveTab('vocab');
           }}
-          className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
-            activeTab === 'vocab' ? 'text-[#881337]' : 'text-[#735338]'
+          className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-semibold transition-colors cursor-pointer ${
+            activeTab === 'master_management'
+              ? 'text-stone-400 hover:text-amber-200'
+              : activeTab === 'vocab'
+              ? 'text-[#881337] font-bold'
+              : 'text-[#735338] hover:text-[#881337]'
           }`}
         >
           <span className="text-base">🃏</span>
@@ -578,19 +596,46 @@ export function App() {
             }
             setActiveTab('kanji');
           }}
-          className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
-            activeTab === 'kanji' ? 'text-[#881337]' : 'text-[#735338]'
+          className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-semibold transition-colors cursor-pointer ${
+            activeTab === 'master_management'
+              ? 'text-stone-400 hover:text-amber-200'
+              : activeTab === 'kanji'
+              ? 'text-[#881337] font-bold'
+              : 'text-[#735338] hover:text-[#881337]'
           }`}
         >
           <span className="text-base font-bold font-japanese">漢字</span>
           <span>Kanji</span>
         </button>
 
+        <button
+          onClick={() => {
+            if (isStudentQuizRunning && !isMasterUser) {
+              setToastMessage('⚠️ Mode Ujian Terkunci! Selesaikan kuis terlebih dahulu sebelum berpindah menu.');
+              setTimeout(() => setToastMessage(null), 4000);
+              return;
+            }
+            setActiveTab('terjemahan');
+          }}
+          className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-semibold transition-colors cursor-pointer ${
+            activeTab === 'master_management'
+              ? 'text-stone-400 hover:text-amber-200'
+              : activeTab === 'terjemahan'
+              ? 'text-[#881337] font-bold'
+              : 'text-[#735338] hover:text-[#881337]'
+          }`}
+        >
+          <span className="text-base font-bold font-japanese">🈳</span>
+          <span>Terjemah</span>
+        </button>
+
         {isMasterUser ? (
           <button
             onClick={() => setActiveTab('master_management')}
-            className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-bold transition-colors ${
-              activeTab === 'master_management' ? 'text-[#881337]' : 'text-amber-800'
+            className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-bold transition-colors cursor-pointer ${
+              activeTab === 'master_management'
+                ? 'text-amber-300 font-black scale-105'
+                : 'text-amber-700 hover:text-amber-900'
             }`}
           >
             <span className="text-base">👑</span>
@@ -606,8 +651,10 @@ export function App() {
               }
               setActiveTab('laporan');
             }}
-            className={`flex flex-col items-center py-1 px-2 rounded-lg text-[10px] font-semibold transition-colors ${
-              activeTab === 'laporan' ? 'text-[#881337]' : 'text-[#735338]'
+            className={`flex flex-col items-center py-1 px-1.5 rounded-lg text-[9.5px] font-semibold transition-colors cursor-pointer ${
+              activeTab === 'laporan'
+                ? 'text-[#881337] font-bold'
+                : 'text-[#735338] hover:text-[#881337]'
             }`}
           >
             <span className="text-base">📊</span>

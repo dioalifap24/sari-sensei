@@ -160,17 +160,31 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     };
   }, [activeSessionId, isMasterUser]);
 
-  // Chat synchronization (Firestore)
+  // Chat synchronization (Hybrid: storageService real-time sync + optional Firestore broadcast)
   useEffect(() => {
+    const refreshChatFromStorage = () => {
+      setMessages(storageService.getMeetChatMessages(activeSessionId || undefined));
+    };
+
+    refreshChatFromStorage();
+    window.addEventListener('meet_chat_updated', refreshChatFromStorage);
+    window.addEventListener('storage', refreshChatFromStorage);
+
     const unsubscribe = firebaseService.subscribeToChatMessages((newMessages) => {
-      // Filter by sessionId if needed
-      if (activeSessionId) {
-        setMessages(newMessages.filter(m => m.sessionId === activeSessionId));
-      } else {
-        setMessages(newMessages);
+      if (Array.isArray(newMessages) && newMessages.length > 0) {
+        if (activeSessionId) {
+          setMessages(newMessages.filter(m => m.sessionId === activeSessionId));
+        } else {
+          setMessages(newMessages);
+        }
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      window.removeEventListener('meet_chat_updated', refreshChatFromStorage);
+      window.removeEventListener('storage', refreshChatFromStorage);
+      unsubscribe();
+    };
   }, [activeSessionId]);
 
   useEffect(() => {
@@ -183,37 +197,93 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     if (e) e.preventDefault();
     const trimmed = inputText.trim();
     if (!trimmed) return;
-    
-    await firebaseService.sendChatMessage({
-      sessionId: activeSessionId || 'general',
-      senderName: isMasterUser ? 'Sari Sensei' : currentUser?.fullName || currentUser?.nickname || currentUser?.email?.split('@')[0] || 'Murid',
-      senderEmail: currentUser?.email || 'anonymous@murid.com',
-      isMaster: isMasterUser,
-      message: trimmed,
-      isReaction: false,
-      timestamp: Date.now(),
-      timeFormatted: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+
+    const senderUser: User = currentUser || (isMasterUser ? {
+      email: 'dioalifap24@gmail.com',
+      fullName: 'GLOSTER GLADIATOR',
+      nickname: 'skywalker',
+      name: 'GLOSTER GLADIATOR',
+      registeredAt: '2026-09-01 08:00',
+      isMaster: true,
+      role: 'master',
+    } : {
+      email: 'murid@gmail.com',
+      fullName: 'Murid Belajar',
+      nickname: 'Murid',
+      name: 'Murid Belajar',
+      registeredAt: '2026-10-01',
+      isMaster: false,
+      role: 'student',
     });
+
+    // 1. Simpan dan pancarkan secara instan melalui storageService & server relay
+    storageService.sendMeetChatMessage(trimmed, senderUser, activeSessionId || undefined, false);
+    setMessages(storageService.getMeetChatMessages(activeSessionId || undefined));
     setInputText('');
+
+    // 2. Kirim juga ke Firestore cloud broadcast jika terhubung
+    try {
+      await firebaseService.sendChatMessage({
+        sessionId: activeSessionId || 'general',
+        senderName: isMasterUser ? 'Sari Sensei' : senderUser.fullName || senderUser.nickname || 'Murid',
+        senderEmail: senderUser.email,
+        isMaster: isMasterUser,
+        message: trimmed,
+        isReaction: false,
+        timestamp: Date.now(),
+        timeFormatted: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      });
+    } catch {
+      // Abaikan jika Firestore dibatasi
+    }
   };
 
   const handleSendReaction = async (emoji: string, label: string) => {
-    await firebaseService.sendChatMessage({
-      sessionId: activeSessionId || 'general',
-      senderName: isMasterUser ? 'Sari Sensei' : currentUser?.fullName || currentUser?.nickname || currentUser?.email?.split('@')[0] || 'Murid',
-      senderEmail: currentUser?.email || 'anonymous@murid.com',
-      isMaster: isMasterUser,
-      message: label,
-      isReaction: true,
-      reactionEmoji: emoji,
-      timestamp: Date.now(),
-      timeFormatted: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    const senderUser: User = currentUser || (isMasterUser ? {
+      email: 'dioalifap24@gmail.com',
+      fullName: 'GLOSTER GLADIATOR',
+      nickname: 'skywalker',
+      name: 'GLOSTER GLADIATOR',
+      registeredAt: '2026-09-01 08:00',
+      isMaster: true,
+      role: 'master',
+    } : {
+      email: 'murid@gmail.com',
+      fullName: 'Murid Belajar',
+      nickname: 'Murid',
+      name: 'Murid Belajar',
+      registeredAt: '2026-10-01',
+      isMaster: false,
+      role: 'student',
     });
+
+    // 1. Simpan reaksi via storageService & server relay
+    storageService.sendMeetChatMessage(label, senderUser, activeSessionId || undefined, true, emoji);
+    setMessages(storageService.getMeetChatMessages(activeSessionId || undefined));
+
+    // 2. Kirim reaksi ke Firestore cloud broadcast
+    try {
+      await firebaseService.sendChatMessage({
+        sessionId: activeSessionId || 'general',
+        senderName: isMasterUser ? 'Sari Sensei' : senderUser.fullName || senderUser.nickname || 'Murid',
+        senderEmail: senderUser.email,
+        isMaster: isMasterUser,
+        message: label,
+        isReaction: true,
+        reactionEmoji: emoji,
+        timestamp: Date.now(),
+        timeFormatted: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      });
+    } catch {
+      // Abaikan jika Firestore dibatasi
+    }
   };
 
   const handleClearChat = () => {
     storageService.clearMeetChat(activeSessionId || undefined);
+    setMessages([]);
   };
+
 
   /**
    * Master memulai sesi belajar virtual:
@@ -282,12 +352,27 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     setTimeout(() => setSuccessMsg(null), 5000);
   };
 
+  const safeOpenUrl = (url: string) => {
+    if (!url) return;
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      window.location.href = url;
+    }
+  };
+
   const handleOpenMeetInNewTab = () => {
     if (!meetUri) return;
     if (activeSessionId && currentUser) {
       storageService.recordMeetAttendance(activeSessionId, currentUser);
     }
-    window.open(meetUri, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(meetUri);
   };
 
   const handleCopyLink = () => {
@@ -305,8 +390,9 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
     if (activeSessionId && currentUser) {
       storageService.recordMeetAttendance(activeSessionId, currentUser);
     }
-    window.open(parsed.uri, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(parsed.uri);
   };
+
 
   const isCurrentZoom = activeSession?.platform === 'zoom' || meetUri.includes('zoom.us');
 

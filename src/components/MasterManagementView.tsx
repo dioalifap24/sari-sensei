@@ -568,7 +568,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
       {/* Ornamen Latar Black Clover (Asta, Yuno, Lambang Squad, Grimoire, Mahojin & Hujan Mana) Seperti di Beranda */}
       <BlackCloverBackgroundScene />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-3 sm:px-6">
+      {/* Container Utama: Responsif Lebar Penuh & Proporsional di Layar Tablet Landscape (1024px - 1280px+) */}
+      <div className="relative z-10 w-full max-w-5xl md:max-w-6xl lg:max-w-7xl xl:max-w-[90rem] mx-auto px-3 sm:px-5 md:px-6 lg:px-8">
         {/* Toast Notification Gaya Balon Dialog Manga */}
         {notificationMsg && (
           <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-stone-950 text-white font-black text-xs sm:text-sm rounded-none border-[3px] border-[#881337] shadow-[6px_6px_0px_#881337] animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-2.5">
@@ -587,22 +588,23 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
         {/* =========================================================================
             TATA ULANG KOLOM PANEL UTAMA: GRID 2 KOLOM (KENDALI KUIS & NAVIGASI)
-            - Kolom 1 (Kiri): Kendali Sesi Kuis Master & Aksi Cepat (Tema Banteng Hitam / Amber-Crimson)
-            - Kolom 2 (Kanan): Navigasi Pantauan & Pesan Master (Tema Fajar Emas / Emerald-Gold)
-            Panel dibuat tembus pandang (glassmorphism) agar latar belakang terlihat jelas.
+            - Dioptimalkan proporsional untuk Tablet Landscape (iPad / Android Tablet):
+              * Kedua kartu memiliki tinggi seimbang (h-full flex flex-col justify-between)
+              * Kolom 1 (Kiri): Kendali Sesi Kuis Master & Aksi Cepat
+              * Kolom 2 (Kanan): Navigasi Pantauan & Quick Telemetry Resonansi Sanctum
             ========================================================================= */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-6 items-stretch">
           {/* KOLOM KIRI: PUSAT KENDALI KUIS MASTER (AKSEN AMBER / CRIMSON BANTENG HITAM) */}
-          <div className="grimoire-card relative p-4 sm:p-5 rounded-2xl border-2 border-amber-500/50 hover:border-amber-400/80 bg-stone-950/25 backdrop-blur-[2px] shadow-lg flex flex-col justify-between transition-all">
+          <div className="grimoire-card relative h-full p-4 sm:p-5 rounded-2xl border-2 border-amber-500/50 hover:border-amber-400/80 bg-stone-950/25 backdrop-blur-[2px] shadow-lg flex flex-col justify-between transition-all">
             <GrimoireCornerClasp variant="gold" />
 
             <div>
               {/* UCAPAN SELAMAT DATANG (DITARUH DI BAGIAN ATAS PANEL STATUS SESI KUIS) */}
-              <div className="bg-stone-950/40 backdrop-blur-xs border border-amber-500/40 rounded-xl p-3 mb-3.5 relative overflow-hidden shadow-sm">
+              <div className="bg-stone-950/40 backdrop-blur-xs border border-amber-500/40 rounded-xl p-3 sm:p-3.5 mb-3.5 relative overflow-hidden shadow-sm">
                 <div className="h-0.5 bg-gradient-to-r from-amber-400 via-rose-400 to-amber-300 absolute top-0 inset-x-0" />
                 <div className="flex items-start gap-2.5">
                   <span className="text-base sm:text-lg select-none">🧙‍♀️</span>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold text-amber-200">
                       Selamat Datang di Ruang Kendali Sensei Sari
                     </h3>
@@ -684,91 +686,111 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           </div>
 
           {/* KOLOM KANAN: NAVIGASI PANTAUAN & PESAN MASTER (AKSEN EMERALD / GOLD FAJAR EMAS) */}
-          <div className="grimoire-card relative p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/50 hover:border-emerald-400/80 bg-stone-950/25 backdrop-blur-[2px] shadow-lg flex flex-col justify-between transition-all">
+          <div className="grimoire-card relative h-full p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/50 hover:border-emerald-400/80 bg-stone-950/25 backdrop-blur-[2px] shadow-lg flex flex-col justify-between transition-all">
             <GrimoireCornerClasp variant="green" />
 
-            {/* HEADER PANEL PANTAUAN */}
-            <div className="bg-stone-950/30 backdrop-blur-xs border border-emerald-500/30 rounded-xl p-3 mb-3.5 relative overflow-hidden">
-              <div className="h-0.5 bg-gradient-to-r from-emerald-400 via-amber-300 to-teal-400 absolute top-0 inset-x-0" />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base select-none">📊</span>
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-emerald-200">
-                      Pantauan Aktivitas Murid Kerajaan Clover
-                    </h3>
-                    <p className="text-[11px] text-stone-300">
-                      Total {studentsList.length} Murid Terdaftar • {activeRecords.length} Data Kuis Aktif
-                    </p>
+            <div>
+              {/* HEADER PANEL PANTAUAN */}
+              <div className="bg-stone-950/30 backdrop-blur-xs border border-emerald-500/30 rounded-xl p-3 sm:p-3.5 mb-3.5 relative overflow-hidden">
+                <div className="h-0.5 bg-gradient-to-r from-emerald-400 via-amber-300 to-teal-400 absolute top-0 inset-x-0" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base select-none">📊</span>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-emerald-200">
+                        Pantauan Aktivitas Murid Kerajaan Clover
+                      </h3>
+                      <p className="text-[11px] text-stone-300">
+                        Total {studentsList.length} Murid Terdaftar • {activeRecords.length} Data Kuis Aktif
+                      </p>
+                    </div>
                   </div>
+                </div>
+              </div>
+
+              {/* SELECTOR TAB NAVIGASI 4 TOMBOL (GRID 2x2 YANG RAMPING) */}
+              <div>
+                <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <span>🍀</span>
+                    <span>NAVIGASI PANTAUAN</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400/80">Pilih Tampilan:</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleMangaPageChange('all')}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                      subTab === 'all'
+                        ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                        : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                    }`}
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    <span>Semua Panel</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleMangaPageChange('student_list')}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                      subTab === 'student_list'
+                        ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                        : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Daftar Murid</span>
+                    <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded-full font-mono">
+                      {studentsList.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => handleMangaPageChange('live_scores')}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                      subTab === 'live_scores'
+                        ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                        : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                    }`}
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>Kuis Live</span>
+                    <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded-full font-mono">
+                      {activeRecords.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => handleMangaPageChange('meet_sync')}
+                    className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                      subTab === 'meet_sync'
+                        ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                        : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Ruang Meet</span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* SELECTOR TAB NAVIGASI 4 TOMBOL (GRID 2x2 YANG RAMPING) */}
-            <div>
-              <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <span>🍀</span>
-                  <span>NAVIGASI PANTAUAN</span>
-                </span>
-                <span className="text-[10px] font-mono text-emerald-400/80">Pilih Tampilan:</span>
+            {/* RINGKASAN RESONANSI SANCTUM (PENYEIMBANG PROPORSI TABLET LANDSCAPE & DESKTOP) */}
+            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-emerald-500/20">
+              <div className="p-2 sm:p-2.5 bg-stone-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-emerald-300">
+                  <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
+                  <span className="font-bold text-[11px]">Murid Online</span>
+                </div>
+                <span className="font-black text-emerald-200 font-mono text-xs">{onlineStudentsCount}</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleMangaPageChange('all')}
-                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
-                    subTab === 'all'
-                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
-                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
-                  }`}
-                >
-                  <Radio className="w-3.5 h-3.5" />
-                  <span>Semua Panel</span>
-                </button>
-
-                <button
-                  onClick={() => handleMangaPageChange('student_list')}
-                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
-                    subTab === 'student_list'
-                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
-                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Daftar Murid</span>
-                  <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded-full font-mono">
-                    {studentsList.length}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleMangaPageChange('live_scores')}
-                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
-                    subTab === 'live_scores'
-                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
-                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
-                  }`}
-                >
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>Kuis Live</span>
-                  <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded-full font-mono">
-                    {activeRecords.length}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleMangaPageChange('meet_sync')}
-                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
-                    subTab === 'meet_sync'
-                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
-                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Ruang Meet</span>
-                </button>
+              <div className="p-2 sm:p-2.5 bg-stone-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-amber-300">
+                  <Flame className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="font-bold text-[11px]">Kuis Aktif</span>
+                </div>
+                <span className="font-black text-amber-200 font-mono text-xs">{activeRecords.length}</span>
               </div>
             </div>
           </div>
@@ -782,38 +804,39 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
         {/* =========================================================================
             KARTU STATISTIK 3 KOLOM INTERAKTIF (TRANSPARAN DENGAN WARNA PEMBEDA)
-            - Kolom 1 (Total Murid): Amber / Gold (Kerajaan Clover)
-            - Kolom 2 (Sedang Online): Emerald / Green (Sihir Angin Roh Sylph)
-            - Kolom 3 (Sedang Offline): Slate / Charcoal (Obsidian Anti-Sihir)
+            - Dioptimalkan proporsional untuk Tablet Landscape (sm:grid-cols-3):
+              * Kolom 1 (Total Murid): Amber / Gold (Kerajaan Clover)
+              * Kolom 2 (Sedang Online): Emerald / Green (Sihir Angin Roh Sylph)
+              * Kolom 3 (Sedang Offline): Slate / Charcoal (Obsidian Anti-Sihir)
             ========================================================================= */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mb-6 items-stretch">
           {/* KARTU KOLOM 01: TOTAL MURID TERDAFTAR (WARNA AMBER / GOLD) */}
           <div 
             onClick={() => {
               setFilterPresence('all');
               setKomaFlipKey((prev) => prev + 1);
             }}
-            className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 backdrop-blur-[2px] ${
+            className={`h-full min-w-0 p-3.5 sm:p-4 lg:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between gap-3 border-2 backdrop-blur-[2px] ${
               filterPresence === 'all'
                 ? 'border-amber-400 bg-amber-950/40 shadow-[0_0_25px_rgba(245,158,11,0.3)] ring-2 ring-amber-500/50'
                 : 'border-amber-500/40 bg-amber-950/20 hover:border-amber-400 hover:bg-amber-950/35 shadow-sm'
             }`}
           >
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-500/50 backdrop-blur-xs">
                   Total Murid
                 </span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-amber-100 font-japanese">
-                {studentsList.length} <span className="text-sm font-normal text-amber-300/80">Murid</span>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black text-amber-100 font-japanese truncate">
+                {studentsList.length} <span className="text-xs sm:text-sm font-normal text-amber-300/80">Murid</span>
               </div>
-              <p className="text-[11px] text-amber-300/70 mt-1">
-                Seluruh akun murid yang terdaftar
+              <p className="text-[11px] text-amber-300/70 mt-1 truncate">
+                Seluruh akun murid terdaftar
               </p>
             </div>
-            <div className="w-12 h-12 bg-amber-950/50 border-2 border-amber-500/70 rounded-xl flex items-center justify-center text-amber-400 overflow-hidden shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.25)] backdrop-blur-xs">
-              <BlackBullsLogo className="w-8 h-8 object-contain" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-amber-950/50 border-2 border-amber-500/70 rounded-xl flex items-center justify-center text-amber-400 overflow-hidden shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.25)] backdrop-blur-xs">
+              <BlackBullsLogo className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
             </div>
           </div>
 
@@ -823,32 +846,32 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               setFilterPresence(filterPresence === 'online' ? 'all' : 'online');
               setKomaFlipKey((prev) => prev + 1);
             }}
-            className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 backdrop-blur-[2px] ${
+            className={`h-full min-w-0 p-3.5 sm:p-4 lg:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between gap-3 border-2 backdrop-blur-[2px] ${
               filterPresence === 'online'
                 ? 'border-emerald-400 bg-emerald-950/40 shadow-[0_0_25px_rgba(16,185,129,0.3)] ring-2 ring-emerald-500/50'
                 : 'border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400 hover:bg-emerald-950/35 shadow-sm'
             }`}
             title="Klik untuk memfilter murid yang sedang online"
           >
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="relative flex h-2 w-2">
+                <span className="relative flex h-2 w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/50 backdrop-blur-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/50 backdrop-blur-xs truncate">
                   Sedang Online
                 </span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-100 font-japanese">
-                {onlineStudentsCount} <span className="text-sm font-normal text-emerald-300/80">Murid</span>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-100 font-japanese truncate">
+                {onlineStudentsCount} <span className="text-xs sm:text-sm font-normal text-emerald-300/80">Murid</span>
               </div>
-              <p className="text-[11px] text-emerald-400/80 mt-1">
+              <p className="text-[11px] text-emerald-400/80 mt-1 truncate">
                 Aktif membuka aplikasi saat ini
               </p>
             </div>
-            <div className="w-12 h-12 bg-emerald-950/50 border-2 border-emerald-500/70 rounded-xl flex items-center justify-center text-emerald-300 shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.25)] backdrop-blur-xs">
-              <Radio className="w-6 h-6 animate-pulse text-emerald-400" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-emerald-950/50 border-2 border-emerald-500/70 rounded-xl flex items-center justify-center text-emerald-300 shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.25)] backdrop-blur-xs">
+              <Radio className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse text-emerald-400" />
             </div>
           </div>
 
@@ -858,29 +881,29 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               setFilterPresence(filterPresence === 'offline' ? 'all' : 'offline');
               setKomaFlipKey((prev) => prev + 1);
             }}
-            className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 backdrop-blur-[2px] ${
+            className={`h-full min-w-0 p-3.5 sm:p-4 lg:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between gap-3 border-2 backdrop-blur-[2px] ${
               filterPresence === 'offline'
                 ? 'border-slate-400 bg-slate-900/45 shadow-[0_0_25px_rgba(148,163,184,0.25)] ring-2 ring-slate-400/50'
                 : 'border-slate-600/40 bg-slate-900/20 hover:border-slate-400 hover:bg-slate-900/35 shadow-sm'
             }`}
             title="Klik untuk memfilter murid yang sedang offline"
           >
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-600">
+                <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-600 truncate">
                   Sedang Offline
                 </span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-100 font-japanese">
-                {offlineStudentsCount} <span className="text-sm font-normal text-slate-400">Murid</span>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-100 font-japanese truncate">
+                {offlineStudentsCount} <span className="text-xs sm:text-sm font-normal text-slate-400">Murid</span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-slate-400 mt-1 truncate">
                 Tidak sedang membuka aplikasi
               </p>
             </div>
-            <div className="w-12 h-12 bg-slate-900/70 border-2 border-slate-600 rounded-xl flex items-center justify-center text-slate-300 shrink-0 shadow-sm">
-              <Clock className="w-5 h-5 text-slate-400" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 bg-slate-900/70 border-2 border-slate-600 rounded-xl flex items-center justify-center text-slate-300 shrink-0 shadow-sm">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             </div>
           </div>
         </div>
@@ -1030,18 +1053,18 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     </div>
                   ) : (
                     <>
-                      {/* TAMPILAN TABEL DESKTOP (md ke atas) — Gaya Arsip Grimoire Transparan Kaca */}
-                      <div className="hidden md:block overflow-x-auto bg-stone-950/15 backdrop-blur-[2px] p-3">
-                        <table className="w-full text-left text-xs sm:text-sm bg-stone-950/25 backdrop-blur-[2px] border border-stone-800/60 rounded-md overflow-hidden">
+                      {/* TAMPILAN TABEL DESKTOP & TABLET LANDSCAPE (md ke atas) — Gaya Arsip Grimoire Transparan Kaca */}
+                      <div className="hidden md:block overflow-x-auto bg-stone-950/15 backdrop-blur-[2px] p-2.5 sm:p-3 lg:p-4">
+                        <table className="w-full text-left text-xs sm:text-sm bg-stone-950/25 backdrop-blur-[2px] border border-stone-800/60 rounded-md overflow-hidden table-auto">
                           <thead>
                             <tr className="bg-amber-950/40 backdrop-blur-xs text-amber-300 border-b border-amber-600/50 font-black text-xs uppercase tracking-wider">
-                              <th className="py-3 px-3 text-center w-12 border-r border-stone-800/60">No</th>
-                              <th className="py-3 px-4 border-r border-stone-800/60">Identitas Murid Terdaftar</th>
-                              <th className="py-3 px-3 border-r border-stone-800/60">Terakhir Online (Waktu Belajar)</th>
-                              <th className="py-3 px-3 text-center border-r border-stone-800/60">Status & Resonansi Live</th>
-                              <th className="py-3 px-4 border-r border-stone-800/60">Email & Kata Sandi Akun</th>
-                              <th className="py-3 px-4 text-center border-r border-stone-800/60">Riwayat & Skor Ujian</th>
-                              <th className="py-3 px-4 text-center">Aksi Master</th>
+                              <th className="py-3 px-2 sm:px-3 text-center w-10 sm:w-12 border-r border-stone-800/60 shrink-0">No</th>
+                              <th className="py-3 px-3 sm:px-4 border-r border-stone-800/60 min-w-[170px] lg:min-w-[190px]">Identitas Murid Terdaftar</th>
+                              <th className="py-3 px-2.5 sm:px-3 border-r border-stone-800/60 min-w-[150px] lg:min-w-[175px]">Terakhir Online (Waktu Belajar)</th>
+                              <th className="py-3 px-2.5 sm:px-3 text-center border-r border-stone-800/60 min-w-[150px] lg:min-w-[175px]">Status & Resonansi Live</th>
+                              <th className="py-3 px-3 sm:px-4 border-r border-stone-800/60 min-w-[150px] lg:min-w-[175px]">Email & Kata Sandi Akun</th>
+                              <th className="py-3 px-2.5 sm:px-4 text-center border-r border-stone-800/60 min-w-[110px] lg:min-w-[130px]">Riwayat & Skor Ujian</th>
+                              <th className="py-3 px-2.5 sm:px-4 text-center min-w-[125px] lg:min-w-[145px]">Aksi Master</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-stone-800/40">
@@ -1120,7 +1143,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                 {/* Kolom 3: Jam & Tanggal Terakhir Murid Online / Belajar */}
                                 <td className="py-4 px-3 border-r border-stone-800">
                                   <div
-                                    className={`p-2.5 border rounded-sm space-y-1 min-w-[210px] ${
+                                    className={`p-2.5 border rounded-sm space-y-1 min-w-[150px] lg:min-w-[170px] ${
                                       isOnline
                                         ? 'bg-emerald-950/40 border-emerald-600/70 text-emerald-200'
                                         : 'bg-stone-950 border-stone-800 text-stone-300'
@@ -1532,7 +1555,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   </div>
 
                   {/* 3 Panel Juara Grimoire (Transparan dengan Warna Emas, Perak, Perunggu) */}
-                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-3 bg-stone-950/25 backdrop-blur-xs border border-stone-800/60 rounded-md">
+                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3.5 p-3 bg-stone-950/25 backdrop-blur-xs border border-stone-800/60 rounded-md items-stretch">
                     {sortedCompletedRecords.slice(0, 3).map((rec, idx) => {
                       const medalIcon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
                       const medalTitle = idx === 0 ? '第1位 · JUARA 1 (EMAS)' : idx === 1 ? '第2位 · JUARA 2 (PERAK)' : '第3位 · JUARA 3 (PERUNGGU)';
@@ -1543,8 +1566,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                         : 'bg-orange-950/40 backdrop-blur-xs border-2 border-amber-700 shadow-[0_0_18px_rgba(180,83,9,0.2)]';
 
                       return (
-                        <div key={rec.id} className={`p-3.5 rounded-md ${cardBg} flex items-center gap-3 relative`}>
-                          <div className="text-3xl shrink-0">{medalIcon}</div>
+                        <div key={rec.id} className={`h-full min-w-0 p-3 sm:p-3.5 rounded-md ${cardBg} flex items-center gap-2.5 sm:gap-3 relative`}>
+                          <div className="text-2xl sm:text-3xl shrink-0">{medalIcon}</div>
                           <div className="flex-1 min-w-0">
                             <div className="text-[10px] font-black uppercase tracking-wider text-amber-300 font-mono">
                               {medalTitle}
@@ -1620,18 +1643,18 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   </div>
                 </div>
 
-                <div className="overflow-x-auto bg-stone-950/35 backdrop-blur-sm p-3.5">
-                  <table className="w-full text-left text-xs sm:text-sm bg-stone-950/40 backdrop-blur-sm border border-stone-800/80 rounded-md overflow-hidden">
+                <div className="overflow-x-auto bg-stone-950/35 backdrop-blur-sm p-2.5 sm:p-3.5">
+                  <table className="w-full text-left text-xs sm:text-sm bg-stone-950/40 backdrop-blur-sm border border-stone-800/80 rounded-md overflow-hidden table-auto">
                     <thead>
                       <tr className="bg-red-950/60 backdrop-blur-sm text-red-200 border-b-2 border-red-600/70 font-black">
-                        <th className="py-3 px-3 text-center border-r border-stone-800">Peringkat</th>
-                        <th className="py-3 px-4 border-r border-stone-800">Nama Murid</th>
-                        <th className="py-3 px-3 border-r border-stone-800">Level Kuis</th>
-                        <th className="py-3 px-3 border-r border-stone-800">Tanggal</th>
-                        <th className="py-3 px-3 border-r border-stone-800">Jam Mulai</th>
-                        <th className="py-3 px-3 border-r border-stone-800">Jam Selesai</th>
-                        <th className="py-3 px-4 text-center border-r border-stone-800">Progres / Skor Murid</th>
-                        <th className="py-3 px-3 text-center">Aksi</th>
+                        <th className="py-3 px-2 sm:px-3 text-center border-r border-stone-800 w-16 sm:w-20">Peringkat</th>
+                        <th className="py-3 px-3 sm:px-4 border-r border-stone-800 min-w-[140px] sm:min-w-[160px]">Nama Murid</th>
+                        <th className="py-3 px-2 sm:px-3 text-center border-r border-stone-800 w-20 sm:w-24">Level Kuis</th>
+                        <th className="py-3 px-2 sm:px-3 border-r border-stone-800 min-w-[90px] sm:min-w-[100px]">Tanggal</th>
+                        <th className="py-3 px-2 sm:px-3 border-r border-stone-800 min-w-[80px] sm:min-w-[90px]">Jam Mulai</th>
+                        <th className="py-3 px-2 sm:px-3 border-r border-stone-800 min-w-[80px] sm:min-w-[90px]">Jam Selesai</th>
+                        <th className="py-3 px-3 sm:px-4 text-center border-r border-stone-800 min-w-[120px] sm:min-w-[140px]">Progres / Skor Murid</th>
+                        <th className="py-3 px-2 sm:px-3 text-center min-w-[80px] sm:min-w-[90px]">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-800/60">
@@ -1792,16 +1815,16 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="p-4 bg-amber-950/30 backdrop-blur-xs border border-amber-500/40 rounded-md">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mb-6 items-stretch">
+                  <div className="h-full p-3.5 sm:p-4 bg-amber-950/30 backdrop-blur-xs border border-amber-500/40 rounded-md flex flex-col justify-between">
                     <div className="text-xs font-black text-amber-300 uppercase tracking-wider mb-1">Total Sesi Meet Berlangsung</div>
-                    <div className="text-2xl font-black text-amber-100 font-mono">{storageService.getVirtualSessions().length} Sesi</div>
+                    <div className="text-xl sm:text-2xl font-black text-amber-100 font-mono">{storageService.getVirtualSessions().length} Sesi</div>
                   </div>
-                  <div className="p-4 bg-emerald-950/30 backdrop-blur-xs border border-emerald-500/40 rounded-md">
+                  <div className="h-full p-3.5 sm:p-4 bg-emerald-950/30 backdrop-blur-xs border border-emerald-500/40 rounded-md flex flex-col justify-between">
                     <div className="text-xs font-black text-emerald-300 uppercase tracking-wider mb-1">Murid Tersinkronisasi</div>
-                    <div className="text-2xl font-black text-emerald-200 font-mono">{Object.keys(meetSyncData.students || {}).length} Murid</div>
+                    <div className="text-xl sm:text-2xl font-black text-emerald-200 font-mono">{Object.keys(meetSyncData.students || {}).length} Murid</div>
                   </div>
-                  <div className="p-4 bg-teal-950/30 backdrop-blur-xs border border-teal-500/40 rounded-md">
+                  <div className="h-full p-3.5 sm:p-4 bg-teal-950/30 backdrop-blur-xs border border-teal-500/40 rounded-md flex flex-col justify-between">
                     <div className="text-xs font-black text-teal-300 uppercase tracking-wider mb-1">Terakhir Disinkronkan</div>
                     <div className="text-xs font-mono font-bold text-teal-200 mt-1">{meetSyncData.updatedAt || 'Belum pernah'}</div>
                   </div>
@@ -1816,14 +1839,14 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     <p className="text-xs text-stone-500 italic">Belum ada murid terdaftar.</p>
                   ) : (
                     <div className="overflow-x-auto border border-emerald-800/60 rounded-md bg-stone-950/30 backdrop-blur-sm">
-                      <table className="w-full text-left text-xs bg-emerald-950/15 backdrop-blur-sm">
+                      <table className="w-full text-left text-xs bg-emerald-950/15 backdrop-blur-sm table-auto">
                         <thead className="bg-emerald-950/70 backdrop-blur-sm font-black uppercase text-[11px] text-emerald-300 border-b border-emerald-800/80">
                           <tr>
-                            <th className="py-3 px-4 border-r border-emerald-800/50">Nama Murid</th>
-                            <th className="py-3 px-4 border-r border-emerald-800/50">Email</th>
-                            <th className="py-3 px-4 border-r border-emerald-800/50">Sesi Diikuti</th>
-                            <th className="py-3 px-4 border-r border-emerald-800/50">Total Durasi Partisipasi</th>
-                            <th className="py-3 px-4">Status Sinkronisasi</th>
+                            <th className="py-3 px-3 sm:px-4 border-r border-emerald-800/50 min-w-[150px]">Nama Murid</th>
+                            <th className="py-3 px-3 sm:px-4 border-r border-emerald-800/50 min-w-[150px]">Email</th>
+                            <th className="py-3 px-3 sm:px-4 border-r border-emerald-800/50 text-center min-w-[100px]">Sesi Diikuti</th>
+                            <th className="py-3 px-3 sm:px-4 border-r border-emerald-800/50 text-center min-w-[130px]">Total Durasi Partisipasi</th>
+                            <th className="py-3 px-3 sm:px-4 text-center min-w-[120px]">Status Sinkronisasi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-emerald-900/40">

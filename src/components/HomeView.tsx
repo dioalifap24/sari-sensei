@@ -129,6 +129,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
     }
   }, [nowMs, currentUser, isMasterUser]);
 
+  const safeOpenMeetingUrl = (url: string) => {
+    if (!url) return;
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      window.location.href = url;
+    }
+  };
+
   const levels: { id: JLPTLevel; label: string; desc: string }[] = [
     { id: 'N5', label: 'N5', desc: 'Pemula Dasar (Hiragana, Katakana & 100 Kanji)' },
     { id: 'N4', label: 'N4', desc: 'Tingkat Dasar Lanjutan (Percakapan & 150 Kanji Tambahan)' },
@@ -184,7 +199,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       if (currentUser) {
                         storageService.recordMeetAttendance(latestMeet.id, currentUser);
                       }
-                      window.open(latestMeet.meetingUri, '_blank');
+                      safeOpenMeetingUrl(latestMeet.meetingUri);
                     }}
                     className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-white font-black text-sm shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 border ${
                       isZoom
@@ -665,7 +680,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     if (currentUser) {
                       storageService.recordMeetAttendance(modalMeet.id, currentUser);
                     }
-                    window.open(modalMeet.meetingUri, '_blank');
+                    safeOpenMeetingUrl(modalMeet.meetingUri);
                     setModalMeet(null);
                   }}
                   className={`flex-1 py-3.5 px-6 rounded-xl text-white font-black text-sm shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2 ${
