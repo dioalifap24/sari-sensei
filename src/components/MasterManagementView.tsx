@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { User, ActiveQuizRecord, QuizControlState, QuizResult, StudentPresenceInfo } from '../types';
 import { storageService } from '../services/storageService';
-import { Users, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Shield, ShieldAlert, UserX, Clock, Calendar, Activity, RotateCcw, Trophy, KeyRound, Eye, EyeOff, Mail, UserPlus, Radio, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
-import { UchihaClanLogo } from './UchihaClanLogo';
+import { Users, Trash2, RefreshCw, Play, Square, AlertTriangle, CheckCircle, Search, Shield, ShieldAlert, UserX, Clock, Calendar, Activity, RotateCcw, Trophy, KeyRound, Eye, EyeOff, Mail, UserPlus, Radio, BookOpen, ChevronLeft, ChevronRight, Sparkles, Flame, Wind } from 'lucide-react';
+import { BlackBullsLogo } from './BlackBullsLogo';
+import { BlackCloverLogoBanner } from './BlackCloverAssets';
+import { BlackCloverBackgroundScene } from './BlackCloverBackgroundScene';
+import { MasterBlackCloverHeader } from './MasterBlackCloverHeader';
 import { GoogleMeetRoom } from './GoogleMeetRoom';
 
 interface MasterManagementViewProps {
@@ -11,72 +14,60 @@ interface MasterManagementViewProps {
 }
 
 /**
- * Ornamen Latar Garis Kecepatan Manga (Shūchūsen / Speed Lines)
- * Murni garis tinta manga Jepang tanpa karakter apapun.
+ * Ornamen Sudut Grimoire Kuno Kerajaan Clover
+ * Logam tembaga-emas dengan aksen magis.
  */
-const MangaSpeedLinesBg: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <svg
-    viewBox="0 0 800 220"
-    preserveAspectRatio="none"
-    className={`pointer-events-none select-none absolute inset-0 w-full h-full opacity-[0.07] ${className}`}
-    aria-hidden="true"
-  >
-    <g stroke="#111827" strokeWidth="1.5">
-      <line x1="0" y1="0" x2="360" y2="110" />
-      <line x1="0" y1="35" x2="340" y2="110" />
-      <line x1="0" y1="75" x2="320" y2="110" />
-      <line x1="0" y1="110" x2="310" y2="110" />
-      <line x1="0" y1="145" x2="320" y2="110" />
-      <line x1="0" y1="185" x2="340" y2="110" />
-      <line x1="0" y1="220" x2="360" y2="110" />
-      <line x1="800" y1="0" x2="440" y2="110" />
-      <line x1="800" y1="35" x2="460" y2="110" />
-      <line x1="800" y1="75" x2="480" y2="110" />
-      <line x1="800" y1="110" x2="490" y2="110" />
-      <line x1="800" y1="145" x2="480" y2="110" />
-      <line x1="800" y1="185" x2="460" y2="110" />
-      <line x1="800" y1="220" x2="440" y2="110" />
-      <line x1="180" y1="0" x2="380" y2="95" />
-      <line x1="620" y1="0" x2="420" y2="95" />
-      <line x1="180" y1="220" x2="380" y2="125" />
-      <line x1="620" y1="220" x2="420" y2="125" />
-    </g>
-  </svg>
-);
+const GrimoireCornerClasp: React.FC<{ variant?: 'gold' | 'red' | 'green' }> = ({ variant = 'gold' }) => {
+  const borderColor = variant === 'red' ? 'border-red-500/80' : variant === 'green' ? 'border-emerald-400/80' : 'border-amber-500/80';
+  const dotColor = variant === 'red' ? 'bg-red-400' : variant === 'green' ? 'bg-emerald-300' : 'bg-amber-300';
+
+  return (
+    <>
+      <span className={`pointer-events-none select-none absolute top-1.5 left-1.5 w-3.5 h-3.5 border-t-2 border-l-2 ${borderColor} z-20`} aria-hidden="true">
+        <span className={`block w-1 h-1 ${dotColor} absolute -top-0.5 -left-0.5`} />
+      </span>
+      <span className={`pointer-events-none select-none absolute top-1.5 right-1.5 w-3.5 h-3.5 border-t-2 border-r-2 ${borderColor} z-20`} aria-hidden="true">
+        <span className={`block w-1 h-1 ${dotColor} absolute -top-0.5 -right-0.5`} />
+      </span>
+      <span className={`pointer-events-none select-none absolute bottom-1.5 left-1.5 w-3.5 h-3.5 border-b-2 border-l-2 ${borderColor} z-20`} aria-hidden="true">
+        <span className={`block w-1 h-1 ${dotColor} absolute -bottom-0.5 -left-0.5`} />
+      </span>
+      <span className={`pointer-events-none select-none absolute bottom-1.5 right-1.5 w-3.5 h-3.5 border-b-2 border-r-2 ${borderColor} z-20`} aria-hidden="true">
+        <span className={`block w-1 h-1 ${dotColor} absolute -bottom-0.5 -right-0.5`} />
+      </span>
+    </>
+  );
+};
 
 /**
- * Tanda Sudut Tinta Panel Komik (Manga Koma Ink Corner Ticks)
+ * Garis Pemisah Mantra Grimoire Berkilau (Grimoire Arcane Divider)
  */
-const MangaCornerTicks: React.FC = () => (
-  <>
-    <span className="pointer-events-none select-none absolute top-1 left-1 w-2.5 h-2.5 border-t-2 border-l-2 border-black z-20" aria-hidden="true" />
-    <span className="pointer-events-none select-none absolute top-1 right-1 w-2.5 h-2.5 border-t-2 border-r-2 border-black z-20" aria-hidden="true" />
-    <span className="pointer-events-none select-none absolute bottom-1 left-1 w-2.5 h-2.5 border-b-2 border-l-2 border-black z-20" aria-hidden="true" />
-    <span className="pointer-events-none select-none absolute bottom-1 right-1 w-2.5 h-2.5 border-b-2 border-r-2 border-black z-20" aria-hidden="true" />
-  </>
-);
+const GrimoireRunicDivider: React.FC<{ label: string; jpLabel: string; variant?: 'gold' | 'red' | 'green' }> = ({ label, jpLabel, variant = 'gold' }) => {
+  const lineGlow = variant === 'red' 
+    ? 'via-red-500/60 to-red-600/90' 
+    : variant === 'green' 
+    ? 'via-emerald-400/60 to-emerald-500/90' 
+    : 'via-amber-400/60 to-amber-500/90';
+  const badgeBorder = variant === 'red'
+    ? 'border-red-600 bg-stone-950 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+    : variant === 'green'
+    ? 'border-emerald-600 bg-stone-950 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+    : 'border-amber-600 bg-stone-950 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
 
-/**
- * Jalur Pemisah Antar Panel Komik ("Gutter" / コマ間ガター)
- * Memisahkan setiap bagian data agar terstruktur seperti panel komik terpisah.
- */
-const MangaGutterSeparator: React.FC<{ label: string; jpLabel: string }> = ({ label, jpLabel }) => (
-  <div className="manga-gutter-channel my-6 py-1.5 px-3 flex items-center justify-between gap-2 select-none" aria-hidden="true">
-    <div className="flex items-center gap-2">
-      <span className="inline-block w-3 h-1.5 bg-black" />
-      <span className="font-mono font-black text-[10px] tracking-widest uppercase text-black bg-[#f1ebe0] px-2 py-0.5 border-2 border-black">
-        {label}
-      </span>
+  return (
+    <div className="my-6 py-2 flex items-center justify-between gap-3 select-none" aria-hidden="true">
+      <div className={`flex-1 h-[2px] bg-gradient-to-r from-transparent ${lineGlow}`} />
+      <div className={`flex items-center gap-2 px-3.5 py-1 border-2 font-mono text-[10px] uppercase tracking-widest ${badgeBorder}`}>
+        <span className="text-amber-400 text-xs">☘️</span>
+        <span className="font-black">{label}</span>
+        <span className="text-stone-500 font-bold">·</span>
+        <span className="font-japanese font-black text-[11px] text-amber-300">{jpLabel}</span>
+        <span className="text-amber-400 text-xs">☘️</span>
+      </div>
+      <div className={`flex-1 h-[2px] bg-gradient-to-l from-transparent ${lineGlow}`} />
     </div>
-    <div className="flex-1 border-t-2 border-dashed border-black/40 mx-2" />
-    <div className="flex items-center gap-2">
-      <span className="font-japanese font-black text-[10px] tracking-widest text-[#881337] bg-white px-2 py-0.5 border-2 border-black">
-        {jpLabel}
-      </span>
-      <span className="inline-block w-3 h-1.5 bg-black" />
-    </div>
-  </div>
-);
+  );
+};
 
 export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ currentUser }) => {
   const [subTab, setSubTab] = useState<'all' | 'student_list' | 'live_scores' | 'meet_sync'>('all');
@@ -119,30 +110,36 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
     handleMangaPageChange(MANGA_TAB_ORDER[nextIdx], step > 0 ? 'next' : 'prev');
   };
 
-  const currentMangaPageMeta =
+  const currentGrimoireMeta =
     subTab === 'all'
       ? {
-          folio: '頁 01 — 02 (FULL MANGA SPREAD)',
-          jpChapter: '【第壱話】師範の管理室・全体監視',
-          sfx: 'ペラッ!! (Hal. 01-02)',
+          folio: 'GRIMOIRE TOME · ALL REALMS OVERVIEW',
+          jpChapter: '【魔導書総覧】師範統括・全域監視',
+          affinity: 'ANTI-MAGIC & SPIRIT WIND',
+          sfx: '✨ MANA SYNC',
         }
       : subTab === 'student_list'
       ? {
-          folio: '頁 03 — 04 (CHAPTER: DAFTAR MURID)',
-          jpChapter: '【第弐話】生徒名簿・最終学習時刻録',
-          sfx: 'バサッ!! (Hal. 03-04)',
+          folio: 'GRIMOIRE TOME · SQUAD ROSTER',
+          jpChapter: '【生徒魔導名簿】最終学習時刻録',
+          affinity: 'BLACK BULLS ARCHIVES',
+          sfx: '📖 ROSTER OPEN',
         }
       : subTab === 'live_scores'
       ? {
-          folio: '頁 05 — 06 (CHAPTER: KUIS & RANKING LIVE)',
-          jpChapter: '【第参話】試験実況・順位決定戦',
-          sfx: 'シュッ!! (Hal. 05-06)',
+          folio: 'GRIMOIRE TOME · TRIAL ARENA',
+          jpChapter: '【昇格魔導試験】順位決定戦・即時記録',
+          affinity: 'GOLDEN DAWN TRIALS',
+          sfx: '⚔️ ARENA ENGAGED',
         }
       : {
-          folio: '頁 07 — 08 (CHAPTER: GOOGLE MEET & DURASI)',
-          jpChapter: '【第四話】ビデオ会議出席・時間同期',
-          sfx: 'ドンドン!! (Hal. 07-08)',
+          folio: 'GRIMOIRE TOME · SPATIAL MEET SANCTUM',
+          jpChapter: '【空間通信の陣】リアルタイム会議',
+          affinity: 'SPATIAL TELEPATHY',
+          sfx: '🔮 REALM CONNECTED',
         };
+
+  const currentMangaPageMeta = currentGrimoireMeta;
   
   // Live records, presence map, and students data
   const [activeRecords, setActiveRecords] = useState<ActiveQuizRecord[]>([]);
@@ -567,482 +564,358 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-5 py-6 sm:py-8">
-      {/* Toast Notification Gaya Balon Dialog Manga */}
-      {notificationMsg && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-stone-950 text-white font-black text-xs sm:text-sm rounded-none border-[3px] border-[#881337] shadow-[6px_6px_0px_#881337] animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-2.5">
-          <span className="px-2 py-0.5 bg-[#881337] text-amber-300 font-japanese text-xs">報せ!</span>
-          <span>{notificationMsg}</span>
-        </div>
-      )}
+    <div className="relative overflow-hidden py-4 sm:py-8 min-h-screen text-stone-100">
+      {/* Ornamen Latar Black Clover (Asta, Yuno, Lambang Squad, Grimoire, Mahojin & Hujan Mana) Seperti di Beranda */}
+      <BlackCloverBackgroundScene />
 
-      {/* =========================================================================
-          BINGKAI LEMBARAN BUKU MANGA JEPANG (TANKŌBON / MANGA PAGE SPREAD + GUTTER)
-          ========================================================================= */}
-      <div className="manga-page-gutter-canvas relative p-4 sm:p-8 overflow-hidden">
-        {/* Tanda Potong Sudut Kertas Cetak Manga (Tombo / Crop Marks) */}
-        <div className="pointer-events-none select-none absolute top-2.5 left-2.5 w-4 h-4 border-t-[3px] border-l-[3px] border-black" aria-hidden="true" />
-        <div className="pointer-events-none select-none absolute top-2.5 right-2.5 w-4 h-4 border-t-[3px] border-r-[3px] border-black" aria-hidden="true" />
-        <div className="pointer-events-none select-none absolute bottom-2.5 left-2.5 w-4 h-4 border-b-[3px] border-l-[3px] border-black" aria-hidden="true" />
-        <div className="pointer-events-none select-none absolute bottom-2.5 right-2.5 w-4 h-4 border-b-[3px] border-r-[3px] border-black" aria-hidden="true" />
-
-        {/* HEADER ATAS LEMBARAN MANGA (PANEL MASTHEAD TERPISAH DENGAN BORDER HITAM TEBAL) */}
-        <div className="manga-koma-panel relative bg-white px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <MangaCornerTicks />
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="px-3 py-1 bg-black text-white font-japanese font-black text-xs tracking-widest uppercase border-2 border-black">
-              漫画・第一巻 (VOL. 01)
-            </span>
-            <span className="px-2.5 py-1 bg-[#881337] text-white font-japanese font-black text-xs tracking-wider border-2 border-black">
-              {currentMangaPageMeta.jpChapter}
-            </span>
-            <span className="text-xs font-black text-black uppercase tracking-wider flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-[#881337]" />
-              <span>EDISI KHUSUS HALAMAN MASTER SENSEI SARI</span>
-            </span>
+      <div className="relative z-10 max-w-5xl mx-auto px-3 sm:px-6">
+        {/* Toast Notification Gaya Balon Dialog Manga */}
+        {notificationMsg && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-stone-950 text-white font-black text-xs sm:text-sm rounded-none border-[3px] border-[#881337] shadow-[6px_6px_0px_#881337] animate-in fade-in slide-in-from-top-4 duration-300 flex items-center gap-2.5">
+            <span className="px-2 py-0.5 bg-[#881337] text-amber-300 font-japanese text-xs">報せ!</span>
+            <span>{notificationMsg}</span>
           </div>
-
-          <div className="flex items-center gap-2 text-xs font-mono font-black text-black">
-            <button
-              type="button"
-              onClick={() => handleStepMangaPage(-1)}
-              className="px-2.5 py-1 bg-white hover:bg-amber-100 text-black border-[2.5px] border-black shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] inline-flex items-center gap-1 transition-colors cursor-pointer"
-              title="Balik ke lembaran manga sebelumnya"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>前の頁</span>
-            </button>
-            <span className="px-2.5 py-1 bg-amber-200 border-[2.5px] border-black shadow-[2px_2px_0px_#000000]">
-              {currentMangaPageMeta.folio}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleStepMangaPage(1)}
-              className="px-2.5 py-1 bg-white hover:bg-amber-100 text-black border-[2.5px] border-black shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] inline-flex items-center gap-1 transition-colors cursor-pointer"
-              title="Balik ke lembaran manga berikutnya"
-            >
-              <span>次の頁</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* GUTTER MANGA 01: PEMISAH ANTARA MASTHEAD & PANEL UTAMA KOMA 01 */}
-        <MangaGutterSeparator label="MANGA GUTTER 01 · PEMISAH PANEL UTAMA" jpLabel="【コマ間・第壱区画】" />
+        )}
 
         {/* =========================================================================
-            KOMA 01 (PANEL PEMBUKA MANGA): TERBAGI MENJADI SUB-PANEL KOMIK DENGAN GUTTER
+            HEADER RESMI BLACK CLOVER SANCTUM (LOGO BESAR & MENYATU DENGAN HALAMAN)
             ========================================================================= */}
-        <div className="manga-koma-panel relative bg-white p-5 sm:p-7 overflow-hidden">
-          <MangaCornerTicks />
-          {/* Garis Kecepatan Manga (Speed Lines) di Latar Panel */}
-          <MangaSpeedLinesBg />
+        <MasterBlackCloverHeader
+          quizIsActive={quizControl.isActive}
+          masterName={currentUser?.nickname || 'skywalker'}
+        />
 
-          {/* Label Nomor Panel Manga & Onomatopoeia Jepang */}
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 mb-5 border-b-[3px] border-black pb-3.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 bg-black text-amber-300 font-mono font-black text-[11px] uppercase tracking-wider border-2 border-black">
-                コマ 01 · OPENING PANEL
-              </span>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#fae8eb] border-2 border-black text-xs font-black text-[#881337] tracking-wider uppercase shadow-[2px_2px_0px_#000000]">
-                <Shield className="w-3.5 h-3.5 text-[#881337]" />
-                <span>DASHBOARD MANAJEMEN SENSEI SARI</span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-200 border-2 border-black text-black font-black text-xs shadow-[2px_2px_0px_#000000]">
-                <UchihaClanLogo className="w-4 h-4" />
-                <span>Akun Master: <span className="font-extrabold text-[#881337]">{currentUser?.nickname || 'skywalker'}</span></span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 border-2 border-black text-emerald-950 font-black text-xs shadow-[2px_2px_0px_#000000]">
-                <Radio className="w-3.5 h-3.5 text-emerald-700 animate-pulse" />
-                <span>Sinkronisasi Cloud Real-Time Aktif</span>
-              </div>
-            </div>
+        {/* =========================================================================
+            TATA ULANG KOLOM PANEL UTAMA: GRID 2 KOLOM (KENDALI KUIS & NAVIGASI)
+            - Kolom 1 (Kiri): Kendali Sesi Kuis Master & Aksi Cepat (Tema Banteng Hitam / Amber-Crimson)
+            - Kolom 2 (Kanan): Navigasi Pantauan & Pesan Master (Tema Fajar Emas / Emerald-Gold)
+            Panel dibuat tembus pandang (glassmorphism) agar latar belakang terlihat jelas.
+            ========================================================================= */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mb-6">
+          {/* KOLOM KIRI: PUSAT KENDALI KUIS MASTER (AKSEN AMBER / CRIMSON BANTENG HITAM) */}
+          <div className="grimoire-card relative p-4 sm:p-5 rounded-2xl border-2 border-amber-500/50 hover:border-amber-400/80 bg-stone-950/25 backdrop-blur-[2px] shadow-lg flex flex-col justify-between transition-all">
+            <GrimoireCornerClasp variant="gold" />
 
-            <span className="font-japanese font-black text-sm sm:text-base text-[#881337] tracking-widest select-none px-2 py-0.5 bg-[#fbf9f3] border-2 border-black shadow-[2px_2px_0px_#000000]">
-              ドドドド!!
-            </span>
-          </div>
-
-          {/* Kisi 2 Panel Terpisah oleh Gutter Vertikal (Panel Narasi Kiri + Panel Kendali Kuis Kanan) */}
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch bg-[#f1ebe0] p-3.5 border-[3px] border-black">
-            {/* Sub-Panel Koma 01-A: Judul & Balon Dialog Sensei */}
-            <div className="lg:col-span-7 manga-subkoma-panel bg-white p-4 sm:p-5 flex items-start gap-3.5">
-              {/* Strip Vertikal Khas Judul Manga Jepang (Tategaki) */}
-              <div className="hidden sm:flex flex-col items-center justify-center px-2.5 py-2.5 bg-black text-white border-2 border-black font-japanese font-black text-xs leading-tight tracking-widest shrink-0 shadow-[3px_3px_0px_#881337]">
-                <span>師</span>
-                <span>範</span>
-                <span>統</span>
-                <span>括</span>
-              </div>
-
-              <div className="flex-1">
-                <div className="inline-block px-2 py-0.5 bg-black text-white font-mono text-[10px] font-black uppercase mb-1.5">
-                  SUB-PANEL 01A · NARRATION
-                </div>
-                <h1 className="text-xl sm:text-2xl font-black text-black font-japanese tracking-tight leading-tight">
-                  Daftar Murid, Pantauan Aktivitas & Nilai Kuis Live
-                </h1>
-                {/* Balon Ucapan Manga (Fukidashi Speech Bubble) */}
-                <div className="mt-3 relative bg-[#fbf9f3] border-[2.5px] border-black px-4 py-2.5 shadow-[4px_4px_0px_#000000]">
-                  <p className="text-xs sm:text-sm text-stone-900 font-medium leading-relaxed">
-                    <span className="font-black text-[#881337] font-japanese mr-1.5">「先生より」</span>
-                    Pantau seluruh murid yang berhasil mendaftar, jam & tanggal terakhir murid belajar, aktivitas halaman yang sedang dibuka secara <strong className="text-[#881337] underline decoration-2">live & otomatis</strong>, serta kendalikan sesi kuis!
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Sub-Panel Koma 01-B: Kendali Sesi Kuis (Dipisahkan oleh Gutter dari Sub-Panel 01A) */}
-            <div
-              className="lg:col-span-5 manga-subkoma-panel bg-[#fbf9f3] p-4 sm:p-5 flex flex-col justify-between gap-4"
-              style={{
-                backgroundImage:
-                  'radial-gradient(rgba(136, 19, 55, 0.09) 1px, transparent 1px)',
-                backgroundSize: '8px 8px',
-              }}
-            >
-              <div className="flex items-center justify-between gap-2 border-b-2 border-black pb-2">
-                <span className="px-2 py-0.5 bg-black text-amber-300 font-mono text-[10px] font-black uppercase">
-                  SUB-PANEL 01B · QUIZ SWITCH
-                </span>
-                <span className="font-japanese font-black text-xs text-[#881337]">
-                  ガチャン!!
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3 bg-white p-3 border-2 border-black shadow-[3px_3px_0px_#000000]">
-                <span 
-                  className={`w-4 h-4 rounded-full border-2 border-black ring-4 transition-all shrink-0 ${
-                    quizControl.isActive 
-                      ? 'bg-emerald-500 ring-emerald-200 animate-pulse' 
-                      : 'bg-rose-500 ring-rose-200'
-                  }`} 
-                  aria-hidden="true"
-                />
-                <div className="text-left">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-stone-800 font-mono">
-                    [STATUS SESI KUIS MURID]
-                  </div>
-                  <div className={`text-xs font-black ${quizControl.isActive ? 'text-emerald-800' : 'text-rose-700'}`}>
-                    {quizControl.isActive ? '🟢 SESI DIMULAI (Murid Bisa Kuis)' : '🔴 DITUTUP (Terkunci)'}
+            <div>
+              {/* UCAPAN SELAMAT DATANG (DITARUH DI BAGIAN ATAS PANEL STATUS SESI KUIS) */}
+              <div className="bg-stone-950/40 backdrop-blur-xs border border-amber-500/40 rounded-xl p-3 mb-3.5 relative overflow-hidden shadow-sm">
+                <div className="h-0.5 bg-gradient-to-r from-amber-400 via-rose-400 to-amber-300 absolute top-0 inset-x-0" />
+                <div className="flex items-start gap-2.5">
+                  <span className="text-base sm:text-lg select-none">🧙‍♀️</span>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold text-amber-200">
+                      Selamat Datang di Ruang Kendali Sensei Sari
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-stone-200 leading-relaxed font-medium mt-0.5">
+                      Pantau kehadiran, kendalikan sesi ujian kuis secara live, dan kelola sinkronisasi kelas Kerajaan Clover secara real-time! ✨🍀
+                    </p>
                   </div>
                 </div>
               </div>
 
+              {/* BARIS STATUS SESI KUIS */}
+              <div className="flex items-center justify-between gap-2 border-b border-amber-500/30 pb-3 mb-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    {quizControl.isActive ? (
+                      <>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
+                      </>
+                    ) : (
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    )}
+                  </span>
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-200 font-mono">
+                    STATUS SESI KUIS:
+                  </span>
+                  <span className={`text-xs font-black ${quizControl.isActive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {quizControl.isActive ? '🟢 DIBUKA (Aktif)' : '🔴 DIKUNCI (Tutup)'}
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-amber-300/80 hidden sm:inline-block">
+                  Master: {currentUser?.nickname || 'skywalker'}
+                </span>
+              </div>
+
+              {/* Tombol Utama Buka / Kunci Kuis */}
               <button
                 onClick={handleToggleQuizSession}
-                className={`w-full px-5 py-2.5 border-[3px] border-black font-black text-xs sm:text-sm transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_#000000] flex items-center justify-center gap-2 text-white cursor-pointer ${
+                className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 text-white cursor-pointer transform hover:scale-[1.01] active:scale-[0.99] border-2 shadow-md ${
                   quizControl.isActive
-                    ? 'bg-rose-600 hover:bg-rose-700'
-                    : 'bg-emerald-600 hover:bg-emerald-700'
+                    ? 'bg-red-900/75 hover:bg-red-800/85 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.35)]'
+                    : 'bg-emerald-900/75 hover:bg-emerald-800/85 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.35)]'
                 }`}
               >
                 {quizControl.isActive ? (
                   <>
-                    <Square className="w-4 h-4 fill-white" />
-                    <span>Akhiri / Kunci Sesi Kuis</span>
+                    <Square className="w-4 h-4 fill-white text-white" />
+                    <span>Kunci / Tutup Sesi Ujian Kuis Sekarang</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>Mulai / Buka Sesi Kuis</span>
+                    <Play className="w-4 h-4 fill-white text-white" />
+                    <span>Buka Sesi Ujian Kuis Sekarang (Murid Bisa Mengerjakan)</span>
                   </>
                 )}
               </button>
             </div>
-          </div>
 
-          {/* Sub-Panel Navigasi Bab / Sub-Tab Manga (Dipisahkan dengan Gutter dari Panel Atas) */}
-          <div className="relative z-10 mt-5 bg-[#f1ebe0] p-3.5 border-[3px] border-black flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => handleMangaPageChange('all')}
-                className={`flex items-center gap-2 px-4 py-2 border-[3px] border-black text-xs sm:text-sm font-black transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
-                  subTab === 'all'
-                    ? 'bg-[#881337] text-white'
-                    : 'bg-white text-black hover:bg-[#fae8eb]'
-                }`}
-              >
-                <Radio className="w-4 h-4" />
-                <span>頁 01: Semua Pantauan (Spread Lengkap)</span>
-              </button>
-
-              <button
-                onClick={() => handleMangaPageChange('student_list')}
-                className={`flex items-center gap-2 px-4 py-2 border-[3px] border-black text-xs sm:text-sm font-black transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
-                  subTab === 'student_list'
-                    ? 'bg-[#881337] text-white'
-                    : 'bg-white text-black hover:bg-[#fae8eb]'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                <span>頁 03: Daftar Murid Terdaftar</span>
-                <span className={`px-2 py-0.5 border-2 border-black text-[11px] font-black ${
-                  subTab === 'student_list' ? 'bg-amber-300 text-black' : 'bg-[#fae8eb] text-[#881337]'
-                }`}>
-                  {studentsList.length} Murid
-                </span>
-              </button>
-
-              <button
-                onClick={() => handleMangaPageChange('live_scores')}
-                className={`flex items-center gap-2 px-4 py-2 border-[3px] border-black text-xs sm:text-sm font-black transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
-                  subTab === 'live_scores'
-                    ? 'bg-[#881337] text-white'
-                    : 'bg-white text-black hover:bg-[#fae8eb]'
-                }`}
-              >
-                <Activity className="w-4 h-4" />
-                <span>頁 05: Nilai & Perankingan Kuis Live</span>
-                <span className={`px-2 py-0.5 border-2 border-black text-[11px] font-black ${
-                  subTab === 'live_scores' ? 'bg-amber-300 text-black' : 'bg-[#fae8eb] text-[#881337]'
-                }`}>
-                  {activeRecords.length} Sesi
-                </span>
-              </button>
-
-              <button
-                onClick={() => handleMangaPageChange('meet_sync')}
-                className={`flex items-center gap-2 px-4 py-2 border-[3px] border-black text-xs sm:text-sm font-black transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
-                  subTab === 'meet_sync'
-                    ? 'bg-[#881337] text-white'
-                    : 'bg-white text-black hover:bg-[#fae8eb]'
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-                <span>頁 07: Sesi Meet & Durasi</span>
-              </button>
-            </div>
-
-            {/* Quick Action: Tambah Murid & Sinkronisasi */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* Tombol Aksi Cepat: Tambah Murid & Sinkronkan Data */}
+            <div className="grid grid-cols-2 gap-2.5 mt-3 pt-3 border-t border-amber-500/20">
               <button
                 onClick={() => {
                   setAddStudentError('');
                   setShowAddStudentModal(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black border-[3px] border-black text-xs transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
-                title="Daftarkan akun murid baru secara langsung oleh Master"
+                className="py-2.5 px-3 bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-200 font-bold border border-emerald-500/60 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer backdrop-blur-xs"
               >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>+ Tambah Murid Baru</span>
+                <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+                <span>+ Tambah Murid</span>
               </button>
-
               <button
                 onClick={handleManualSyncAndReload}
-                title="Sinkronkan & muat ulang daftar murid terbaru"
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-amber-50 text-black border-[3px] border-black text-xs font-black transition-all shadow-[4px_4px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                className="py-2.5 px-3 bg-stone-950/60 hover:bg-stone-900/80 text-amber-300 font-bold border border-amber-500/50 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer backdrop-blur-xs"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
                 <span>Sinkronkan Data</span>
               </button>
             </div>
           </div>
+
+          {/* KOLOM KANAN: NAVIGASI PANTAUAN & PESAN MASTER (AKSEN EMERALD / GOLD FAJAR EMAS) */}
+          <div className="grimoire-card relative p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/50 hover:border-emerald-400/80 bg-stone-950/25 backdrop-blur-[2px] shadow-lg flex flex-col justify-between transition-all">
+            <GrimoireCornerClasp variant="green" />
+
+            {/* HEADER PANEL PANTAUAN */}
+            <div className="bg-stone-950/30 backdrop-blur-xs border border-emerald-500/30 rounded-xl p-3 mb-3.5 relative overflow-hidden">
+              <div className="h-0.5 bg-gradient-to-r from-emerald-400 via-amber-300 to-teal-400 absolute top-0 inset-x-0" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base select-none">📊</span>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold text-emerald-200">
+                      Pantauan Aktivitas Murid Kerajaan Clover
+                    </h3>
+                    <p className="text-[11px] text-stone-300">
+                      Total {studentsList.length} Murid Terdaftar • {activeRecords.length} Data Kuis Aktif
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SELECTOR TAB NAVIGASI 4 TOMBOL (GRID 2x2 YANG RAMPING) */}
+            <div>
+              <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <span>🍀</span>
+                  <span>NAVIGASI PANTAUAN</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400/80">Pilih Tampilan:</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleMangaPageChange('all')}
+                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                    subTab === 'all'
+                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                  }`}
+                >
+                  <Radio className="w-3.5 h-3.5" />
+                  <span>Semua Panel</span>
+                </button>
+
+                <button
+                  onClick={() => handleMangaPageChange('student_list')}
+                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                    subTab === 'student_list'
+                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Daftar Murid</span>
+                  <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded-full font-mono">
+                    {studentsList.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => handleMangaPageChange('live_scores')}
+                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                    subTab === 'live_scores'
+                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                  }`}
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Kuis Live</span>
+                  <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded-full font-mono">
+                    {activeRecords.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => handleMangaPageChange('meet_sync')}
+                  className={`py-2 px-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
+                    subTab === 'meet_sync'
+                      ? 'bg-amber-500 text-stone-950 border-amber-300 shadow-sm ring-2 ring-amber-400/40 scale-[1.02]'
+                      : 'bg-stone-900/45 hover:bg-stone-850/70 text-stone-300 border-stone-800 hover:border-emerald-500/50 backdrop-blur-xs'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Ruang Meet</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* GUTTER MANGA 02: PEMISAH ANTARA PANEL HEADER & PANEL STATISTIK SAN-KOMA */}
-        <MangaGutterSeparator label="MANGA GUTTER 02 · PEMISAH STRIP STATISTIK (3-KOMA)" jpLabel="【コマ間・第弐区画】" />
+        {/* PEMISAH STATISTIK BERGAYA RUNIC ARKANUM */}
+        <GrimoireRunicDivider label="STATISTIK REALM CLOVER" jpLabel="魔導統計" variant="gold" />
+
+        {/* AREA PANEL DENGAN ANIMASI GRIMOIRE */}
+        <div key={pageTurnKey} className="relative">
 
         {/* =========================================================================
-            AREA LEMBARAN PANEL MANGA DENGAN ANIMASI 3D PAGE TURN (ページめくり)
+            KARTU STATISTIK 3 KOLOM INTERAKTIF (TRANSPARAN DENGAN WARNA PEMBEDA)
+            - Kolom 1 (Total Murid): Amber / Gold (Kerajaan Clover)
+            - Kolom 2 (Sedang Online): Emerald / Green (Sihir Angin Roh Sylph)
+            - Kolom 3 (Sedang Offline): Slate / Charcoal (Obsidian Anti-Sihir)
             ========================================================================= */}
-        <div
-          key={pageTurnKey}
-          className={`relative ${
-            pageTurnKey > 0
-              ? pageTurnDirection === 'next'
-                ? 'manga-page-turn-next'
-                : 'manga-page-turn-prev'
-              : ''
-          }`}
-        >
-          {/* Efek Sapuan Bayangan & Lipatan Kertas Saat Membalik Halaman Manga */}
-          {isTurningPage && (
-            <>
-              <div
-                className={`pointer-events-none select-none absolute inset-0 z-30 ${
-                  pageTurnDirection === 'next'
-                    ? 'manga-curl-sweep-next'
-                    : 'manga-curl-sweep-prev'
-                }`}
-                aria-hidden="true"
-              />
-              <div
-                className="pointer-events-none select-none absolute top-3 right-4 z-40 px-3 py-1 bg-black text-amber-300 border-2 border-white font-japanese font-black text-xs shadow-[4px_4px_0px_#881337] animate-bounce"
-                aria-hidden="true"
-              >
-                📖 {currentMangaPageMeta.sfx}
-              </div>
-            </>
-          )}
-
-        {/* =========================================================================
-            KOMA 02, 03, 04 (3 PANEL STATISTIK MANGA TERPISAH GUTTER / SAN-KOMA STRIP)
-            ========================================================================= */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {/* Koma 02: Total Murid Terdaftar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mb-6">
+          {/* KARTU KOLOM 01: TOTAL MURID TERDAFTAR (WARNA AMBER / GOLD) */}
           <div 
             onClick={() => {
               setFilterPresence('all');
               setKomaFlipKey((prev) => prev + 1);
             }}
-            className={`manga-koma-panel relative p-5 transition-all cursor-pointer flex items-center justify-between ${
+            className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 backdrop-blur-[2px] ${
               filterPresence === 'all'
-                ? 'bg-[#fff0f3] ring-4 ring-[#881337]'
-                : 'bg-white hover:bg-[#fcf8f2]'
+                ? 'border-amber-400 bg-amber-950/40 shadow-[0_0_25px_rgba(245,158,11,0.3)] ring-2 ring-amber-500/50'
+                : 'border-amber-500/40 bg-amber-950/20 hover:border-amber-400 hover:bg-amber-950/35 shadow-sm'
             }`}
-            title="Klik untuk melihat seluruh murid terdaftar"
           >
-            <MangaCornerTicks />
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="px-2 py-0.5 bg-black text-white font-mono text-[10px] font-black border border-black">
-                  コマ 02
-                </span>
-                <span className="text-[11px] font-black uppercase tracking-wider text-[#881337]">
-                  Total Murid Terdaftar
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 bg-amber-900/50 px-2 py-0.5 rounded-full border border-amber-500/50 backdrop-blur-xs">
+                  Total Murid
                 </span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-black font-japanese">
-                {studentsList.length} Murid
+              <div className="text-2xl sm:text-3xl font-black text-amber-100 font-japanese">
+                {studentsList.length} <span className="text-sm font-normal text-amber-300/80">Murid</span>
               </div>
-              <p className="text-[11px] text-stone-800 font-bold mt-1 pt-1 border-t-2 border-black/20">
-                Tersimpan permanen di buku induk kelas
+              <p className="text-[11px] text-amber-300/70 mt-1">
+                Seluruh akun murid yang terdaftar
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <span className="font-japanese font-black text-xs text-[#881337] select-none px-1.5 py-0.5 bg-white border-2 border-black">
-                ドン!!
-              </span>
-              <div className="w-12 h-12 bg-[#fae8eb] border-[3px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center text-[#881337]">
-                <Users className="w-5 h-5" />
-              </div>
+            <div className="w-12 h-12 bg-amber-950/50 border-2 border-amber-500/70 rounded-xl flex items-center justify-center text-amber-400 overflow-hidden shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.25)] backdrop-blur-xs">
+              <BlackBullsLogo className="w-8 h-8 object-contain" />
             </div>
           </div>
 
-          {/* Koma 03: Sedang Online & Aktif */}
+          {/* KARTU KOLOM 02: SEDANG ONLINE & AKTIF (WARNA EMERALD / HIJAU) */}
           <div 
             onClick={() => {
               setFilterPresence(filterPresence === 'online' ? 'all' : 'online');
               setKomaFlipKey((prev) => prev + 1);
             }}
-            className={`manga-koma-panel relative p-5 transition-all cursor-pointer flex items-center justify-between ${
+            className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 backdrop-blur-[2px] ${
               filterPresence === 'online'
-                ? 'bg-emerald-50 ring-4 ring-emerald-700'
-                : 'bg-white hover:bg-emerald-50/40'
+                ? 'border-emerald-400 bg-emerald-950/40 shadow-[0_0_25px_rgba(16,185,129,0.3)] ring-2 ring-emerald-500/50'
+                : 'border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400 hover:bg-emerald-950/35 shadow-sm'
             }`}
             title="Klik untuk memfilter murid yang sedang online"
           >
-            <MangaCornerTicks />
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="px-2 py-0.5 bg-black text-amber-300 font-mono text-[10px] font-black border border-black">
-                  コマ 03
-                </span>
-                <span className="relative flex h-2.5 w-2.5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </span>
-                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-950">
-                  Sedang Online & Aktif
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/50 backdrop-blur-xs">
+                  Sedang Online
                 </span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-950 font-japanese">
-                {onlineStudentsCount} Murid
+              <div className="text-2xl sm:text-3xl font-black text-emerald-100 font-japanese">
+                {onlineStudentsCount} <span className="text-sm font-normal text-emerald-300/80">Murid</span>
               </div>
-              <p className="text-[11px] text-emerald-900 font-bold mt-1 pt-1 border-t-2 border-black/20">
-                Sedang membuka web & belajar saat ini
+              <p className="text-[11px] text-emerald-400/80 mt-1">
+                Aktif membuka aplikasi saat ini
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <span className="font-japanese font-black text-xs text-emerald-900 select-none px-1.5 py-0.5 bg-white border-2 border-black">
-                ピーン!
-              </span>
-              <div className="w-12 h-12 bg-emerald-100 border-[3px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center text-emerald-800">
-                <Radio className="w-5 h-5 animate-pulse" />
-              </div>
+            <div className="w-12 h-12 bg-emerald-950/50 border-2 border-emerald-500/70 rounded-xl flex items-center justify-center text-emerald-300 shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.25)] backdrop-blur-xs">
+              <Radio className="w-6 h-6 animate-pulse text-emerald-400" />
             </div>
           </div>
 
-          {/* Koma 04: Sedang Offline */}
+          {/* KARTU KOLOM 03: SEDANG OFFLINE (WARNA SLATE / CHARCOAL) */}
           <div 
             onClick={() => {
               setFilterPresence(filterPresence === 'offline' ? 'all' : 'offline');
               setKomaFlipKey((prev) => prev + 1);
             }}
-            className={`manga-koma-panel relative p-5 transition-all cursor-pointer flex items-center justify-between ${
+            className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 backdrop-blur-[2px] ${
               filterPresence === 'offline'
-                ? 'bg-stone-200 ring-4 ring-stone-800'
-                : 'bg-white hover:bg-stone-100'
+                ? 'border-slate-400 bg-slate-900/45 shadow-[0_0_25px_rgba(148,163,184,0.25)] ring-2 ring-slate-400/50'
+                : 'border-slate-600/40 bg-slate-900/20 hover:border-slate-400 hover:bg-slate-900/35 shadow-sm'
             }`}
             title="Klik untuk memfilter murid yang sedang offline"
           >
-            <MangaCornerTicks />
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="px-2 py-0.5 bg-black text-stone-200 font-mono text-[10px] font-black border border-black">
-                  コマ 04
-                </span>
-                <span className="w-2.5 h-2.5 rounded-full bg-stone-600"></span>
-                <span className="text-[11px] font-black uppercase tracking-wider text-stone-800">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-600">
                   Sedang Offline
                 </span>
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-black font-japanese">
-                {offlineStudentsCount} Murid
+              <div className="text-2xl sm:text-3xl font-black text-slate-100 font-japanese">
+                {offlineStudentsCount} <span className="text-sm font-normal text-slate-400">Murid</span>
               </div>
-              <p className="text-[11px] text-stone-700 font-bold mt-1 pt-1 border-t-2 border-black/20">
+              <p className="text-[11px] text-slate-400 mt-1">
                 Tidak sedang membuka aplikasi
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <span className="font-japanese font-black text-xs text-stone-700 select-none px-1.5 py-0.5 bg-white border-2 border-black">
-                シーン...
-              </span>
-              <div className="w-12 h-12 bg-stone-100 border-[3px] border-black shadow-[3px_3px_0px_#000000] flex items-center justify-center text-stone-800">
-                <Clock className="w-5 h-5" />
-              </div>
+            <div className="w-12 h-12 bg-slate-900/70 border-2 border-slate-600 rounded-xl flex items-center justify-center text-slate-300 shrink-0 shadow-sm">
+              <Clock className="w-5 h-5 text-slate-400" />
             </div>
           </div>
         </div>
 
         {/* =========================================================================
-            KOMA 05 (PANEL UTAMA MANGA): DAFTAR SEMUA MURID & JAM TERAKHIR ONLINE
+            GRIMOIRE STUDENT ROSTER: DAFTAR SEMUA MURID & PEMANTAUAN AKTIVITAS LIVE
             ========================================================================= */}
         {(subTab === 'all' || subTab === 'student_list') && (
           <>
-            <MangaGutterSeparator label="MANGA GUTTER 03 · PEMISAH PANEL DAFTAR MURID" jpLabel="【コマ間・生徒名簿区画】" />
-            <div key={`roster_${komaFlipKey}`} className={`manga-koma-panel relative bg-white overflow-hidden ${komaFlipKey > 0 ? 'manga-koma-flip' : ''}`}>
-              <MangaCornerTicks />
-              {/* Header Bar Daftar Murid Gaya Bab Manga (Mode Terang) */}
-              <div
-                className="bg-[#fbf5ea] text-black border-b-[4px] border-black px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                style={{
-                  backgroundImage:
-                    'radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px)',
-                  backgroundSize: '10px 10px',
-                }}
-              >
+            <GrimoireRunicDivider label="CLOVER SQUAD STUDENT ROSTER" jpLabel="魔法騎士団名簿" variant="gold" />
+            <div key={`roster_${komaFlipKey}`} className="grimoire-card relative overflow-hidden rounded-2xl border-2 border-amber-500/40 shadow-lg bg-stone-950/25 backdrop-blur-[2px]">
+              <GrimoireCornerClasp variant="gold" />
+              
+              {/* Header Bar Daftar Murid Gaya Bab Grimoire (Transparan Emas/Amber) */}
+              <div className="bg-amber-950/30 backdrop-blur-xs text-stone-100 border-b border-amber-600/40 px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#881337] border-[2.5px] border-black text-white flex items-center justify-center shrink-0 font-japanese font-black text-lg shadow-[3px_3px_0px_#000000]">
+                  <div className="w-10 h-10 bg-amber-950/80 border-2 border-amber-500 text-amber-300 flex items-center justify-center shrink-0 font-japanese font-black text-lg shadow-[0_0_12px_rgba(245,158,11,0.3)] rounded-md">
                     名
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2 py-0.5 bg-amber-300 text-black font-mono text-[10px] font-black uppercase border-2 border-black">
-                        大ゴマ 05 · STUDENT ROSTER SPREAD
+                      <span className="px-2 py-0.5 bg-amber-950/80 text-amber-300 font-mono text-[10px] font-black uppercase border border-amber-600 rounded-xs">
+                        ARSIP ROSTER · TOME 02
                       </span>
-                      <span className="font-japanese text-xs text-[#881337] font-black">
-                        【生徒名簿・最終学習時刻】
+                      <span className="font-japanese text-xs text-amber-400 font-black">
+                        【生徒魔導名簿・最終学習時刻】
                       </span>
                     </div>
-                    <h2 className="text-sm sm:text-base font-black text-black font-japanese flex items-center gap-2 flex-wrap mt-0.5">
-                      <span>Daftar Semua Murid yang Berhasil Mendaftar & Pantauan Aktivitas Live</span>
-                      <span className="px-2.5 py-0.5 bg-[#881337] text-white border-2 border-black text-[11px] font-black">
-                        {studentsList.length} Murid Terdaftar
+                    <h2 className="text-sm sm:text-base font-black text-stone-100 font-japanese flex items-center gap-2 flex-wrap mt-0.5">
+                      <span>Daftar Seluruh Murid Terdaftar & Pantauan Resonansi Live</span>
+                      <span className="px-2.5 py-0.5 bg-red-950/80 text-red-200 border border-red-600 text-[11px] font-black rounded-xs">
+                        {studentsList.length} Murid
                       </span>
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 text-emerald-950 border-2 border-black text-[10px] font-black">
-                        <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-950/80 text-emerald-300 border border-emerald-500 text-[10px] font-black rounded-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                         <span>AUTO-SYNC REAL-TIME AKTIF</span>
                       </span>
                     </h2>
@@ -1052,71 +925,71 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <button
                   type="button"
                   onClick={() => setShowRegisteredStudentsTable((prev) => !prev)}
-                  className={`px-3.5 py-2 border-2 border-black font-black text-xs transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-[3px_3px_0px_#881337] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer ${
+                  className={`px-3.5 py-2 border font-black text-xs transition-all flex items-center justify-center gap-1.5 shrink-0 rounded-xs cursor-pointer ${
                     showRegisteredStudentsTable
-                      ? 'bg-white hover:bg-amber-100 text-black'
-                      : 'bg-amber-300 hover:bg-amber-400 text-black'
+                      ? 'bg-stone-900/70 hover:bg-stone-850 text-stone-200 border-stone-700'
+                      : 'bg-amber-600 hover:bg-amber-500 text-stone-950 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
                   }`}
                 >
                   {showRegisteredStudentsTable ? (
                     <>
-                      <EyeOff className="w-3.5 h-3.5" />
-                      <span>Sembunyikan Tabel Sementara</span>
+                      <EyeOff className="w-3.5 h-3.5 text-stone-400" />
+                      <span>Sembunyikan Tabel</span>
                     </>
                   ) : (
                     <>
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Tampilkan Tabel Daftar Murid</span>
+                      <Eye className="w-3.5 h-3.5 text-stone-950" />
+                      <span>Buka Tabel Murid</span>
                     </>
                   )}
                 </button>
               </div>
 
               {!showRegisteredStudentsTable ? (
-                <div className="p-8 sm:p-10 text-center bg-[#fbf9f3]">
-                  <div className="w-12 h-12 bg-white border-[3px] border-black shadow-[3px_3px_0px_#000000] text-[#881337] flex items-center justify-center mx-auto mb-3">
+                <div className="p-8 sm:p-10 text-center bg-stone-950/40 backdrop-blur-sm">
+                  <div className="w-12 h-12 bg-stone-900/80 border-2 border-amber-600 shadow-[0_0_15px_rgba(245,158,11,0.2)] text-amber-400 flex items-center justify-center mx-auto mb-3 rounded-md">
                     <EyeOff className="w-6 h-6" />
                   </div>
-                  <h3 className="text-sm sm:text-base font-black text-black font-japanese">
-                    Panel Daftar Murid Sedang Ditutup Sementara
+                  <h3 className="text-sm sm:text-base font-black text-stone-100 font-japanese">
+                    Tabel Murid Ditutup Sementara
                   </h3>
-                  <p className="text-xs text-stone-700 max-w-md mx-auto mt-1 mb-4 leading-relaxed">
-                    Klik tombol di bawah untuk membuka kembali lembaran daftar seluruh murid beserta jam terakhir online & aktivitas live mereka.
+                  <p className="text-xs text-stone-400 max-w-md mx-auto mt-1 mb-4 leading-relaxed">
+                    Klik tombol di bawah untuk membuka kembali arsip daftar seluruh murid beserta catatan jam terakhir belajar & aktivitas live mereka.
                   </p>
                   <button
                     type="button"
                     onClick={() => setShowRegisteredStudentsTable(true)}
-                    className="px-5 py-2.5 bg-[#881337] hover:bg-[#70102d] text-white font-black text-xs border-[3px] border-black shadow-[4px_4px_0px_#000000] inline-flex items-center gap-2 cursor-pointer"
+                    className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-black text-xs border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)] inline-flex items-center gap-2 cursor-pointer rounded-xs"
                   >
                     <Eye className="w-4 h-4" />
-                    <span>Buka Lembaran Daftar Murid</span>
+                    <span>Buka Arsip Tabel Murid</span>
                   </button>
                 </div>
               ) : (
                 <div>
-                  {/* Sub-Panel Filter & Pencarian Murid Terdaftar (Dipisahkan Border Gutter Tebal) */}
-                  <div className="bg-[#f1ebe0] border-b-[4px] border-black p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  {/* Sub-Panel Filter & Pencarian Murid */}
+                  <div className="bg-stone-900/50 backdrop-blur-sm border-b border-stone-800 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                      <span className="px-2 py-1 bg-black text-white text-[11px] font-black uppercase tracking-wider font-mono">
-                        FILTER PANEL:
+                      <span className="px-2 py-1 bg-stone-950 text-amber-300 text-[11px] font-black uppercase tracking-wider font-mono border border-stone-800 rounded-xs">
+                        FILTER SQUAD:
                       </span>
-                      <div className="flex items-center gap-1.5 bg-white p-1 border-[2.5px] border-black shadow-[3px_3px_0px_#000000] text-xs">
+                      <div className="flex items-center gap-1.5 bg-stone-950 p-1 border border-stone-800 text-xs rounded-xs">
                         <button
                           onClick={() => setFilterPresence('all')}
-                          className={`px-3 py-1 font-black transition-all cursor-pointer ${
+                          className={`px-3 py-1 font-black transition-all cursor-pointer rounded-xs ${
                             filterPresence === 'all'
-                              ? 'bg-black text-white'
-                              : 'text-stone-800 hover:text-black'
+                              ? 'bg-amber-600 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                              : 'text-stone-400 hover:text-stone-200'
                           }`}
                         >
                           Semua ({studentsList.length})
                         </button>
                         <button
                           onClick={() => setFilterPresence('online')}
-                          className={`px-3 py-1 font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                          className={`px-3 py-1 font-black transition-all flex items-center gap-1.5 cursor-pointer rounded-xs ${
                             filterPresence === 'online'
-                              ? 'bg-emerald-600 text-white'
-                              : 'text-emerald-800 hover:text-emerald-950'
+                              ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                              : 'text-emerald-400/80 hover:text-emerald-300'
                           }`}
                         >
                           <span className="w-2 h-2 rounded-full bg-emerald-400" />
@@ -1124,54 +997,54 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                         </button>
                         <button
                           onClick={() => setFilterPresence('offline')}
-                          className={`px-3 py-1 font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                          className={`px-3 py-1 font-black transition-all flex items-center gap-1.5 cursor-pointer rounded-xs ${
                             filterPresence === 'offline'
-                              ? 'bg-stone-800 text-white'
-                              : 'text-stone-700 hover:text-black'
+                              ? 'bg-stone-800 text-stone-200'
+                              : 'text-stone-500 hover:text-stone-300'
                           }`}
                         >
-                          <span className="w-2 h-2 rounded-full bg-stone-400" />
+                          <span className="w-2 h-2 rounded-full bg-stone-500" />
                           <span>Offline ({offlineStudentsCount})</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* Search Input Gaya Kotak Manga */}
+                    {/* Search Input Gaya Grimoire */}
                     <div className="relative w-full sm:w-80">
-                      <Search className="w-4 h-4 text-black absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <Search className="w-4 h-4 text-amber-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Cari nama murid, panggilan, atau email..."
-                        className="w-full pl-10 pr-3.5 py-2 bg-white border-[2.5px] border-black shadow-[3px_3px_0px_#000000] focus:bg-amber-50/40 text-xs sm:text-sm font-bold text-black outline-hidden"
+                        className="w-full pl-10 pr-3.5 py-2 bg-stone-950 border border-amber-600/60 focus:border-amber-400 text-xs sm:text-sm font-bold text-stone-100 placeholder:text-stone-500 outline-hidden rounded-xs"
                       />
                     </div>
                   </div>
 
                   {filteredStudents.length === 0 ? (
-                    <div className="p-10 text-center text-stone-700 bg-white">
-                      <div className="font-japanese font-black text-2xl text-stone-400 mb-2">「データなし」</div>
-                      <p className="font-black text-sm text-black">Belum ada data murid yang cocok dengan filter pencarian.</p>
-                      <p className="text-xs text-stone-600 mt-1">Klik tombol "Semua" atau "+ Tambah Murid Baru" untuk menambahkan murid.</p>
+                    <div className="p-10 text-center text-stone-400 bg-stone-950/80">
+                      <div className="font-japanese font-black text-2xl text-stone-600 mb-2">「データなし」</div>
+                      <p className="font-black text-sm text-stone-300">Belum ada murid yang cocok dengan filter pencarian.</p>
+                      <p className="text-xs text-stone-500 mt-1">Klik tombol "Semua" atau "+ Tambah Murid" untuk menambahkan murid baru ke Grimoire.</p>
                     </div>
                   ) : (
                     <>
-                      {/* TAMPILAN TABEL DESKTOP (md ke atas) — Gaya Kisi Panel Komik dengan Border Hitam Tebal */}
-                      <div className="hidden md:block overflow-x-auto bg-[#f1ebe0] p-3">
-                        <table className="w-full text-left text-xs sm:text-sm bg-white border-[3px] border-black shadow-[4px_4px_0px_#000000]">
+                      {/* TAMPILAN TABEL DESKTOP (md ke atas) — Gaya Arsip Grimoire Transparan Kaca */}
+                      <div className="hidden md:block overflow-x-auto bg-stone-950/15 backdrop-blur-[2px] p-3">
+                        <table className="w-full text-left text-xs sm:text-sm bg-stone-950/25 backdrop-blur-[2px] border border-stone-800/60 rounded-md overflow-hidden">
                           <thead>
-                            <tr className="bg-[#e8dfd1] text-black border-b-[3px] border-black font-black text-xs uppercase tracking-wider">
-                              <th className="py-3.5 px-3 text-center w-12 border-r-[2.5px] border-black">No</th>
-                              <th className="py-3.5 px-4 border-r-[2.5px] border-black">Identitas Murid Terdaftar</th>
-                              <th className="py-3.5 px-3 border-r-[2.5px] border-black">Terakhir Online (Jam & Tanggal Belajar)</th>
-                              <th className="py-3.5 px-3 text-center border-r-[2.5px] border-black">Status & Aktivitas Live Murid</th>
-                              <th className="py-3.5 px-4 border-r-[2.5px] border-black">Email & Kata Sandi Akun</th>
-                              <th className="py-3.5 px-4 text-center border-r-[2.5px] border-black">Riwayat & Nilai Kuis</th>
-                              <th className="py-3.5 px-4 text-center">Aksi Master</th>
+                            <tr className="bg-amber-950/40 backdrop-blur-xs text-amber-300 border-b border-amber-600/50 font-black text-xs uppercase tracking-wider">
+                              <th className="py-3 px-3 text-center w-12 border-r border-stone-800/60">No</th>
+                              <th className="py-3 px-4 border-r border-stone-800/60">Identitas Murid Terdaftar</th>
+                              <th className="py-3 px-3 border-r border-stone-800/60">Terakhir Online (Waktu Belajar)</th>
+                              <th className="py-3 px-3 text-center border-r border-stone-800/60">Status & Resonansi Live</th>
+                              <th className="py-3 px-4 border-r border-stone-800/60">Email & Kata Sandi Akun</th>
+                              <th className="py-3 px-4 text-center border-r border-stone-800/60">Riwayat & Skor Ujian</th>
+                              <th className="py-3 px-4 text-center">Aksi Master</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y-[3px] divide-black">
+                          <tbody className="divide-y divide-stone-800/40">
                           {filteredStudents.map((student, idx) => {
                             const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
                             const totalQuizzes = studentScores.length;
@@ -1191,12 +1064,12 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                             const displayNickname = student.nickname || displayFullName.split(/\s+/)[0] || '-';
                             const avatarInitial = displayFullName.charAt(0).toUpperCase();
 
-                            let avgScoreColor = 'text-black bg-stone-100 border-stone-900';
+                            let avgScoreColor = 'text-stone-300 bg-stone-950/50 border-stone-800';
                             if (avgScore !== null) {
                               if (avgScore >= 71) {
-                                avgScoreColor = 'text-emerald-800 bg-emerald-100 border-stone-900';
+                                avgScoreColor = 'text-emerald-300 bg-emerald-950/50 border-emerald-600';
                               } else if (avgScore >= 51) {
-                                avgScoreColor = 'text-red-600 bg-red-100 border-stone-900';
+                                avgScoreColor = 'text-red-300 bg-red-950/50 border-red-600';
                               }
                             }
 
@@ -1205,38 +1078,38 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                 key={student.email}
                                 className={`transition-colors ${
                                   activityInfo.isTakingQuiz
-                                    ? 'bg-amber-50/80 hover:bg-amber-100/60'
-                                    : 'hover:bg-[#fbf9f3]'
+                                    ? 'bg-amber-950/25 hover:bg-amber-950/40'
+                                    : 'hover:bg-amber-950/30 bg-stone-950/20'
                                 }`}
                               >
                                 {/* Kolom 1: Nomor Urut */}
-                                <td className="py-4 px-3 text-center font-mono font-black text-black border-r-[2.5px] border-black bg-[#fbf9f3]">
+                                <td className="py-3.5 px-3 text-center font-mono font-black text-amber-400 border-r border-stone-800/60 bg-stone-950/35">
                                   #{idx + 1}
                                 </td>
 
                                 {/* Kolom 2: Identitas Murid Terdaftar */}
-                                <td className="py-4 px-4 border-r-[2.5px] border-black">
+                                <td className="py-4 px-4 border-r border-stone-800">
                                   <div className="flex items-center gap-3">
                                     <div className="relative shrink-0">
-                                      <div className="w-10 h-10 bg-[#881337] border-2 border-black text-white flex items-center justify-center font-japanese font-black text-base shadow-[2px_2px_0px_#000000]">
+                                      <div className="w-10 h-10 bg-red-950 border border-red-500 text-red-200 flex items-center justify-center font-japanese font-black text-base shadow-[0_0_10px_rgba(239,68,68,0.3)] rounded-md">
                                         {avatarInitial}
                                       </div>
                                       <span
-                                        className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-black ${
-                                          isOnline ? 'bg-emerald-500' : 'bg-stone-400'
+                                        className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-stone-950 ${
+                                          isOnline ? 'bg-emerald-400 ring-2 ring-emerald-500/50 animate-pulse' : 'bg-stone-600'
                                         }`}
                                       />
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-black text-black text-sm">
+                                        <span className="font-black text-stone-100 text-sm">
                                           {displayFullName}
                                         </span>
                                       </div>
-                                      <div className="text-xs text-stone-700 mt-0.5 flex items-center gap-2 flex-wrap">
-                                        <span>Panggilan: <strong className="text-[#881337] font-black">{displayNickname}</strong></span>
-                                        <span aria-hidden="true">·</span>
-                                        <span className="text-[11px] text-stone-600">
+                                      <div className="text-xs text-stone-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                                        <span>Panggilan: <strong className="text-amber-300 font-black">{displayNickname}</strong></span>
+                                        <span aria-hidden="true" className="text-stone-600">·</span>
+                                        <span className="text-[11px] text-stone-500">
                                           Terdaftar: {student.registeredAt || '2026-10-01'}
                                         </span>
                                       </div>
@@ -1245,27 +1118,27 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                 </td>
 
                                 {/* Kolom 3: Jam & Tanggal Terakhir Murid Online / Belajar */}
-                                <td className="py-4 px-3 border-r-[2.5px] border-black">
+                                <td className="py-4 px-3 border-r border-stone-800">
                                   <div
-                                    className={`p-2.5 border-2 border-black shadow-[3px_3px_0px_#000000] space-y-1 min-w-[210px] ${
+                                    className={`p-2.5 border rounded-sm space-y-1 min-w-[210px] ${
                                       isOnline
-                                        ? 'bg-emerald-50'
-                                        : 'bg-[#fbf9f3]'
+                                        ? 'bg-emerald-950/40 border-emerald-600/70 text-emerald-200'
+                                        : 'bg-stone-950 border-stone-800 text-stone-300'
                                     }`}
                                   >
-                                    <div className="flex items-center gap-1.5 text-xs font-black text-black">
-                                      <Calendar className="w-3.5 h-3.5 text-[#881337] shrink-0" />
+                                    <div className="flex items-center gap-1.5 text-xs font-black text-stone-200">
+                                      <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                       <span>{lastOnlineInfo.formattedDayDate}</span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-xs font-mono font-black text-[#881337]">
-                                      <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                    <div className="flex items-center gap-1.5 text-xs font-mono font-black text-amber-300">
+                                      <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                       <span>Pukul {lastOnlineInfo.formattedTime}</span>
                                     </div>
                                     <div
-                                      className={`text-[10px] font-black inline-flex items-center gap-1 px-2 py-0.5 border border-black ${
+                                      className={`text-[10px] font-black inline-flex items-center gap-1 px-2 py-0.5 border rounded-xs ${
                                         isOnline
-                                          ? 'bg-emerald-600 text-white'
-                                          : 'bg-white text-stone-800'
+                                          ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                                          : 'bg-stone-900 border-stone-700 text-stone-400'
                                       }`}
                                     >
                                       <span
@@ -1278,85 +1151,85 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                   </div>
                                 </td>
 
-                                {/* Kolom 4: Status Kehadiran & Aktivitas Live */}
-                                <td className="py-4 px-3 border-r-[2.5px] border-black">
+                                {/* Kolom 4: Status Kehadiran & Resonansi Live */}
+                                <td className="py-4 px-3 border-r border-stone-800">
                                   <div className="flex flex-col items-start gap-1.5">
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                       {isOnline ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 text-emerald-950 border-2 border-stone-950 text-[11px] font-black shadow-[2px_2px_0px_#1c1917]">
-                                          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500 text-[11px] font-black rounded-xs">
+                                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                                           <span>Online</span>
                                         </span>
                                       ) : (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-stone-100 text-stone-700 border-2 border-stone-950 text-[11px] font-bold">
-                                          <span className="w-2 h-2 rounded-full bg-stone-400" />
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-stone-950 text-stone-400 border border-stone-800 text-[11px] font-bold rounded-xs">
+                                          <span className="w-2 h-2 rounded-full bg-stone-500" />
                                           <span>Offline</span>
                                         </span>
                                       )}
 
                                       {activityInfo.violations > 0 && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-900 border-2 border-stone-950 text-[10px] font-black">
-                                          <ShieldAlert className="w-3 h-3 text-rose-600" />
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-950 text-red-300 border border-red-600 text-[10px] font-black rounded-xs">
+                                          <ShieldAlert className="w-3 h-3 text-red-400" />
                                           <span>{activityInfo.violations}x Pindah Tab</span>
                                         </span>
                                       )}
 
                                       {activityInfo.screenshotAttempts > 0 && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-600 text-white border border-stone-950 text-[10px] font-black">
-                                          <span>📸 Mencoba Screenshot: {activityInfo.screenshotAttempts}x</span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900 text-red-100 border border-red-500 text-[10px] font-black rounded-xs">
+                                          <span>📸 Screenshot: {activityInfo.screenshotAttempts}x</span>
                                         </span>
                                       )}
 
                                       {activityInfo.aiTranslateAttempts > 0 && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-600 text-white border border-stone-950 text-[10px] font-black">
-                                          <span>🤖 Mencoba Terjemahan Otomatis: {activityInfo.aiTranslateAttempts}x</span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-950 text-amber-200 border border-amber-600 text-[10px] font-black rounded-xs">
+                                          <span>🤖 Auto-Translate: {activityInfo.aiTranslateAttempts}x</span>
                                         </span>
                                       )}
                                     </div>
 
-                                    <div className={`text-xs font-black px-2.5 py-1 border-2 border-stone-950 ${
+                                    <div className={`text-xs font-black px-2.5 py-1 border rounded-xs ${
                                       activityInfo.isTakingQuiz
-                                        ? 'bg-amber-200 text-stone-950'
+                                        ? 'bg-amber-950 border-amber-500 text-amber-300 animate-pulse'
                                         : isOnline
-                                        ? 'bg-[#fbf9f3] text-[#881337]'
-                                        : 'bg-stone-50 text-stone-700'
+                                        ? 'bg-stone-950 border-stone-700 text-emerald-300'
+                                        : 'bg-stone-950 border-stone-800 text-stone-400'
                                     }`}>
                                       {activityInfo.badgeText}
                                     </div>
-                                    <span className="text-[10px] text-stone-600 font-medium">
+                                    <span className="text-[10px] text-stone-400 font-medium">
                                       {activityInfo.subText}
                                     </span>
                                   </div>
                                 </td>
 
                                 {/* Kolom 5: Email & Kata Sandi */}
-                                <td className="py-4 px-4 border-r-[2.5px] border-black">
+                                <td className="py-4 px-4 border-r border-stone-800">
                                   <div className="space-y-1.5">
                                     <div className="flex items-center gap-1.5 text-xs">
-                                      <Mail className="w-3.5 h-3.5 text-[#881337] shrink-0" />
-                                      <span className="font-mono font-bold text-black break-all">
+                                      <Mail className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                      <span className="font-mono font-bold text-stone-200 break-all">
                                         {student.email}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs">
-                                      <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                                      <span className="text-stone-700 font-bold">Sandi:</span>
-                                      <span className="font-mono font-black text-[#881337] bg-[#fbf9f3] px-2 py-0.5 border border-black">
+                                      <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                      <span className="text-stone-400 font-bold">Sandi:</span>
+                                      <span className="font-mono font-black text-amber-300 bg-stone-950 px-2 py-0.5 border border-stone-800 rounded-xs">
                                         {visiblePasswords[student.email] ? studentPassword : '••••••••'}
                                       </span>
                                       <button
                                         type="button"
                                         onClick={() => togglePasswordVisibility(student.email)}
-                                        className="px-2 py-0.5 bg-white hover:bg-amber-100 text-black border border-black text-[11px] font-black transition-colors inline-flex items-center gap-1 shadow-[1px_1px_0px_#000000] cursor-pointer"
+                                        className="px-2 py-0.5 bg-stone-950 hover:bg-stone-800 text-amber-200 border border-stone-700 text-[11px] font-black transition-colors inline-flex items-center gap-1 rounded-xs cursor-pointer"
                                       >
                                         {visiblePasswords[student.email] ? (
                                           <>
-                                            <EyeOff className="w-3 h-3" />
+                                            <EyeOff className="w-3 h-3 text-stone-400" />
                                             <span>Tutup</span>
                                           </>
                                         ) : (
                                           <>
-                                            <Eye className="w-3 h-3" />
+                                            <Eye className="w-3 h-3 text-amber-400" />
                                             <span>Lihat</span>
                                           </>
                                         )}
@@ -1365,33 +1238,33 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                   </div>
                                 </td>
 
-                                {/* Kolom 6: Riwayat & Nilai Kuis */}
-                                <td className="py-4 px-4 text-center whitespace-nowrap border-r-[2.5px] border-black">
+                                {/* Kolom 6: Riwayat & Skor Kuis */}
+                                <td className="py-4 px-4 text-center whitespace-nowrap border-r border-stone-800">
                                   {totalQuizzes > 0 ? (
                                     <div className="inline-flex flex-col items-center gap-1">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="text-xs font-black text-black">
-                                          {totalQuizzes}x Kuis
+                                        <span className="text-xs font-black text-stone-200">
+                                          {totalQuizzes}x Ujian
                                         </span>
-                                        <span aria-hidden="true" className="text-stone-400">·</span>
-                                        <span className={`px-2 py-0.5 border-2 text-xs font-black shadow-[2px_2px_0px_#000000] ${avgScoreColor}`} title="Rata-rata nilai">
+                                        <span aria-hidden="true" className="text-stone-600">·</span>
+                                        <span className={`px-2 py-0.5 border text-xs font-black rounded-xs ${avgScoreColor}`} title="Rata-rata skor">
                                           Rata-rata: {avgScore}
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-2 text-[11px] text-stone-700">
-                                        <span>Tertinggi: <strong className="text-[#881337] font-black">{bestScore}</strong></span>
+                                      <div className="flex items-center gap-2 text-[11px] text-stone-400">
+                                        <span>Tertinggi: <strong className="text-amber-300 font-black">{bestScore}</strong></span>
                                         <button
                                           type="button"
                                           onClick={() => setStudentDetailModal(student)}
-                                          className="text-[#881337] underline hover:text-black font-black cursor-pointer"
+                                          className="text-amber-400 underline hover:text-amber-300 font-black cursor-pointer"
                                         >
-                                          Lihat Rincian
+                                          Rincian
                                         </button>
                                       </div>
                                     </div>
                                   ) : (
                                     <span className="text-xs text-stone-500 italic">
-                                      Belum ada nilai kuis
+                                      Belum ada skor kuis
                                     </span>
                                   )}
                                 </td>
@@ -1405,19 +1278,19 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                         setStudentToResetPassword({ user: student, currentPassword: studentPassword });
                                         setNewPasswordInput('');
                                       }}
-                                      className="py-1.5 px-2.5 bg-amber-100 hover:bg-amber-300 text-black border-2 border-black font-black text-xs transition-all inline-flex items-center gap-1 shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                                      className="py-1.5 px-2.5 bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-600/80 font-black text-xs transition-all inline-flex items-center gap-1 rounded-xs cursor-pointer shadow-[0_0_8px_rgba(245,158,11,0.2)]"
                                       title="Ubah kata sandi murid ini"
                                     >
-                                      <KeyRound className="w-3.5 h-3.5" />
+                                      <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                                       <span>Ubah Sandi</span>
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setStudentToDelete(student)}
-                                      className="py-1.5 px-2.5 bg-red-100 hover:bg-red-600 text-red-900 hover:text-white border-2 border-black font-black text-xs transition-all inline-flex items-center gap-1 shadow-[2px_2px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                                      className="py-1.5 px-2.5 bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-600/80 font-black text-xs transition-all inline-flex items-center gap-1 rounded-xs cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.2)]"
                                       title="Hapus akun murid ini"
                                     >
-                                      <UserX className="w-3.5 h-3.5" />
+                                      <UserX className="w-3.5 h-3.5 text-red-400" />
                                       <span>Hapus</span>
                                     </button>
                                   </div>
@@ -1429,8 +1302,8 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                       </table>
                     </div>
 
-                    {/* TAMPILAN KARTU RESPONSIF (Layar HP / Mobile < md) — Setiap Murid Jadi Panel Komik Terpisah oleh Gutter */}
-                    <div className="md:hidden bg-[#f1ebe0] p-3.5 space-y-4">
+                    {/* TAMPILAN KARTU RESPONSIF (Layar HP / Mobile < md) — Gaya Kartu Grimoire Transparan */}
+                    <div className="md:hidden bg-stone-950/35 backdrop-blur-sm p-3.5 space-y-4">
                       {filteredStudents.map((student, idx) => {
                         const studentScores = allScores.filter(s => s.userEmail.toLowerCase() === student.email.toLowerCase());
                         const totalQuizzes = studentScores.length;
@@ -1447,42 +1320,42 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                         const displayNickname = student.nickname || displayFullName.split(/\s+/)[0] || '-';
                         const avatarInitial = displayFullName.charAt(0).toUpperCase();
 
-                        let avgScoreColor = 'text-black bg-stone-100 border-stone-900';
+                        let avgScoreColor = 'text-stone-300 bg-stone-950/60 border-stone-800';
                         if (avgScore !== null) {
                           if (avgScore >= 71) {
-                            avgScoreColor = 'text-emerald-800 bg-emerald-100 border-stone-900';
+                            avgScoreColor = 'text-emerald-300 bg-emerald-950/80 border-emerald-600';
                           } else if (avgScore >= 51) {
-                            avgScoreColor = 'text-red-600 bg-red-100 border-stone-900';
+                            avgScoreColor = 'text-red-300 bg-red-950/80 border-red-600';
                           }
                         }
 
                         return (
-                          <div key={student.email} className="manga-subkoma-panel p-4 space-y-3 bg-white relative">
-                            <MangaCornerTicks />
+                          <div key={student.email} className="grimoire-card p-4 space-y-3 rounded-lg border border-amber-600/50 relative bg-stone-950/40 backdrop-blur-md">
+                            <GrimoireCornerClasp variant="gold" />
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-[#881337] border-2 border-stone-950 text-white flex items-center justify-center font-japanese font-black text-base shrink-0 shadow-[2px_2px_0px_#1c1917]">
+                                <div className="w-10 h-10 bg-red-950 border border-red-500 text-red-200 flex items-center justify-center font-japanese font-black text-base shrink-0 rounded-md">
                                   {avatarInitial}
                                 </div>
                                 <div>
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-xs font-mono font-black text-[#881337]">#{idx + 1}</span>
-                                    <h3 className="text-sm font-black text-stone-950">{displayFullName}</h3>
+                                    <span className="text-xs font-mono font-black text-amber-400">#{idx + 1}</span>
+                                    <h3 className="text-sm font-black text-stone-100">{displayFullName}</h3>
                                   </div>
-                                  <p className="text-xs text-stone-700 mt-0.5">
-                                    Panggilan: <strong className="text-[#881337] font-black">{displayNickname}</strong> · {student.registeredAt || '2026-10-01'}
+                                  <p className="text-xs text-stone-400 mt-0.5">
+                                    Panggilan: <strong className="text-amber-300 font-black">{displayNickname}</strong> · {student.registeredAt || '2026-10-01'}
                                   </p>
                                 </div>
                               </div>
 
                               {isOnline ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-950 border-2 border-stone-950 text-[11px] font-black shrink-0">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-500 text-[11px] font-black shrink-0 rounded-xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                                   <span>Online</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-700 border-2 border-stone-950 text-[11px] font-bold shrink-0">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-950 text-stone-400 border border-stone-800 text-[11px] font-bold shrink-0 rounded-xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-stone-500" />
                                   <span>Offline</span>
                                 </span>
                               )}
@@ -1490,92 +1363,92 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
                             {/* Jam & Tanggal Terakhir Murid Online / Belajar di Mobile */}
                             <div
-                              className={`p-3 border-2 border-stone-950 shadow-[2px_2px_0px_#1c1917] text-xs space-y-1.5 ${
+                              className={`p-3 border rounded-sm text-xs space-y-1.5 ${
                                 isOnline
-                                  ? 'bg-emerald-50'
-                                  : 'bg-[#fbf9f3]'
+                                  ? 'bg-emerald-950/40 border-emerald-600/60'
+                                  : 'bg-stone-950 border-stone-800'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-[#881337]">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
                                   🕒 Terakhir Online / Belajar:
                                 </span>
                                 <span
-                                  className={`text-[10px] font-black px-2 py-0.5 border border-stone-950 ${
+                                  className={`text-[10px] font-black px-2 py-0.5 border rounded-xs ${
                                     isOnline
-                                      ? 'bg-emerald-600 text-white'
-                                      : 'bg-white text-stone-800'
+                                      ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                                      : 'bg-stone-900 border-stone-700 text-stone-400'
                                   }`}
                                 >
                                   {lastOnlineInfo.relativeTimeLabel}
                                 </span>
                               </div>
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
-                                <span className="inline-flex items-center gap-1 font-black text-stone-950">
-                                  <Calendar className="w-3.5 h-3.5 text-[#881337]" />
+                                <span className="inline-flex items-center gap-1 font-black text-stone-200">
+                                  <Calendar className="w-3.5 h-3.5 text-amber-400" />
                                   <span>{lastOnlineInfo.formattedDayDate}</span>
                                 </span>
-                                <span className="inline-flex items-center gap-1 font-mono font-black text-[#881337]">
-                                  <Clock className="w-3.5 h-3.5 text-amber-700" />
+                                <span className="inline-flex items-center gap-1 font-mono font-black text-amber-300">
+                                  <Clock className="w-3.5 h-3.5 text-amber-400" />
                                   <span>Pukul {lastOnlineInfo.formattedTime}</span>
                                 </span>
                               </div>
                             </div>
 
                             {/* Aktivitas Live di Mobile */}
-                            <div className="p-2.5 bg-[#fbf9f3] border-2 border-stone-950 text-xs space-y-1.5">
-                              <div className="font-black text-[#881337]">{activityInfo.badgeText}</div>
+                            <div className="p-2.5 bg-stone-950 border border-stone-800 rounded-sm text-xs space-y-1.5">
+                              <div className="font-black text-amber-300">{activityInfo.badgeText}</div>
                               {(activityInfo.screenshotAttempts > 0 || activityInfo.aiTranslateAttempts > 0) && (
                                 <div className="flex flex-wrap gap-1.5">
                                   {activityInfo.screenshotAttempts > 0 && (
-                                    <span className="px-2 py-0.5 bg-rose-600 text-white text-[10px] font-black">
-                                      📸 Mencoba Screenshot: {activityInfo.screenshotAttempts}x
+                                    <span className="px-2 py-0.5 bg-red-900 text-red-100 border border-red-500 text-[10px] font-black rounded-xs">
+                                      📸 Screenshot: {activityInfo.screenshotAttempts}x
                                     </span>
                                   )}
                                   {activityInfo.aiTranslateAttempts > 0 && (
-                                    <span className="px-2 py-0.5 bg-amber-600 text-white text-[10px] font-black">
-                                      🤖 Mencoba Terjemahan Otomatis: {activityInfo.aiTranslateAttempts}x
+                                    <span className="px-2 py-0.5 bg-amber-950 text-amber-200 border border-amber-600 text-[10px] font-black rounded-xs">
+                                      🤖 Terjemahan: {activityInfo.aiTranslateAttempts}x
                                     </span>
                                   )}
                                 </div>
                               )}
-                              <div className="text-[10px] text-stone-600 mt-0.5">{activityInfo.subText}</div>
+                              <div className="text-[10px] text-stone-400 mt-0.5">{activityInfo.subText}</div>
                             </div>
 
-                            <div className="bg-[#fbf9f3] border-2 border-stone-950 p-3 space-y-1.5 text-xs">
+                            <div className="bg-stone-950 border border-stone-800 rounded-sm p-3 space-y-1.5 text-xs">
                               <div className="flex items-center gap-1.5">
-                                <Mail className="w-3.5 h-3.5 text-[#881337] shrink-0" />
-                                <span className="font-mono font-bold text-stone-950 break-all">{student.email}</span>
+                                <Mail className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                <span className="font-mono font-bold text-stone-200 break-all">{student.email}</span>
                               </div>
-                              <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-300">
+                              <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-800">
                                 <div className="flex items-center gap-1.5">
-                                  <KeyRound className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                                  <span className="text-stone-700 font-bold">Sandi:</span>
-                                  <span className="font-mono font-black text-[#881337]">
+                                  <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                  <span className="text-stone-400 font-bold">Sandi:</span>
+                                  <span className="font-mono font-black text-amber-300">
                                     {visiblePasswords[student.email] ? studentPassword : '••••••••'}
                                   </span>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => togglePasswordVisibility(student.email)}
-                                  className="px-2 py-0.5 bg-white border border-stone-950 text-[11px] font-black text-[#881337]"
+                                  className="px-2 py-0.5 bg-stone-900 border border-stone-700 text-[11px] font-black text-amber-300 rounded-xs"
                                 >
                                   {visiblePasswords[student.email] ? 'Tutup' : 'Lihat'}
                                 </button>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between text-xs bg-white border-2 border-stone-950 px-3 py-2">
-                              <span className="font-black text-stone-950">Riwayat: {totalQuizzes}x Kuis</span>
+                            <div className="flex items-center justify-between text-xs bg-stone-950 border border-stone-800 rounded-sm px-3 py-2">
+                              <span className="font-black text-stone-200">Riwayat: {totalQuizzes}x Ujian</span>
                               {avgScore !== null ? (
                                 <div className="flex items-center gap-2">
-                                  <span className={`px-2 py-0.5 border font-black ${avgScoreColor}`}>
+                                  <span className={`px-2 py-0.5 border font-black rounded-xs ${avgScoreColor}`}>
                                     Rata-rata: {avgScore}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => setStudentDetailModal(student)}
-                                    className="text-[#881337] underline font-black"
+                                    className="text-amber-400 underline font-black"
                                   >
                                     Rincian
                                   </button>
@@ -1592,17 +1465,17 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                                   setStudentToResetPassword({ user: student, currentPassword: studentPassword });
                                   setNewPasswordInput('');
                                 }}
-                                className="flex-1 py-2 px-3 bg-amber-100 text-stone-950 border-2 border-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1c1917]"
+                                className="flex-1 py-2 px-3 bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-600/80 font-black text-xs flex items-center justify-center gap-1.5 rounded-xs"
                               >
-                                <KeyRound className="w-3.5 h-3.5" />
+                                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                                 <span>Ubah Sandi</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setStudentToDelete(student)}
-                                className="flex-1 py-2 px-3 bg-red-100 text-red-900 border-2 border-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1c1917]"
+                                className="flex-1 py-2 px-3 bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-600/80 font-black text-xs flex items-center justify-center gap-1.5 rounded-xs"
                               >
-                                <UserX className="w-3.5 h-3.5" />
+                                <UserX className="w-3.5 h-3.5 text-red-400" />
                                 <span>Hapus Murid</span>
                               </button>
                             </div>
@@ -1619,71 +1492,70 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
         )}
 
         {/* =========================================================================
-            KOMA 06 (PANEL KLIMAKS MANGA): NILAI & PERANKINGAN KUIS LIVE
+            GRIMOIRE TRIAL ARENA: NILAI & PERANKINGAN KUIS LIVE (BLACK CLOVER THEME)
             ========================================================================= */}
         {(subTab === 'all' || subTab === 'live_scores') && (
           <>
-            <MangaGutterSeparator label="MANGA GUTTER 04 · PEMISAH PANEL PERANKINGAN & KUIS LIVE" jpLabel="【コマ間・試験実況区画】" />
+            <GrimoireRunicDivider label="TRIAL OF MAGIC RANKINGS" jpLabel="昇格魔導試験" variant="red" />
             <div className="space-y-6">
-              {/* Papan Peringkat Sesi Kuis (Top 3 Juara Sesi Ini) Gaya Panel Turnamen Manga */}
+              {/* Papan Peringkat Sesi Kuis (Top 3 Juara Sesi Ini) Gaya Podium Clover Transparan */}
               {sortedCompletedRecords.length > 0 && (
-                <div className="manga-koma-panel relative bg-white p-4 sm:p-6 overflow-hidden">
-                  <MangaCornerTicks />
-                  <MangaSpeedLinesBg />
-                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b-[3px] border-black pb-3">
+                <div className="grimoire-card relative p-4 sm:p-5 overflow-hidden rounded-2xl border-2 border-red-600/40 shadow-lg backdrop-blur-[2px] bg-red-950/15">
+                  <GrimoireCornerClasp variant="gold" />
+                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-red-600/40 pb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-amber-300 border-[2.5px] border-black flex items-center justify-center text-black shadow-[2px_2px_0px_#000000]">
-                        <Trophy className="w-5 h-5" />
+                      <div className="w-10 h-10 bg-amber-950/80 border-2 border-amber-500 flex items-center justify-center text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.3)] rounded-md">
+                        <Trophy className="w-5 h-5 text-amber-400" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 bg-black text-amber-300 font-mono text-[10px] font-black">
+                          <span className="px-2 py-0.5 bg-amber-950/80 text-amber-300 font-mono text-[10px] font-black border border-amber-600 rounded-xs">
                             表彰台 · TOP 3 PODIUM
                           </span>
-                          <span className="font-japanese font-black text-xs text-[#881337]">
-                            バァーン!!
+                          <span className="font-japanese font-black text-xs text-amber-400">
+                            魔導試験優秀者
                           </span>
                         </div>
-                        <h3 className="text-sm sm:text-base font-black text-black font-japanese mt-0.5">
-                          Papan Perankingan Sesi Kuis Saat Ini (Top 3)
+                        <h3 className="text-sm sm:text-base font-black text-stone-100 font-japanese mt-0.5">
+                          Papan Perankingan Sesi Kuis Saat Ini (Top 3 Magic Knights)
                         </h3>
                       </div>
                     </div>
 
                     <button
                       onClick={() => setShowResetRankingModal(true)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-200 hover:bg-amber-300 text-black border-[2.5px] border-black text-xs font-black transition-all w-fit shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-950/80 hover:bg-stone-900 text-amber-300 border border-amber-600 text-xs font-black transition-all w-fit shadow-[0_0_10px_rgba(245,158,11,0.2)] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer rounded-xs backdrop-blur-xs"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
+                      <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
                       <span>Reset Ranking Sesi Kuis</span>
                     </button>
                   </div>
 
-                  {/* 3 Panel Juara Terpisah oleh Gutter */}
-                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-5 bg-[#f1ebe0] p-3.5 border-[3px] border-black">
+                  {/* 3 Panel Juara Grimoire (Transparan dengan Warna Emas, Perak, Perunggu) */}
+                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-3 bg-stone-950/25 backdrop-blur-xs border border-stone-800/60 rounded-md">
                     {sortedCompletedRecords.slice(0, 3).map((rec, idx) => {
                       const medalIcon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
                       const medalTitle = idx === 0 ? '第1位 · JUARA 1 (EMAS)' : idx === 1 ? '第2位 · JUARA 2 (PERAK)' : '第3位 · JUARA 3 (PERUNGGU)';
                       const cardBg = idx === 0 
-                        ? 'bg-amber-100' 
+                        ? 'bg-amber-950/40 backdrop-blur-xs border-2 border-amber-400 shadow-[0_0_18px_rgba(245,158,11,0.25)]' 
                         : idx === 1 
-                        ? 'bg-slate-100' 
-                        : 'bg-orange-100';
+                        ? 'bg-slate-900/40 backdrop-blur-xs border-2 border-slate-300 shadow-[0_0_18px_rgba(203,213,225,0.2)]' 
+                        : 'bg-orange-950/40 backdrop-blur-xs border-2 border-amber-700 shadow-[0_0_18px_rgba(180,83,9,0.2)]';
 
                       return (
-                        <div key={rec.id} className={`manga-subkoma-panel p-4 ${cardBg} flex items-center gap-3 relative`}>
+                        <div key={rec.id} className={`p-3.5 rounded-md ${cardBg} flex items-center gap-3 relative`}>
                           <div className="text-3xl shrink-0">{medalIcon}</div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-[10px] font-black uppercase tracking-wider text-black font-mono">
+                            <div className="text-[10px] font-black uppercase tracking-wider text-amber-300 font-mono">
                               {medalTitle}
                             </div>
-                            <div className="font-black text-black text-sm truncate mt-0.5">
+                            <div className="font-black text-stone-100 text-sm truncate mt-0.5">
                               {rec.studentName}
                             </div>
-                            <div className="text-xs text-stone-800 flex items-center gap-2 mt-0.5 font-bold">
+                            <div className="text-xs text-stone-300 flex items-center gap-2 mt-0.5 font-bold">
                               <span>JLPT {rec.level}</span>
                               <span>•</span>
-                              <span>Nilai: <strong className="text-[#881337] font-black">{rec.score}</strong></span>
+                              <span>Nilai: <strong className="text-amber-300 font-black">{rec.score}</strong></span>
                             </div>
                           </div>
                         </div>
@@ -1693,31 +1565,31 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 </div>
               )}
 
-              {/* Filter Bar & Tabel Pantauan Sesi Kuis Live Gaya Panel Manga */}
-              <div className="manga-koma-panel relative bg-white overflow-hidden">
-                <MangaCornerTicks />
-                <div className="bg-[#f1ebe0] border-b-[4px] border-black p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+              {/* Filter Bar & Tabel Pantauan Sesi Kuis Live Gaya Grimoire (Transparan Merah Anti-Sihir) */}
+              <div className="grimoire-card relative overflow-hidden rounded-2xl border-2 border-red-600/40 shadow-lg backdrop-blur-[2px] bg-red-950/15">
+                <GrimoireCornerClasp variant="red" />
+                <div className="bg-red-950/30 backdrop-blur-xs border-b border-red-800/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="px-2 py-0.5 bg-black text-amber-300 font-mono text-[10px] font-black border border-black">
-                      コマ 06 · LIVE EXAM LOG
+                    <span className="px-2 py-0.5 bg-red-950/90 text-red-300 font-mono text-[10px] font-black border border-red-600 rounded-xs">
+                      ARENA · LIVE LOG
                     </span>
-                    <Activity className="w-4 h-4 text-[#881337]" />
-                    <span className="text-xs sm:text-sm font-black text-black font-japanese">
+                    <Activity className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs sm:text-sm font-black text-stone-100 font-japanese">
                       Tabel Pantauan Sesi Kuis & Peringkat Live ({filteredRecords.length} Sesi)
                     </span>
                   </div>
 
                   {/* Filters & Reset Ranking Button */}
                   <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-                    <div className="flex items-center gap-1 bg-white p-1 border-[2.5px] border-black shadow-[2px_2px_0px_#000000] text-xs">
+                    <div className="flex items-center gap-1 bg-stone-950/80 p-1 border border-stone-800 text-xs rounded-xs backdrop-blur-xs">
                       {(['all', 'in_progress', 'completed'] as const).map((st) => (
                         <button
                           key={st}
                           onClick={() => setFilterStatus(st)}
-                          className={`px-3 py-1 font-black transition-all cursor-pointer ${
+                          className={`px-3 py-1 font-black transition-all cursor-pointer rounded-xs ${
                             filterStatus === st
-                              ? 'bg-black text-white'
-                              : 'text-stone-800 hover:text-black'
+                              ? 'bg-amber-600 text-stone-950 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                              : 'text-stone-400 hover:text-stone-200'
                           }`}
                         >
                           {st === 'all' ? 'Semua' : st === 'in_progress' ? 'Sedang Kuis' : 'Selesai'}
@@ -1728,7 +1600,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                     <select
                       value={filterLevel}
                       onChange={(e) => setFilterLevel(e.target.value)}
-                      className="px-3 py-1.5 bg-white border-[2.5px] border-black shadow-[2px_2px_0px_#000000] text-xs font-black text-black outline-hidden"
+                      className="px-3 py-1.5 bg-stone-950/80 border border-stone-800 text-xs font-black text-amber-300 outline-hidden rounded-xs backdrop-blur-xs"
                     >
                       <option value="all">Semua Level</option>
                       <option value="N5">Level N5</option>
@@ -1739,39 +1611,39 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
                     <button
                       onClick={() => setShowResetRankingModal(true)}
-                      className="px-3.5 py-1.5 bg-amber-300 hover:bg-amber-400 text-black border-[2.5px] border-black text-xs font-black shadow-[2px_2px_0px_#000000] transition-all flex items-center gap-1.5 shrink-0 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+                      className="px-3.5 py-1.5 bg-stone-950/80 hover:bg-stone-900 text-amber-300 border border-amber-600 text-xs font-black shadow-[0_0_8px_rgba(245,158,11,0.2)] transition-all flex items-center gap-1.5 shrink-0 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer rounded-xs backdrop-blur-xs"
                       title="Reset papan perankingan untuk sesi kuis baru (tidak menghapus total kuis atau rapor murid)"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Reset Ranking Sesi</span>
+                      <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Reset Ranking</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto bg-[#f1ebe0] p-3">
-                  <table className="w-full text-left text-xs sm:text-sm bg-white border-[3px] border-black shadow-[4px_4px_0px_#000000]">
+                <div className="overflow-x-auto bg-stone-950/35 backdrop-blur-sm p-3.5">
+                  <table className="w-full text-left text-xs sm:text-sm bg-stone-950/40 backdrop-blur-sm border border-stone-800/80 rounded-md overflow-hidden">
                     <thead>
-                      <tr className="bg-[#e8dfd1] text-black border-b-[3px] border-black font-black">
-                        <th className="py-3 px-3 text-center border-r-[2.5px] border-black">Peringkat</th>
-                        <th className="py-3 px-4 border-r-[2.5px] border-black">Nama Murid</th>
-                        <th className="py-3 px-3 border-r-[2.5px] border-black">Level Kuis</th>
-                        <th className="py-3 px-3 border-r-[2.5px] border-black">Tanggal</th>
-                        <th className="py-3 px-3 border-r-[2.5px] border-black">Jam Mulai</th>
-                        <th className="py-3 px-3 border-r-[2.5px] border-black">Jam Selesai</th>
-                        <th className="py-3 px-4 text-center border-r-[2.5px] border-black">Progres / Nilai Murid</th>
+                      <tr className="bg-red-950/60 backdrop-blur-sm text-red-200 border-b-2 border-red-600/70 font-black">
+                        <th className="py-3 px-3 text-center border-r border-stone-800">Peringkat</th>
+                        <th className="py-3 px-4 border-r border-stone-800">Nama Murid</th>
+                        <th className="py-3 px-3 border-r border-stone-800">Level Kuis</th>
+                        <th className="py-3 px-3 border-r border-stone-800">Tanggal</th>
+                        <th className="py-3 px-3 border-r border-stone-800">Jam Mulai</th>
+                        <th className="py-3 px-3 border-r border-stone-800">Jam Selesai</th>
+                        <th className="py-3 px-4 text-center border-r border-stone-800">Progres / Skor Murid</th>
                         <th className="py-3 px-3 text-center">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y-[3px] divide-black">
+                    <tbody className="divide-y divide-stone-800/60">
                       {filteredRecords.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-10 text-center text-stone-700 bg-white">
-                            <div className="font-japanese font-black text-2xl text-stone-400 mb-1.5">「試験待機中...」</div>
-                            <p className="font-black text-black">
+                          <td colSpan={8} className="py-10 text-center text-stone-400 bg-stone-950/40 backdrop-blur-sm">
+                            <div className="font-japanese font-black text-2xl text-stone-600 mb-1.5">「試験待機中...」</div>
+                            <p className="font-black text-stone-300">
                               Papan perankingan sesi ini belum memiliki rekaman kuis.
                             </p>
-                            <p className="text-xs text-stone-600 mt-0.5">
-                              Saat murid mulai mengerjakan kuis, nomor soal yang sedang dikerjakan dan perolehan nilai akan otomatis muncul secara live di tabel ini.
+                            <p className="text-xs text-stone-500 mt-0.5">
+                              Saat murid mulai mengerjakan kuis, nomor soal yang sedang dikerjakan dan skor akan otomatis muncul secara live di tabel ini.
                             </p>
                           </td>
                         </tr>
@@ -1780,75 +1652,75 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                           <tr 
                             key={rec.id} 
                             className={`transition-colors ${
-                              rec.status === 'in_progress' ? 'bg-amber-50/80 hover:bg-amber-100/60' : 'hover:bg-[#fbf9f3]'
+                              rec.status === 'in_progress' ? 'bg-amber-950/30 hover:bg-amber-950/45' : 'hover:bg-red-950/30 bg-stone-950/35'
                             }`}
                           >
-                            <td className="py-3 px-3 text-center whitespace-nowrap border-r-[2.5px] border-black bg-[#fbf9f3]">
+                            <td className="py-3 px-3 text-center whitespace-nowrap border-r border-stone-800 bg-stone-950/60">
                               {renderRankBadge(rankMap.get(rec.id), rec.status)}
                             </td>
 
-                            <td className="py-3 px-4 border-r-[2.5px] border-black">
+                            <td className="py-3 px-4 border-r border-stone-800">
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="font-black text-black">
+                                <span className="font-black text-stone-100">
                                   {rec.studentName}
                                 </span>
                                 {rec.tabViolationsCount && rec.tabViolationsCount > 0 ? (
                                   <span 
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-900 border border-black text-[10px] font-black shrink-0"
-                                    title={`Peringatan: Murid terdeteksi berpindah tab / keluar jendela sebanyak ${rec.tabViolationsCount} kali`}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-950 text-red-300 border border-red-600 text-[10px] font-black shrink-0 rounded-xs"
+                                    title={`Peringatan: Murid terdeteksi berpindah tab sebanyak ${rec.tabViolationsCount} kali`}
                                   >
-                                    <ShieldAlert className="w-3 h-3 text-rose-600 shrink-0" />
+                                    <ShieldAlert className="w-3 h-3 text-red-400 shrink-0" />
                                     <span>{rec.tabViolationsCount}x Pindah Tab</span>
                                   </span>
                                 ) : null}
                               </div>
-                              <div className="text-[11px] text-stone-700 flex items-center gap-1 mt-0.5">
-                                <span className="font-bold text-[#881337]">Panggilan: {rec.studentNickname}</span>
+                              <div className="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5">
+                                <span className="font-bold text-amber-400">Panggilan: {rec.studentNickname}</span>
                               </div>
                             </td>
 
-                            <td className="py-3 px-3 border-r-[2.5px] border-black">
-                              <span className="px-2.5 py-1 bg-black text-white font-black text-xs shadow-[2px_2px_0px_#881337]">
+                            <td className="py-3 px-3 border-r border-stone-800">
+                              <span className="px-2.5 py-1 bg-stone-950 text-amber-300 border border-stone-800 font-black text-xs rounded-xs">
                                 JLPT {rec.level}
                               </span>
                             </td>
 
-                            <td className="py-3 px-3 font-bold text-stone-800 whitespace-nowrap border-r-[2.5px] border-black">
+                            <td className="py-3 px-3 font-bold text-stone-300 whitespace-nowrap border-r border-stone-800">
                               <div className="flex items-center gap-1">
-                                <Calendar className="w-3.5 h-3.5 text-[#881337]" />
+                                <Calendar className="w-3.5 h-3.5 text-amber-400" />
                                 <span>{rec.date}</span>
                               </div>
                             </td>
 
-                            <td className="py-3 px-3 font-mono font-bold text-stone-800 whitespace-nowrap border-r-[2.5px] border-black">
+                            <td className="py-3 px-3 font-mono font-bold text-stone-300 whitespace-nowrap border-r border-stone-800">
                               <div className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5 text-stone-600" />
+                                <Clock className="w-3.5 h-3.5 text-stone-500" />
                                 <span>{rec.startedAtTime}</span>
                               </div>
                             </td>
 
-                            <td className="py-3 px-3 whitespace-nowrap border-r-[2.5px] border-black">
+                            <td className="py-3 px-3 whitespace-nowrap border-r border-stone-800">
                               {rec.status === 'in_progress' || !rec.completedAtTime ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-200 text-black border-2 border-black text-xs font-black animate-pulse">
-                                  <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-950 text-amber-300 border border-amber-600 text-xs font-black animate-pulse rounded-xs">
+                                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                                   sedang dikerjakan
                                 </span>
                               ) : (
-                                <div className="flex items-center gap-1 font-mono font-black text-emerald-800">
-                                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                <div className="flex items-center gap-1 font-mono font-black text-emerald-300">
+                                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                                   <span>{rec.completedAtTime}</span>
                                 </div>
                               )}
                             </td>
 
-                            <td className="py-3 px-4 text-center whitespace-nowrap border-r-[2.5px] border-black">
+                            <td className="py-3 px-4 text-center whitespace-nowrap border-r border-stone-800">
                               {renderScoreBadge(rec)}
                             </td>
 
                             <td className="py-3 px-3 text-center whitespace-nowrap">
                               <button
                                 onClick={() => setRecordToDelete(rec)}
-                                className="p-1.5 text-stone-700 hover:text-red-600 hover:bg-red-50 border-2 border-transparent hover:border-black transition-colors cursor-pointer"
+                                className="p-1.5 text-stone-400 hover:text-red-400 hover:bg-red-950/40 rounded-xs transition-colors cursor-pointer"
                                 title="Hapus rekaman ini"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1862,22 +1734,21 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 </div>
               </div>
 
-              {/* Keterangan Skema Warna Nilai Gaya Panel Catatan Kaki Manga */}
-              <div className="manga-koma-panel relative p-4 bg-white flex flex-wrap items-center justify-between gap-2 text-xs text-stone-800">
-                <MangaCornerTicks />
-                <span className="font-black text-black">🎨 【注釈コマ】 Aturan Pewarnaan Nilai Murid:</span>
+              {/* Keterangan Skema Warna Nilai Gaya Grimoire */}
+              <div className="grimoire-card relative p-4 flex flex-wrap items-center justify-between gap-2 text-xs text-stone-300 rounded-lg border border-red-600/30 bg-stone-950/40 backdrop-blur-md">
+                <span className="font-black text-amber-300">🎨 【注釈】 Aturan Pewarnaan Skor Ujian Sihir:</span>
                 <div className="flex flex-wrap items-center gap-4">
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-black border border-black" />
-                    <span><strong>0 – 50:</strong> Berwarna Hitam</span>
+                    <span className="w-3 h-3 rounded-full bg-stone-800 border border-stone-600" />
+                    <span><strong>0 – 50:</strong> Berwarna Gelap</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-red-600 border border-black" />
-                    <span><strong>51 – 70:</strong> Berwarna Merah</span>
+                    <span className="w-3 h-3 rounded-full bg-red-600 border border-red-400" />
+                    <span><strong>51 – 70:</strong> Berwarna Merah Anti-Sihir</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-emerald-600 border border-black" />
-                    <span><strong>71 – 100:</strong> Berwarna Hijau</span>
+                    <span className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-300" />
+                    <span><strong>71 – 100:</strong> Berwarna Hijau Roh Angin</span>
                   </span>
                 </div>
               </div>
@@ -1886,103 +1757,103 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
         )}
 
         {/* =========================================================================
-            KOMA 07 (PANEL GOOGLE MEET ATTENDANCE & DURATION SYNC)
+            GRIMOIRE SPATIAL MEET: GOOGLE MEET ATTENDANCE & DURATION SYNC
             ========================================================================= */}
         {(subTab === 'all' || subTab === 'meet_sync') && (
           <>
-            <MangaGutterSeparator label="MANGA GUTTER 04.5 · PEMISAH PANEL GOOGLE MEET & DURASI" jpLabel="【コマ間・ビデオ会議同期区画】" />
+            <GrimoireRunicDivider label="SPATIAL TELEPATHY & MEET SYNC" jpLabel="空間通信出席録" variant="green" />
             <div className="space-y-6 animate-in fade-in duration-300">
-              {/* Kontrol Sesi Tatap Muka Google Meet Master & Chat Reaksi Manga */}
+              {/* Kontrol Sesi Tatap Muka Google Meet Master & Chat Reaksi */}
               <div className="mb-4">
                 <GoogleMeetRoom isMasterUser={true} currentUser={currentUser} />
               </div>
 
-              <div className="manga-koma-panel relative bg-white p-6 sm:p-8 overflow-hidden shadow-sm">
-                <MangaCornerTicks />
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b-2 border-black">
+              <div className="grimoire-card relative p-5 sm:p-7 overflow-hidden rounded-2xl border-2 border-emerald-600/40 shadow-lg backdrop-blur-[2px] bg-emerald-950/15">
+                <GrimoireCornerClasp variant="green" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-emerald-600/30">
                   <div>
-                    <span className="px-2.5 py-1 bg-[#881337] text-white font-mono text-[10px] font-black uppercase tracking-wider border-2 border-black">
-                      頁 07 · GOOGLE MEET DURATION SYNC
+                    <span className="px-2.5 py-1 bg-emerald-950/80 text-emerald-300 font-mono text-[10px] font-black uppercase tracking-wider border border-emerald-500 rounded-xs">
+                      SANCTUM 04 · MEET DURATION SYNC
                     </span>
-                    <h3 className="text-xl font-black text-black font-japanese mt-1">
+                    <h3 className="text-xl font-black text-stone-100 font-japanese mt-1">
                       Sinkronisasi Kehadiran & Durasi Partisipasi Google Meet
                     </h3>
-                    <p className="text-xs text-stone-700 mt-0.5">
+                    <p className="text-xs text-stone-300 mt-0.5">
                       Sinkronkan daftar kehadiran murid secara otomatis ke rapor mereka berdasarkan durasi kehadiran dalam sesi Google Meet yang diselenggarakan Master.
                     </p>
                   </div>
 
                   <button
                     onClick={handlePerformMeetSync}
-                    className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs border-[3px] border-black shadow-[4px_4px_0px_#000000] flex items-center gap-2 cursor-pointer transition-all transform hover:scale-105"
+                    className="px-5 py-3 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white font-black text-xs border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-2 cursor-pointer transition-all transform hover:scale-105 rounded-xs"
                   >
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>🔄 Sinkronkan Kehadiran & Durasi ke Raporan Murid</span>
+                    <RefreshCw className="w-4 h-4 animate-spin text-emerald-300" />
+                    <span>🔄 Sinkronkan Kehadiran & Durasi ke Rapor Murid</span>
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="p-4 bg-[#fdf5ea] border-2 border-black shadow-[3px_3px_0px_#000000]">
-                    <div className="text-xs font-black text-[#8c6b4b] uppercase tracking-wider mb-1">Total Sesi Meet Berlangsung</div>
-                    <div className="text-2xl font-black text-[#881337] font-mono">{storageService.getVirtualSessions().length} Sesi</div>
+                  <div className="p-4 bg-amber-950/30 backdrop-blur-xs border border-amber-500/40 rounded-md">
+                    <div className="text-xs font-black text-amber-300 uppercase tracking-wider mb-1">Total Sesi Meet Berlangsung</div>
+                    <div className="text-2xl font-black text-amber-100 font-mono">{storageService.getVirtualSessions().length} Sesi</div>
                   </div>
-                  <div className="p-4 bg-[#fdf5ea] border-2 border-black shadow-[3px_3px_0px_#000000]">
-                    <div className="text-xs font-black text-[#8c6b4b] uppercase tracking-wider mb-1">Murid Tersinkronisasi</div>
-                    <div className="text-2xl font-black text-emerald-800 font-mono">{Object.keys(meetSyncData.students || {}).length} Murid</div>
+                  <div className="p-4 bg-emerald-950/30 backdrop-blur-xs border border-emerald-500/40 rounded-md">
+                    <div className="text-xs font-black text-emerald-300 uppercase tracking-wider mb-1">Murid Tersinkronisasi</div>
+                    <div className="text-2xl font-black text-emerald-200 font-mono">{Object.keys(meetSyncData.students || {}).length} Murid</div>
                   </div>
-                  <div className="p-4 bg-[#fdf5ea] border-2 border-black shadow-[3px_3px_0px_#000000]">
-                    <div className="text-xs font-black text-[#8c6b4b] uppercase tracking-wider mb-1">Terakhir Disinkronkan</div>
-                    <div className="text-xs font-mono font-bold text-stone-900 mt-1">{meetSyncData.updatedAt || 'Belum pernah'}</div>
+                  <div className="p-4 bg-teal-950/30 backdrop-blur-xs border border-teal-500/40 rounded-md">
+                    <div className="text-xs font-black text-teal-300 uppercase tracking-wider mb-1">Terakhir Disinkronkan</div>
+                    <div className="text-xs font-mono font-bold text-teal-200 mt-1">{meetSyncData.updatedAt || 'Belum pernah'}</div>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="text-sm font-black text-black uppercase tracking-wider font-japanese border-l-4 border-[#881337] pl-2.5">
+                  <h4 className="text-sm font-black text-stone-100 uppercase tracking-wider font-japanese border-l-4 border-emerald-500 pl-2.5">
                     Rincian Partisipasi Durasi Murid (*Estimasi 30 Menit / Sesi)
                   </h4>
 
                   {studentsList.length === 0 ? (
-                    <p className="text-xs text-stone-600 italic">Belum ada murid terdaftar.</p>
+                    <p className="text-xs text-stone-500 italic">Belum ada murid terdaftar.</p>
                   ) : (
-                    <div className="overflow-x-auto border-[3px] border-black shadow-[4px_4px_0px_#000000]">
-                      <table className="w-full text-left text-xs bg-white">
-                        <thead className="bg-[#f1ebe0] font-black uppercase text-[11px] text-stone-900 border-b-[3px] border-black">
+                    <div className="overflow-x-auto border border-emerald-800/60 rounded-md bg-stone-950/30 backdrop-blur-sm">
+                      <table className="w-full text-left text-xs bg-emerald-950/15 backdrop-blur-sm">
+                        <thead className="bg-emerald-950/70 backdrop-blur-sm font-black uppercase text-[11px] text-emerald-300 border-b border-emerald-800/80">
                           <tr>
-                            <th className="py-3 px-4 border-r-2 border-black">Nama Murid</th>
-                            <th className="py-3 px-4 border-r-2 border-black">Email</th>
-                            <th className="py-3 px-4 border-r-2 border-black">Sesi Diikuti</th>
-                            <th className="py-3 px-4 border-r-2 border-black">Total Durasi Partisipasi</th>
+                            <th className="py-3 px-4 border-r border-emerald-800/50">Nama Murid</th>
+                            <th className="py-3 px-4 border-r border-emerald-800/50">Email</th>
+                            <th className="py-3 px-4 border-r border-emerald-800/50">Sesi Diikuti</th>
+                            <th className="py-3 px-4 border-r border-emerald-800/50">Total Durasi Partisipasi</th>
                             <th className="py-3 px-4">Status Sinkronisasi</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y-2 divide-black">
+                        <tbody className="divide-y divide-emerald-900/40">
                           {studentsList.map((stu) => {
                             const emailL = stu.email.toLowerCase();
                             const syncInfo = meetSyncData.students[emailL];
                             const attendedCount = syncInfo?.attendanceCount || 0;
                             const totalMins = syncInfo?.totalMinutes || 0;
                             return (
-                              <tr key={stu.email} className="hover:bg-amber-50/50 transition-colors">
-                                <td className="py-3 px-4 font-black text-stone-950 flex items-center gap-2 border-r-2 border-black">
-                                  <span className="w-6 h-6 rounded-full bg-[#881337] text-white flex items-center justify-center text-[10px] font-bold">
+                              <tr key={stu.email} className="hover:bg-emerald-950/35 transition-colors">
+                                <td className="py-3 px-4 font-black text-stone-100 flex items-center gap-2 border-r border-emerald-900/40">
+                                  <span className="w-6 h-6 rounded-full bg-red-950 border border-red-500 text-red-200 flex items-center justify-center text-[10px] font-bold">
                                     {(stu.nickname || stu.fullName || 'M').charAt(0).toUpperCase()}
                                   </span>
                                   <span>{stu.fullName || stu.nickname || stu.email}</span>
                                 </td>
-                                <td className="py-3 px-4 font-mono text-stone-700 border-r-2 border-black">{stu.email}</td>
-                                <td className="py-3 px-4 font-bold text-[#881337] border-r-2 border-black">
+                                <td className="py-3 px-4 font-mono text-stone-400 border-r border-emerald-900/40">{stu.email}</td>
+                                <td className="py-3 px-4 font-bold text-amber-300 border-r border-emerald-900/40">
                                   {attendedCount} Sesi Meet
                                 </td>
-                                <td className="py-3 px-4 font-mono font-extrabold text-emerald-800 border-r-2 border-black">
+                                <td className="py-3 px-4 font-mono font-extrabold text-emerald-400 border-r border-emerald-900/40">
                                   {totalMins} Menit ({Math.floor(totalMins / 60)} Jam {totalMins % 60} Menit)
                                 </td>
                                 <td className="py-3 px-4">
                                   {attendedCount > 0 ? (
-                                    <span className="px-2 py-1 bg-emerald-100 text-emerald-950 border border-black font-black text-[10px] rounded">
+                                    <span className="px-2 py-1 bg-emerald-950 text-emerald-300 border border-emerald-500 font-black text-[10px] rounded-xs">
                                       🟢 Aktif & Tersinkron
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-1 bg-stone-100 text-stone-700 border border-stone-400 font-bold text-[10px] rounded">
+                                    <span className="px-2 py-1 bg-stone-950 text-stone-500 border border-stone-800 font-bold text-[10px] rounded-xs">
                                       ⚪ Belum Hadir
                                     </span>
                                   )}
@@ -2001,59 +1872,62 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
         )}
         </div>
 
-        {/* GUTTER MANGA 05: PEMISAH ANTARA PANEL DATA & PANEL PENUTUP HALAMAN */}
-        <MangaGutterSeparator label="MANGA GUTTER 05 · PENUTUP LEMBARAN (TSUZUKU)" jpLabel="【コマ間・頁末区画】" />
-
-        {/* FOOTER PENUTUP LEMBARAN MANGA DENGAN TOMBOL INTERAKTIF BALIK HALAMAN */}
-        <div className="manga-koma-panel relative bg-white px-4 py-3.5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono font-black text-black">
-          <MangaCornerTicks />
+        {/* FOOTER PENUTUP GRIMOIRE DENGAN NAVIGASI BAB */}
+        <div className="mt-8 grimoire-card relative p-4 flex flex-wrap items-center justify-between gap-3 text-xs font-mono font-black text-amber-200 border border-amber-600/60 rounded-2xl shadow-md backdrop-blur-md bg-stone-950/40">
+          <GrimoireCornerClasp variant="gold" />
           <button
             type="button"
             onClick={() => handleStepMangaPage(-1)}
-            className="px-3.5 py-1.5 bg-white hover:bg-amber-100 text-black border-[2.5px] border-black shadow-[3px_3px_0px_#000000] active:translate-x-[1px] active:translate-y-[1px] inline-flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-3.5 py-1.5 bg-stone-950 hover:bg-stone-900 text-amber-300 border border-amber-600 inline-flex items-center gap-1.5 transition-all cursor-pointer rounded-xs"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>前の頁 (Balik ke Lembaran Sebelumnya)</span>
+            <ChevronLeft className="w-4 h-4 text-amber-400" />
+            <span>前の巻 (Bab Sebelumnya)</span>
           </button>
 
-          <span className="text-center font-black text-black">
-            SENSEI SARI COMMAND MANGA EDITION · {currentMangaPageMeta.folio}
+          <span className="text-center font-black text-amber-300 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+            <span>CLOVER KINGDOM MASTER SANCTUM · BLACK CLOVER GRIMOIRE ARCHIVES</span>
           </span>
 
           <button
             type="button"
             onClick={() => handleStepMangaPage(1)}
-            className="px-4 py-1.5 bg-black hover:bg-[#881337] text-white border-[2.5px] border-black shadow-[3px_3px_0px_#881337] active:translate-x-[1px] active:translate-y-[1px] font-japanese inline-flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-stone-950 border border-amber-400 font-japanese inline-flex items-center gap-1.5 transition-all cursor-pointer rounded-xs shadow-[0_0_12px_rgba(245,158,11,0.3)]"
           >
-            <span>つづく · 次の頁へ (Balik Halaman Berikutnya)</span>
+            <span>次の巻へ (Bab Berikutnya)</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* =========================================================================
-          MODAL RINCIAN RIWAYAT KUIS MURID TERDAFTAR
+          MODAL RINCIAN RIWAYAT KUIS MURID TERDAFTAR (GRIMOIRE ARCHIVES)
           ========================================================================= */}
       {studentDetailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-[#fbf9f3] border-[3px] border-stone-950 p-6 shadow-[8px_8px_0px_#1c1917] max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between gap-3 pb-4 border-b-2 border-stone-950">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-[#12141c] border-2 border-amber-500/60 p-6 shadow-[0_0_30px_rgba(0,0,0,0.9)] max-h-[85vh] flex flex-col rounded-lg relative">
+            <GrimoireCornerClasp />
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-stone-800">
               <div>
-                <h3 className="text-lg font-black text-stone-950 font-japanese">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-amber-400 text-xs">🍀</span>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">Arcane Student Record</span>
+                </div>
+                <h3 className="text-lg font-black text-amber-200 font-japanese">
                   Rincian Nilai Kuis: {studentDetailModal.fullName || studentDetailModal.nickname}
                 </h3>
-                <p className="text-xs text-stone-700 font-mono font-bold">
+                <p className="text-xs text-stone-400 font-mono">
                   {studentDetailModal.email}
                 </p>
                 {(() => {
                   const detailLastOnline = storageService.getStudentLastOnlineDetails(studentDetailModal, nowMs);
                   return (
-                    <div className="mt-2 inline-flex flex-wrap items-center gap-2 px-3 py-1.5 bg-white border-2 border-stone-950 shadow-[2px_2px_0px_#1c1917] text-[11px] text-stone-900">
-                      <span className="font-black text-[#881337]">🕒 Terakhir Online:</span>
-                      <span className="font-extrabold">{detailLastOnline.formattedDayDate}</span>
-                      <span>·</span>
-                      <span className="font-mono font-black text-[#881337]">Pukul {detailLastOnline.formattedTime}</span>
-                      <span className="text-stone-700">({detailLastOnline.relativeTimeLabel})</span>
+                    <div className="mt-2.5 inline-flex flex-wrap items-center gap-2 px-3 py-1.5 bg-stone-900/90 border border-amber-500/30 rounded text-[11px] text-stone-300">
+                      <span className="font-bold text-amber-400">🕒 Terakhir Online:</span>
+                      <span className="font-extrabold text-stone-200">{detailLastOnline.formattedDayDate}</span>
+                      <span className="text-stone-600">·</span>
+                      <span className="font-mono font-bold text-amber-300">Pukul {detailLastOnline.formattedTime}</span>
+                      <span className="text-stone-400">({detailLastOnline.relativeTimeLabel})</span>
                     </div>
                   );
                 })()}
@@ -2061,50 +1935,50 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
               <button
                 type="button"
                 onClick={() => setStudentDetailModal(null)}
-                className="px-3 py-1.5 bg-white hover:bg-stone-200 text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[2px_2px_0px_#1c1917]"
+                className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-600 font-bold text-xs rounded transition-all cursor-pointer"
               >
                 Tutup
               </button>
             </div>
 
-            <div className="overflow-y-auto my-4 flex-1 bg-white border-2 border-stone-950">
+            <div className="overflow-y-auto my-4 flex-1 bg-stone-950/80 border border-stone-800 rounded">
               {(() => {
                 const stuScores = allScores.filter(
                   s => s.userEmail.toLowerCase() === studentDetailModal.email.toLowerCase()
                 );
                 if (stuScores.length === 0) {
                   return (
-                    <p className="text-center text-xs text-stone-600 py-8 font-bold">
-                      Murid ini belum memiliki riwayat pengerjaan kuis.
+                    <p className="text-center text-xs text-stone-500 py-8 font-bold">
+                      Murid ini belum memiliki riwayat pengerjaan kuis di grimoire.
                     </p>
                   );
                 }
                 return (
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-[#f3ece0] text-stone-950 border-b-2 border-stone-950 font-black">
+                      <tr className="bg-stone-900 text-amber-300 border-b border-stone-800 font-bold">
                         <th className="py-2.5 px-3">Tanggal</th>
                         <th className="py-2.5 px-3">Level</th>
                         <th className="py-2.5 px-3 text-center">Benar</th>
                         <th className="py-2.5 px-3 text-center">Nilai</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-stone-300">
+                    <tbody className="divide-y divide-stone-800/80">
                       {stuScores.map((sc) => (
-                        <tr key={sc.id}>
-                          <td className="py-2.5 px-3 font-mono font-bold text-stone-800">{sc.completedAt}</td>
-                          <td className="py-2.5 px-3 font-black text-[#881337]">JLPT {sc.level}</td>
-                          <td className="py-2.5 px-3 text-center font-bold text-stone-800">
+                        <tr key={sc.id} className="hover:bg-stone-900/50">
+                          <td className="py-2.5 px-3 font-mono text-stone-300">{sc.completedAt}</td>
+                          <td className="py-2.5 px-3 font-black text-rose-400">JLPT {sc.level}</td>
+                          <td className="py-2.5 px-3 text-center font-bold text-stone-300">
                             {sc.correctCount} / {sc.totalQuestions}
                           </td>
                           <td className="py-2.5 px-3 text-center font-black text-sm">
                             <span
                               className={
                                 sc.score >= 71
-                                  ? 'text-emerald-700'
+                                  ? 'text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.5)]'
                                   : sc.score >= 51
-                                  ? 'text-red-600'
-                                  : 'text-black'
+                                  ? 'text-amber-400'
+                                  : 'text-rose-400'
                               }
                             >
                               {sc.score}
@@ -2125,38 +1999,39 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           MODAL KONFIRMASI HAPUS AKUN MURID
           ========================================================================= */}
       {studentToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#fbf9f3] border-[3px] border-stone-950 p-6 shadow-[8px_8px_0px_#1c1917]">
-            <div className="w-12 h-12 bg-red-100 border-2 border-stone-950 text-red-600 flex items-center justify-center mx-auto mb-4 shadow-[3px_3px_0px_#1c1917]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#12141c] border-2 border-red-600/70 p-6 shadow-[0_0_30px_rgba(220,38,38,0.3)] rounded-lg relative">
+            <GrimoireCornerClasp />
+            <div className="w-12 h-12 bg-red-950/80 border border-red-500/60 text-red-400 flex items-center justify-center mx-auto mb-4 rounded shadow-[0_0_15px_rgba(239,68,68,0.3)]">
               <AlertTriangle className="w-6 h-6" />
             </div>
 
-            <h3 className="text-lg font-black text-stone-950 text-center font-japanese mb-2">
+            <h3 className="text-lg font-black text-red-300 text-center font-japanese mb-2">
               Konfirmasi Hapus Akun Murid
             </h3>
 
-            <p className="text-xs text-stone-700 text-center leading-relaxed mb-4">
+            <p className="text-xs text-stone-300 text-center leading-relaxed mb-4">
               Apakah Sensei yakin ingin menghapus akun murid:
               <br />
-              <strong className="text-base text-[#881337] font-black block mt-1">
+              <strong className="text-base text-amber-300 font-black block mt-1">
                 {studentToDelete.fullName || studentToDelete.nickname} ({studentToDelete.email})
               </strong>
             </p>
 
-            <div className="p-3 bg-red-50 border-2 border-stone-950 text-[11px] text-red-900 mb-5 leading-relaxed font-semibold">
-              ⚠️ <strong>Peringatan:</strong> Seluruh riwayat hasil kuis, rekaman sesi aktif, dan data profil murid ini akan <strong>otomatis terhapus bersih dan permanen</strong> dari sistem Sensei Sari.
+            <div className="p-3 bg-red-950/60 border border-red-500/40 text-[11px] text-red-200 mb-5 leading-relaxed font-semibold rounded">
+              ⚠️ <strong>Peringatan:</strong> Seluruh riwayat hasil kuis, rekaman sesi aktif, dan data profil murid ini akan <strong>otomatis terhapus bersih dan permanen</strong> dari arsip Grimoire.
             </div>
 
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => setStudentToDelete(null)}
-                className="flex-1 py-2.5 px-4 bg-white hover:bg-stone-200 text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917]"
+                className="flex-1 py-2.5 px-4 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-600 font-bold text-xs rounded transition-all cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmDeleteStudent}
-                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917]"
+                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white border border-red-400 font-bold text-xs rounded shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all cursor-pointer"
               >
                 Ya, Hapus Semua Data Murid
               </button>
@@ -2167,22 +2042,23 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
 
       {/* MODAL KONFIRMASI HAPUS SINGLE REKAMAN KUIS */}
       {recordToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-[#fbf9f3] border-[3px] border-stone-950 p-5 shadow-[6px_6px_0px_#1c1917] text-center">
-            <h4 className="text-sm font-black text-stone-950 mb-2">Hapus Rekaman Kuis Ini?</h4>
-            <p className="text-xs text-stone-700 mb-4">
-              Rekaman kuis {recordToDelete.studentName} ({recordToDelete.level}) pada {recordToDelete.date} akan dihapus.
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#12141c] border-2 border-amber-600/60 p-5 shadow-[0_0_25px_rgba(0,0,0,0.8)] text-center rounded-lg relative">
+            <GrimoireCornerClasp />
+            <h4 className="text-sm font-black text-amber-300 mb-2 font-japanese">Hapus Rekaman Kuis Ini?</h4>
+            <p className="text-xs text-stone-300 mb-4">
+              Rekaman kuis <strong className="text-white">{recordToDelete.studentName}</strong> ({recordToDelete.level}) pada {recordToDelete.date} akan dihapus dari arsip.
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setRecordToDelete(null)}
-                className="flex-1 py-2 bg-white text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[2px_2px_0px_#1c1917]"
+                className="flex-1 py-2 bg-stone-800 text-stone-300 border border-stone-600 font-bold text-xs rounded hover:bg-stone-700 transition-all cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmDeleteRecord}
-                className="flex-1 py-2 bg-red-600 text-white border-2 border-stone-950 font-black text-xs shadow-[2px_2px_0px_#1c1917]"
+                className="flex-1 py-2 bg-red-600 text-white border border-red-400 font-bold text-xs rounded hover:bg-red-500 shadow-[0_0_12px_rgba(220,38,38,0.4)] transition-all cursor-pointer"
               >
                 Hapus
               </button>
@@ -2195,37 +2071,38 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           MODAL KONFIRMASI RESET RANKING SESI KUIS
           ========================================================================= */}
       {showResetRankingModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#fbf9f3] border-[3px] border-stone-950 p-6 sm:p-7 shadow-[8px_8px_0px_#1c1917]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#12141c] border-2 border-amber-500/60 p-6 sm:p-7 shadow-[0_0_30px_rgba(245,158,11,0.25)] rounded-lg relative">
+            <GrimoireCornerClasp />
             <div className="flex items-center gap-3.5 mb-4">
-              <div className="w-12 h-12 bg-amber-300 border-2 border-stone-950 flex items-center justify-center text-stone-950 text-2xl shrink-0 shadow-[3px_3px_0px_#1c1917]">
+              <div className="w-12 h-12 bg-amber-500/20 border border-amber-400/60 flex items-center justify-center text-amber-300 text-2xl shrink-0 rounded shadow-[0_0_12px_rgba(245,158,11,0.3)]">
                 🏆
               </div>
               <div>
-                <h3 className="text-lg font-black text-stone-950 font-japanese">
+                <h3 className="text-lg font-black text-amber-200 font-japanese">
                   Reset Ranking Sesi Kuis?
                 </h3>
-                <p className="text-xs text-stone-700 font-semibold">
+                <p className="text-xs text-stone-400 font-medium">
                   Menyesuaikan & memulai papan peringkat untuk sesi kuis baru
                 </p>
               </div>
             </div>
 
-            <div className="p-4 bg-white border-2 border-stone-950 text-xs space-y-2.5 mb-5">
-              <p className="font-black text-stone-950">
+            <div className="p-4 bg-stone-900/90 border border-stone-800 text-xs space-y-2.5 mb-5 rounded">
+              <p className="font-bold text-stone-200">
                 Papan perankingan sesi ini akan dikosongkan agar siap digunakan untuk sesi pengerjaan kuis yang baru.
               </p>
-              <div className="pt-2 border-t border-stone-300 space-y-1.5 text-stone-800">
+              <div className="pt-2 border-t border-stone-800 space-y-1.5 text-stone-300">
                 <div className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-black text-sm">✓</span>
+                  <span className="text-emerald-400 font-black text-sm">✓</span>
                   <span><strong>Total Kuis Murid</strong> di Daftar Murid tetap aman & tidak berkurang.</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-black text-sm">✓</span>
+                  <span className="text-emerald-400 font-black text-sm">✓</span>
                   <span><strong>Laporan Pribadi (Rapor)</strong> di akun master & akun murid tetap tersimpan 100%.</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-black text-sm">✓</span>
+                  <span className="text-emerald-400 font-black text-sm">✓</span>
                   <span>Hanya rekaman live sesi ini yang diatur ulang ke posisi awal.</span>
                 </div>
               </div>
@@ -2234,13 +2111,13 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => setShowResetRankingModal(false)}
-                className="flex-1 py-2.5 px-4 bg-white hover:bg-stone-200 text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917]"
+                className="flex-1 py-2.5 px-4 bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-600 font-bold text-xs rounded transition-all cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmResetRanking}
-                className="flex-1 py-2.5 px-4 bg-amber-300 hover:bg-amber-400 text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917] flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 border border-amber-300 font-bold text-xs rounded shadow-[0_0_15px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Ya, Reset Ranking Sesi</span>
@@ -2254,41 +2131,42 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           MODAL PERBAIKI KATA SANDI MURID (LUPA KATA SANDI)
           ========================================================================= */}
       {studentToResetPassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#fbf9f3] border-[3px] border-stone-950 p-6 sm:p-7 shadow-[8px_8px_0px_#1c1917]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#12141c] border-2 border-amber-500/60 p-6 sm:p-7 shadow-[0_0_30px_rgba(0,0,0,0.9)] rounded-lg relative">
+            <GrimoireCornerClasp />
             <div className="flex items-center gap-3.5 mb-3">
-              <div className="w-12 h-12 bg-amber-200 border-2 border-stone-950 flex items-center justify-center text-stone-950 text-xl shrink-0 shadow-[3px_3px_0px_#1c1917]">
+              <div className="w-12 h-12 bg-amber-500/20 border border-amber-400/60 flex items-center justify-center text-amber-300 text-xl shrink-0 rounded shadow-[0_0_12px_rgba(245,158,11,0.3)]">
                 <KeyRound className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-stone-950 font-japanese">
+                <h3 className="text-lg font-black text-amber-200 font-japanese">
                   Perbaiki Kata Sandi Murid
                 </h3>
-                <p className="text-xs text-stone-700 font-semibold">
+                <p className="text-xs text-stone-400 font-medium">
                   Khusus Akun Master: Langsung ubah kata sandi tanpa verifikasi email
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-100 border-2 border-stone-950 text-[11px] font-black text-emerald-950 w-fit mb-3">
-              <Shield className="w-3.5 h-3.5 text-emerald-700" />
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-950/70 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 w-fit mb-3 rounded">
+              <Shield className="w-3.5 h-3.5 text-emerald-400" />
               <span>Hak Akses Master: Perubahan kata sandi langsung tanpa verifikasi email</span>
             </div>
 
-            <div className="p-3.5 bg-white border-2 border-stone-950 text-xs space-y-1.5 mb-4">
-              <div><strong>Nama Murid:</strong> {studentToResetPassword.user.fullName || studentToResetPassword.user.nickname}</div>
-              <div><strong>Alamat Email:</strong> <span className="font-mono text-stone-800">{studentToResetPassword.user.email}</span></div>
+            <div className="p-3.5 bg-stone-900/90 border border-stone-800 text-xs space-y-1.5 mb-4 rounded text-stone-300">
+              <div><strong>Nama Murid:</strong> <span className="text-white">{studentToResetPassword.user.fullName || studentToResetPassword.user.nickname}</span></div>
+              <div><strong>Alamat Email:</strong> <span className="font-mono text-amber-300">{studentToResetPassword.user.email}</span></div>
               <div className="flex items-center gap-1.5 pt-0.5">
                 <strong>Kata Sandi Saat Ini:</strong> 
-                <span className="font-mono font-black text-[#881337] bg-amber-100 px-2 py-0.5 border border-stone-950">
+                <span className="font-mono font-bold text-amber-200 bg-stone-950 px-2 py-0.5 border border-amber-500/40 rounded">
                   {studentToResetPassword.currentPassword}
                 </span>
               </div>
             </div>
 
             <div className="mb-5">
-              <label className="block text-xs font-black text-stone-950 mb-1.5">
-                Masukkan Kata Sandi Baru Murid <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-stone-300 mb-1.5">
+                Masukkan Kata Sandi Baru Murid <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <input
@@ -2296,11 +2174,11 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   placeholder="Contoh: 1234 atau murid2026"
                   value={newPasswordInput}
                   onChange={(e) => setNewPasswordInput(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border-2 border-stone-950 text-sm font-mono font-bold text-stone-950 outline-hidden shadow-[3px_3px_0px_#1c1917]"
+                  className="w-full px-3.5 py-2.5 bg-stone-950 border border-amber-500/50 text-sm font-mono font-bold text-white rounded outline-none focus:border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
                   autoFocus
                 />
               </div>
-              <span className="text-[10px] text-stone-700 font-semibold mt-1.5 block">
+              <span className="text-[10px] text-stone-400 font-medium mt-1.5 block">
                 Minimal 2 karakter. Murid dapat langsung masuk dengan kata sandi baru ini.
               </span>
             </div>
@@ -2308,13 +2186,13 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => setStudentToResetPassword(null)}
-                className="flex-1 py-2.5 px-4 bg-white hover:bg-stone-200 text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917]"
+                className="flex-1 py-2.5 px-4 bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-600 font-bold text-xs rounded transition-all cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={handleSaveNewStudentPassword}
-                className="flex-1 py-2.5 px-4 bg-amber-300 hover:bg-amber-400 text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917] flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 border border-amber-300 font-bold text-xs rounded shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
                 <span>Simpan & Perbaiki Sandi</span>
@@ -2328,32 +2206,33 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
           MODAL TAMBAH / DAFTARKAN MURID BARU OLEH MASTER
           ========================================================================= */}
       {showAddStudentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-[#fbf9f3] border-[3px] border-stone-950 p-6 sm:p-7 shadow-[8px_8px_0px_#1c1917]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#12141c] border-2 border-amber-500/60 p-6 sm:p-7 shadow-[0_0_30px_rgba(0,0,0,0.9)] rounded-lg relative">
+            <GrimoireCornerClasp />
             <div className="flex items-center gap-3.5 mb-4">
-              <div className="w-12 h-12 bg-[#fae8eb] border-2 border-stone-950 flex items-center justify-center text-[#881337] text-xl shrink-0 shadow-[3px_3px_0px_#1c1917]">
+              <div className="w-12 h-12 bg-amber-500/20 border border-amber-400/60 flex items-center justify-center text-amber-400 text-xl shrink-0 rounded shadow-[0_0_12px_rgba(245,158,11,0.3)]">
                 <UserPlus className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-stone-950 font-japanese">
+                <h3 className="text-lg font-black text-amber-200 font-japanese">
                   Daftarkan Murid Baru
                 </h3>
-                <p className="text-xs text-stone-700 font-semibold">
-                  Tambahkan akun murid baru langsung ke Daftar Murid Sensei Sari
+                <p className="text-xs text-stone-400 font-medium">
+                  Tambahkan akun murid baru langsung ke Daftar Murid Grimoire
                 </p>
               </div>
             </div>
 
             {addStudentError && (
-              <div className="mb-4 p-3 bg-rose-100 border-2 border-stone-950 text-xs text-rose-950 font-black">
+              <div className="mb-4 p-3 bg-red-950/80 border border-red-500/60 text-xs text-red-200 font-bold rounded">
                 ⚠️ {addStudentError}
               </div>
             )}
 
             <form onSubmit={handleAddStudentByMaster} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-black text-stone-950 mb-1">
-                  Nama Lengkap Murid <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-stone-300 mb-1">
+                  Nama Lengkap Murid <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -2361,13 +2240,13 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   placeholder="Contoh: Kenji Pratama"
                   value={newStuFullName}
                   onChange={(e) => setNewStuFullName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border-2 border-stone-950 text-sm font-bold text-stone-950 outline-hidden shadow-[2px_2px_0px_#1c1917]"
+                  className="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-700 focus:border-amber-400 text-sm font-bold text-white rounded outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black text-stone-950 mb-1">
-                  Nama Panggilan <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-stone-300 mb-1">
+                  Nama Panggilan <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -2375,13 +2254,13 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   placeholder="Contoh: Kenji"
                   value={newStuNickname}
                   onChange={(e) => setNewStuNickname(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border-2 border-stone-950 text-sm font-bold text-stone-950 outline-hidden shadow-[2px_2px_0px_#1c1917]"
+                  className="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-700 focus:border-amber-400 text-sm font-bold text-white rounded outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black text-stone-950 mb-1">
-                  Alamat Email Murid <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-stone-300 mb-1">
+                  Alamat Email Murid <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="email"
@@ -2389,13 +2268,13 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   placeholder="nama.murid@gmail.com"
                   value={newStuEmail}
                   onChange={(e) => setNewStuEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border-2 border-stone-950 text-sm font-bold text-stone-950 outline-hidden shadow-[2px_2px_0px_#1c1917]"
+                  className="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-700 focus:border-amber-400 text-sm font-bold text-white rounded outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black text-stone-950 mb-1">
-                  Kata Sandi Murid <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-stone-300 mb-1">
+                  Kata Sandi Murid <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -2403,7 +2282,7 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                   placeholder="Minimal 2 karakter (contoh: 1234 / murid2026)"
                   value={newStuPassword}
                   onChange={(e) => setNewStuPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border-2 border-stone-950 text-sm font-mono font-bold text-stone-950 outline-hidden shadow-[2px_2px_0px_#1c1917]"
+                  className="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-700 focus:border-amber-400 text-sm font-mono font-bold text-white rounded outline-none"
                 />
               </div>
 
@@ -2411,13 +2290,13 @@ export const MasterManagementView: React.FC<MasterManagementViewProps> = ({ curr
                 <button
                   type="button"
                   onClick={() => setShowAddStudentModal(false)}
-                  className="flex-1 py-2.5 px-4 bg-white hover:bg-stone-200 text-stone-950 border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917]"
+                  className="flex-1 py-2.5 px-4 bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-600 font-bold text-xs rounded transition-all cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 px-4 bg-[#881337] hover:bg-[#70102d] text-white border-2 border-stone-950 font-black text-xs shadow-[3px_3px_0px_#1c1917] flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-stone-950 border border-amber-300 font-bold text-xs rounded shadow-[0_0_15px_rgba(245,158,11,0.3)] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
                   <span>Simpan Murid Baru</span>

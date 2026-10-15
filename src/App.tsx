@@ -385,7 +385,11 @@ export function App() {
 
   // ================= SCENARIO 2: MAIN DASHBOARD APPLICATION =================
   return (
-    <div className="min-h-screen flex flex-col relative selection:bg-[#fbcfe8] selection:text-[#881337] bg-[#fdfbf7] bg-japanese-pattern text-[#2b1d19]">
+    <div className={`min-h-screen flex flex-col relative selection:bg-[#fbcfe8] selection:text-[#881337] ${
+      activeTab === 'master_management'
+        ? 'bg-[#090b14] text-stone-100'
+        : 'bg-[#fdfbf7] bg-japanese-pattern text-[#2b1d19]'
+    }`}>
       <SakuraEffect
         triggerRain={triggerSakuraRain}
         triggerCelebration={triggerSakuraCelebration}

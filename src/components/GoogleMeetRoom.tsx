@@ -311,7 +311,11 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
   const isCurrentZoom = activeSession?.platform === 'zoom' || meetUri.includes('zoom.us');
 
   return (
-    <div className="bg-[#fffdfa] border-2 border-[#ebdccb] rounded-3xl p-6 sm:p-8 shadow-xl max-w-2xl mx-auto my-6">
+    <div className={`rounded-3xl p-6 sm:p-8 shadow-xl max-w-2xl mx-auto my-6 border-2 transition-all ${
+      isMasterUser
+        ? 'bg-stone-950/25 backdrop-blur-[2px] border-emerald-500/40 text-stone-100'
+        : 'bg-[#fffdfa] border-[#ebdccb] text-[#2b1d19]'
+    }`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md ${
@@ -321,25 +325,27 @@ export const GoogleMeetRoom: React.FC<GoogleMeetRoomProps> = ({ isMasterUser = f
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-[#881337]">
+            <h2 className={`text-xl sm:text-2xl font-bold ${isMasterUser ? 'text-amber-200 font-japanese' : 'text-[#881337]'}`}>
               Sesi Belajar Virtual (Google Meet / Zoom)
             </h2>
             {meetUri ? (
               <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-bold border animate-pulse ${
                 isCurrentZoom
-                  ? 'bg-blue-100 text-blue-900 border-blue-300'
-                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  ? 'bg-blue-900/60 text-blue-200 border-blue-400'
+                  : 'bg-emerald-900/60 text-emerald-200 border-emerald-400'
               }`}>
-                <span className={`w-2 h-2 rounded-full animate-ping ${isCurrentZoom ? 'bg-blue-600' : 'bg-emerald-500'}`} />
+                <span className={`w-2 h-2 rounded-full animate-ping ${isCurrentZoom ? 'bg-blue-400' : 'bg-emerald-400'}`} />
                 {isCurrentZoom ? 'LIVE ZOOM' : 'LIVE MEET'}
               </span>
             ) : (
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 font-semibold border border-stone-200">
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+                isMasterUser ? 'bg-stone-900/60 text-stone-300 border-stone-700' : 'bg-stone-100 text-stone-700 border-stone-200'
+              }`}>
                 Standby
               </span>
             )}
           </div>
-          <p className="text-sm text-[#8c6b4b] mt-0.5">
+          <p className={`text-sm mt-0.5 ${isMasterUser ? 'text-stone-300' : 'text-[#8c6b4b]'}`}>
             {isMasterUser
               ? 'Panel Master: Masukkan tautan atau kode Zoom / Google Meet aktif Anda, lalu bagikan ke semua murid.'
               : 'Ruang tatap muka virtual bersama Sari Sensei & sesama murid (Mendukung Google Meet & Zoom).'}

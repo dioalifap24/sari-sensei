@@ -21,8 +21,8 @@
         "registeredAt": "2026-10-12 16:13",
         "isMaster": false,
         "role": "student",
-        "lastOnlineTimestamp": 1791821698586,
-        "lastOnlineAt": "12 Okt 2026 · 23.14.58 WIB"
+        "lastOnlineTimestamp": 1791872501957,
+        "lastOnlineAt": "13 Okt 2026 · 13.21.41 WIB"
       },
       "password": "alkhalid"
     },
@@ -34,7 +34,9 @@
         "name": "dwi nur anggraini puspitasari",
         "registeredAt": "2026-10-04 08:42",
         "isMaster": false,
-        "role": "student"
+        "role": "student",
+        "lastOnlineTimestamp": 1791972458945,
+        "lastOnlineAt": "14 Okt 2026 · 17.07.38 WIB"
       },
       "password": "nuranggraini320"
     }
@@ -43,21 +45,36 @@
   "activeQuizzes": [],
   "quizControl": {
     "isActive": false,
-    "updatedAt": 1791109403307
+    "updatedAt": 1791884181724
   },
   "onlinePresence": {
     "dananggarassi@gmail.com": {
       "email": "dananggarassi@gmail.com",
       "name": "Danang",
       "nickname": "Dana",
-      "lastSeen": 1791821698586,
-      "lastOnlineTimestamp": 1791821698586,
-      "lastOnlineAt": "12 Okt 2026 · 23.14.58 WIB",
-      "updatedAt": 1791821698586,
-      "currentTab": "materi",
-      "currentActivity": "📖 Mempelajari Materi JLPT N5",
+      "lastSeen": 1791872501957,
+      "lastOnlineTimestamp": 1791872501957,
+      "lastOnlineAt": "13 Okt 2026 · 13.21.41 WIB",
+      "updatedAt": 1791872501957,
+      "currentTab": "terjemahan",
+      "currentActivity": "🈳 Membuka Terjemahan Indonesia — Jepang",
       "activeLevel": "N5",
-      "lastActionAt": "23.14.58",
+      "lastActionAt": "13.21.41",
+      "screenshotAttempts": 0,
+      "aiTranslateAttempts": 0
+    },
+    "dwinuranggrainipuspitasari@gmail.com": {
+      "email": "dwinuranggrainipuspitasari@gmail.com",
+      "name": "dwi nur anggraini puspitasari",
+      "nickname": "puspitasari",
+      "lastSeen": 1791972458945,
+      "lastOnlineTimestamp": 1791972458945,
+      "lastOnlineAt": "14 Okt 2026 · 17.07.38 WIB",
+      "updatedAt": 1791972458945,
+      "currentTab": "home",
+      "currentActivity": "🏠 Membuka Beranda (Target JLPT N5)",
+      "activeLevel": "N5",
+      "lastActionAt": "17.07.38",
       "screenshotAttempts": 0,
       "aiTranslateAttempts": 0
     }
@@ -127,6 +144,8 @@
       "updatedAt": 1791384627953
     }
   ],
+  "virtualSessions": [],
+  "meetChatMessages": [],
   "deletedTaskIds": [
     "task-lembar-1-sensei"
   ],
@@ -138,5 +157,5 @@
     "kingugik@gmail.com"
   ],
   "rankingResetAt": 0,
-  "updatedAt": 1791861525819
+  "updatedAt": 1792062554231
 }

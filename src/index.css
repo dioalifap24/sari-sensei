@@ -439,3 +439,153 @@
 
 
 
+
+/* Dark Grimoire & Black Clover Anime Magic Styles (High-Visibility Transparent Glassmorphism) */
+.grimoire-base {
+  background-color: rgba(9, 12, 18, 0.22);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(220, 38, 38, 0.10), transparent 50%),
+    radial-gradient(circle at 85% 20%, rgba(16, 185, 129, 0.10), transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(217, 119, 6, 0.08), transparent 55%);
+  border: 1.5px solid rgba(217, 119, 6, 0.4);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+}
+
+.grimoire-card {
+  background: rgba(13, 17, 26, 0.28);
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  border: 1.5px solid rgba(180, 83, 9, 0.38);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(245, 158, 11, 0.15);
+}
+
+.grimoire-card-asta {
+  background: rgba(31, 17, 19, 0.32);
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.2), inset 0 1px 0 rgba(239, 68, 68, 0.2);
+}
+
+.grimoire-card-yuno {
+  background: rgba(9, 27, 22, 0.32);
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  border: 1.5px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(16, 185, 129, 0.2);
+}
+
+.magic-glow {
+  box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
+  transition: all 0.25s ease-in-out;
+}
+
+.magic-glow:hover {
+  box-shadow: 0 0 25px rgba(234, 179, 8, 0.55);
+}
+
+.magic-glow-anti-magic {
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.35);
+  transition: all 0.25s ease-in-out;
+}
+
+.magic-glow-anti-magic:hover {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.65);
+}
+
+.magic-glow-wind {
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35);
+  transition: all 0.25s ease-in-out;
+}
+
+.magic-glow-wind:hover {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.65);
+}
+
+.grimoire-gold-border {
+  border-color: #d97706;
+}
+
+.grimoire-table-row {
+  background-color: rgba(18, 22, 34, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background-color 0.2s ease;
+}
+
+.grimoire-table-row:hover {
+  background-color: rgba(30, 38, 56, 0.75);
+}
+
+/* ================= ANIMASI LATAR BELAKANG BLACK CLOVER GRIMOIRE ================= */
+@keyframes manaCircleRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cloverMoteFloat {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(var(--mote-mid-x, 20px), -45vh, 0) rotate(180deg) scale(1.05);
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate3d(var(--mote-end-x, -20px), -90vh, 0) rotate(360deg) scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes antiMagicFlameBreath {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+    filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.4));
+  }
+  50% {
+    transform: scale(1.02) translateY(-4px);
+    filter: drop-shadow(0 0 28px rgba(239, 68, 68, 0.7));
+  }
+}
+
+@keyframes windSpiritSylphBreath {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+    filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));
+  }
+  50% {
+    transform: scale(1.02) translateY(-4px);
+    filter: drop-shadow(0 0 28px rgba(16, 185, 129, 0.7));
+  }
+}
+
+.animate-mana-rotate {
+  animation: manaCircleRotate 60s linear infinite;
+}
+
+.animate-anti-magic-breath {
+  animation: antiMagicFlameBreath 4.5s ease-in-out infinite;
+}
+
+.animate-wind-spirit-breath {
+  animation: windSpiritSylphBreath 4.5s ease-in-out infinite;
+}
+
+.clover-mana-mote {
+  animation: cloverMoteFloat var(--mote-duration, 10s) ease-in-out infinite;
+  animation-delay: var(--mote-delay, 0s);
+}
+
