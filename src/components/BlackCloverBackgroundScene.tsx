@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flame, Wind, Sparkles } from 'lucide-react';
 import { BlackBullsEmblem, GoldenDawnEmblem, CloverGrimoiresPairImg } from './BlackCloverAssets';
+import { BlackCloverManaField } from './BlackCloverManaField';
 
 const MANA_MOTES = [
   { id: 1, left: '6%', size: 14, duration: '9.2s', delay: '0s', midX: '28px', endX: '-16px', color: '#ef4444', type: 'clover5' },
@@ -155,8 +156,16 @@ export const BlackCloverBackgroundScene: React.FC = () => {
       </div>
 
       {/* =========================================================================
-          4. PARTIKEL MANA, EMBER MERAH & SEMANGGI MELAYANG KE ATAS
+          4. PARTIKEL DEBU SIHIR & EFEK MANA ATMOSFERIK (BLACK CLOVER MANA ZONE)
+          - Sistem partikel debu sihir kanvas 60FPS dengan kilau multi-afinitas:
+            * Emas Kerajaan (tengah / Mahojin)
+            * Crimson Anti-Sihir Asta (sayap kiri)
+            * Zamrud Sihir Angin Sylph Yuno (sayap kanan)
+            * Debu berkilau, orb berpendar, bintang 4-titik (✦), dan semanggi langka
           ========================================================================= */}
+      <BlackCloverManaField density="dense" interactive={true} />
+
+      {/* Ornamen Semanggi Grimoire Melayang Tambahan */}
       <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
         {MANA_MOTES.map(m => (
           <div

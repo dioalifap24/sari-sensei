@@ -114,12 +114,17 @@ export const MasterBlackCloverHeader: React.FC<MasterBlackCloverHeaderProps> = (
           </h1>
 
           {/* Sub-keterangan Sanctum Halus Tanpa Border Kotak */}
-          <div className="flex items-center justify-center gap-2 mt-1.5 text-xs text-amber-200/80 font-medium">
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-1.5 text-xs text-amber-200/80 font-medium">
             <span>🍀 Clover Kingdom</span>
             <span className="text-amber-500/60">•</span>
             <span>Nihongo Master Sanctum</span>
             <span className="text-amber-500/60">•</span>
             <span className="text-amber-300 font-mono">Sensei {masterName}</span>
+            <span className="hidden sm:inline text-amber-500/60">•</span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[10px] text-emerald-300 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+              <span>Mana Zone · 魔力領域</span>
+            </span>
           </div>
         </div>
 
